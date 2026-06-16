@@ -3,274 +3,191 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>Travel Budget Planner</title>
-
-<link rel="stylesheet"
-      href="{{ url_for('static', filename='style.css') }}">
-
-<script>
-
-function toggleRentalCost() {
-
-    const vehicleType =
-        document.getElementById("vehicle_type").value;
-
-    const rentalDiv =
-        document.getElementById("rental_cost_div");
-
-    const rentalCost =
-        document.getElementById("vehicle_rental_cost");
-
-    if(vehicleType === "own") {
-
-        rentalDiv.style.display = "none";
-        rentalCost.value = 0;
-
-    } else {
-
-        rentalDiv.style.display = "block";
-
-    }
-}
-
-window.onload = function() {
-
-    toggleRentalCost();
-
-    getUserLocation();
-};
-
-</script>
-
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<style>
+  .section-card {
+    background: #f0f8ff;
+    border: 1px solid #d0e8f5;
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin-top: 18px;
+  }
+  .section-card h3 {
+    margin: 0 0 12px;
+    font-size: 15px;
+    color: #2c5f8a;
+    font-weight: 700;
+  }
+  .fare-hint {
+    font-size: 12px;
+    color: #666;
+    margin-top: 4px;
+    margin-bottom: 0;
+  }
+  .transport-rate-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 15px;
+    font-weight: 600;
+    color: #444;
+  }
+  .transport-rate-label .badge {
+    font-size: 12px;
+    background: #e8f4fd;
+    color: #1a6a9e;
+    padding: 2px 10px;
+    border-radius: 99px;
+    font-weight: 500;
+  }
+  select option.opt-govt { color: #085041; }
+  select option.opt-pvt  { color: #3C3489; }
+  select option.opt-air  { color: #0C447C; }
+</style>
 </head>
 
 <body>
-
 <div class="container">
 
 <h1>🌍 Travel Budget Planner</h1>
 
 <form action="/calculate" method="POST">
 
-    <!-- Travelers -->
+  <!-- Travelers -->
+  <label>👥 Number of Travelers</label>
+  <input type="number" name="travelers" min="1" required>
 
-    <label>👥 Number of Travelers</label>
-
-    <input
-        type="number"
-        name="travelers"
-        min="1"
-        required>
-
-<label>🚗 Transport Mode</label>
-
-<select id="transport_mode" name="transport_mode">
-
+  <!-- Transport Mode -->
+  <label>🚗 Transport Mode</label>
+  <select id="transport_mode" name="transport_mode" onchange="onTransportChange()">
     <option value="walk">🚶 Walk</option>
-
-    <option value="bike">🏍 Bike</option>
-
+    <option value="bike">🏍️ Bike</option>
     <option value="car">🚗 Car</option>
-
     <option value="bus">🚌 Bus</option>
-
     <option value="train">🚆 Train</option>
+    <option value="flight">✈️ Flight</option>
+  </select>
 
-    <option value="flight">✈ Flight</option>
+  <!-- BUS sub-types -->
+  <div id="bus_options" class="section-card" style="display:none">
+    <h3>🚌 Select Bus Type</h3>
+    <select name="bus_type" id="bus_type" onchange="updateBusFareHint()">
+      <option value="0.835" class="opt-govt">Govt Ordinary (SRTC) — ₹0.67–1.0/km</option>
+      <option value="1.90"  class="opt-govt">Govt AC / Deluxe (Airavat, Volvo SRTC) — ₹1.5–2.3/km</option>
+      <option value="2.00"  class="opt-pvt">Private Non-AC Sleeper — ₹1.5–2.5/km</option>
+      <option value="3.25"  class="opt-pvt">Private AC Sleeper (Volvo, Scania) — ₹2.5–4.0/km</option>
+    </select>
+    <p class="fare-hint" id="bus_hint">Rate used: ₹0.84/km per person (avg of ₹0.67–1.0)</p>
+  </div>
 
-</select>
+  <!-- TRAIN sub-types -->
+  <div id="train_options" class="section-card" style="display:none">
+    <h3>🚆 Select Train Class</h3>
+    <select name="train_type" id="train_type" onchange="updateTrainFareHint()">
+      <option value="0.40"  class="opt-govt">General / 2S — ₹0.30–0.50/km</option>
+      <option value="0.65"  class="opt-govt">Sleeper Class (SL) — ₹0.50–0.80/km</option>
+      <option value="1.80"  class="opt-govt">3AC (incl. Vande Bharat 3AC) — ₹1.2–2.4/km</option>
+      <option value="2.50"  class="opt-govt">2AC (Rajdhani, Duronto) — ₹2.0–3.0/km</option>
+      <option value="3.10"  class="opt-govt">Vande Bharat Sleeper — ₹2.4–3.8/km</option>
+      <option value="4.00"  class="opt-govt">1AC / Executive Chair — ₹3.0–5.0/km</option>
+    </select>
+    <p class="fare-hint" id="train_hint">Rate used: ₹0.40/km per person (avg of ₹0.30–0.50)</p>
+  </div>
 
-    <!-- Destination -->
+  <!-- FLIGHT sub-types -->
+  <div id="flight_options" class="section-card" style="display:none">
+    <h3>✈️ Select Flight Class</h3>
+    <select name="flight_type" id="flight_type" onchange="updateFlightFareHint()">
+      <option value="4.75"  class="opt-air">Budget Economy LCC (IndiGo, SpiceJet) — ₹3.5–6.0/km</option>
+      <option value="7.00"  class="opt-air">Full-Service Economy (Air India, Vistara) — ₹5.0–9.0/km</option>
+      <option value="14.00" class="opt-air">Last-Minute / Peak Fare — ₹8–20+/km</option>
+      <option value="27.50" class="opt-air">Business Class — ₹15–40/km</option>
+    </select>
+    <p class="fare-hint" id="flight_hint">Rate used: ₹4.75/km per person (avg of ₹3.5–6.0)</p>
+  </div>
 
-    <label>📍 Destination</label>
+  <!-- Destination -->
+  <label>📍 Destination</label>
+  <input type="text" id="destination" name="destination"
+         placeholder="Example: Valparai" required>
 
-    <input
-        type="text"
-        id="destination"
-        name="destination"
-        placeholder="Example: Valparai"
-        required>
+  <!-- Distance -->
+  <label>🛣️ Distance (km)</label>
+  <input type="number" step="0.01" name="distance" id="distance"
+         placeholder="Auto Calculating..." readonly>
 
-    <!-- Distance -->
+  <!-- Travel Time -->
+  <label>⏰ Travel Time</label>
+  <input type="text" id="travel_time" placeholder="Auto Calculating..." readonly>
 
-    <label>🛣 Distance (km)</label>
+  <!-- Places -->
+  <label>🏞️ Number of Places to Visit</label>
+  <input type="number" name="places_to_visit" value="0">
 
-    <input
-        type="number"
-        step="0.01"
-        name="distance"
-        id="distance"
-        placeholder="Auto Calculating..."
-        readonly>
+  <!-- Entry Fee -->
+  <label>🎟️ Entry Fee Per Place (₹)</label>
+  <input type="number" step="0.01" name="per_places_entry_fee" value="0">
 
-    <!-- Travel Time -->
-
-    <label>⏰ Travel Time</label>
-
-    <input
-        type="text"
-        id="travel_time"
-        placeholder="Auto Calculating..."
-        readonly>
-
-    <!-- Places -->
-
-    <label>🏞 Number of Places to Visit</label>
-
-    <input
-        type="number"
-        name="places_to_visit"
-        value="0">
-
-    <!-- Entry Fee -->
-
-    <label>🎟 Entry Fee Per Place (₹)</label>
-
-    <input
-        type="number"
-        step="0.01"
-        name="per_places_entry_fee"
-        value="0">
-
-    <!-- Vehicle -->
-
+  <!-- Vehicle section — only for bike / car -->
+  <div id="vehicle_section">
     <label>🚗 Vehicle Type</label>
-
-    <select
-        name="vehicle_type"
-        id="vehicle_type"
-        onchange="toggleRentalCost()">
-
-        <option value="own">
-            Own Vehicle
-        </option>
-
-        <option value="rental">
-            Rental Vehicle
-        </option>
-
+    <select name="vehicle_type" id="vehicle_type" onchange="toggleRentalCost()">
+      <option value="own">Own Vehicle</option>
+      <option value="rental">Rental Vehicle</option>
     </select>
 
-    <!-- Rental Cost -->
-
-    <div id="rental_cost_div">
-
-        <label>🚘 Vehicle Rental Cost (₹)</label>
-
-        <input
-            type="number"
-            step="0.01"
-            name="vehicle_rental_cost"
-            id="vehicle_rental_cost"
-            value="0">
-
+    <div id="rental_cost_div" style="display:none">
+      <label>🚘 Vehicle Rental Cost (₹)</label>
+      <input type="number" step="0.01" name="vehicle_rental_cost"
+             id="vehicle_rental_cost" value="0">
     </div>
 
-    <!-- Parking -->
+    <label>🅿️ Parking Fee (₹)</label>
+    <input type="number" step="0.01" name="parking_fee" id="parking_fee" value="0">
 
-    <label>🅿 Parking Fee (₹)</label>
+    <!-- Mileage & Fuel — only for bike/car -->
+    <div id="fuel_section">
+      <label>⛽ Mileage (km/l)</label>
+      <input type="number" step="0.01" name="mileage" id="mileage" value="20">
 
-    <input
-        type="number"
-        step="0.01"
-        name="parking_fee"
-        value="0">
+      <label>⛽ Fuel Type</label>
+      <select name="fuel_type">
+        <option value="petrol">Petrol (₹108.85/L)</option>
+        <option value="diesel">Diesel (₹101.60/L)</option>
+      </select>
+    </div>
+  </div>
 
-    <!-- Mileage -->
-
-    <label>⛽ Mileage (km/l)</label>
-
-    <input
-        type="number"
-        step="0.01"
-        name="mileage"
-        value="20"
-        required>
-
-    <!-- Fuel Type -->
-
-    <label>⛽ Fuel Type</label>
-
-    <select name="fuel_type">
-
-        <option value="petrol">
-            Petrol (₹108.85/L)
-        </option>
-
-        <option value="diesel">
-            Diesel (₹101.60/L)
-        </option>
-
-    </select>
-
-    <!-- Food -->
-
-    <label>🍽 Food Cost Per Person (₹)</label>
-
-    <input
-        type="number"
-        step="0.01"
-        name="food_cost_per_person"
-        value="0">
-
-    <!-- Room -->
-
-    <label>🏨 Room Cost (₹)</label>
-
-    <input
-        type="number"
-        step="0.01"
-        name="room_cost"
-        value="0">
-
-    <!-- Toll -->
-
+  <!-- Toll (only for car/bike) -->
+  <div id="toll_section">
     <label>🚧 Toll Charges (₹)</label>
+    <input type="number" step="0.01" name="toll_charges" id="toll_charges" value="0">
+  </div>
 
-    <input
-        type="number"
-        step="0.01"
-        name="toll_charges"
-        id="toll_charges"
-        value="0">
+  <!-- Food -->
+  <label>🍽️ Food Cost Per Person (₹)</label>
+  <input type="number" step="0.01" name="food_cost_per_person" value="0">
 
-    <!-- Round Trip -->
+  <!-- Room -->
+  <label>🏨 Room Cost (₹)</label>
+  <input type="number" step="0.01" name="room_cost" value="0">
 
-    <label>🔄 Round Trip?</label>
+  <!-- Round Trip -->
+  <label>🔄 Round Trip?</label>
+  <select name="round_trip">
+    <option value="yes">Yes</option>
+    <option value="no">No</option>
+  </select>
 
-    <select name="round_trip">
+  <!-- Hidden GPS -->
+  <input type="hidden" name="user_lat" id="user_lat">
+  <input type="hidden" name="user_lon" id="user_lon">
 
-        <option value="yes">
-            Yes
-        </option>
-
-        <option value="no">
-            No
-        </option>
-
-    </select>
-
-    <!-- Hidden GPS -->
-
-    <input
-        type="hidden"
-        name="user_lat"
-        id="user_lat">
-
-    <input
-        type="hidden"
-        name="user_lon"
-        id="user_lon">
-
-    <br><br>
-
-    <button type="submit">
-        ✈️ Calculate Budget
-    </button>
+  <br><br>
+  <button type="submit">✈️ Calculate Budget</button>
 
 </form>
-
 </div>
 
 <script>
@@ -278,91 +195,157 @@ window.onload = function() {
 let userLat = 0;
 let userLon = 0;
 
-function getUserLocation() {
+/* ── Fare hint updaters ─────────────────── */
 
-    if(navigator.geolocation) {
+const busHints = {
+  "0.835": "Rate used: ₹0.84/km per person (avg of ₹0.67–1.0)",
+  "1.90":  "Rate used: ₹1.90/km per person (avg of ₹1.5–2.3)",
+  "2.00":  "Rate used: ₹2.00/km per person (avg of ₹1.5–2.5)",
+  "3.25":  "Rate used: ₹3.25/km per person (avg of ₹2.5–4.0)"
+};
+const trainHints = {
+  "0.40":  "Rate used: ₹0.40/km per person (avg of ₹0.30–0.50)",
+  "0.65":  "Rate used: ₹0.65/km per person (avg of ₹0.50–0.80)",
+  "1.80":  "Rate used: ₹1.80/km per person (avg of ₹1.2–2.4)",
+  "2.50":  "Rate used: ₹2.50/km per person (avg of ₹2.0–3.0)",
+  "3.10":  "Rate used: ₹3.10/km per person (avg of ₹2.4–3.8)",
+  "4.00":  "Rate used: ₹4.00/km per person (avg of ₹3.0–5.0)"
+};
+const flightHints = {
+  "4.75":  "Rate used: ₹4.75/km per person (avg of ₹3.5–6.0)",
+  "7.00":  "Rate used: ₹7.00/km per person (avg of ₹5.0–9.0)",
+  "14.00": "Rate used: ₹14.00/km per person (avg of ₹8–20+)",
+  "27.50": "Rate used: ₹27.50/km per person (avg of ₹15–40)"
+};
 
-        navigator.geolocation.getCurrentPosition(
-
-            function(position){
-
-                userLat = position.coords.latitude;
-                userLon = position.coords.longitude;
-
-                document.getElementById("user_lat").value =
-                    userLat;
-
-                document.getElementById("user_lon").value =
-                    userLon;
-            },
-
-            function(error){
-
-                alert(
-                    "Please allow location access."
-                );
-            }
-
-        );
-
-    }
+function updateBusFareHint() {
+  const v = document.getElementById("bus_type").value;
+  document.getElementById("bus_hint").textContent = busHints[v] || "";
+}
+function updateTrainFareHint() {
+  const v = document.getElementById("train_type").value;
+  document.getElementById("train_hint").textContent = trainHints[v] || "";
+}
+function updateFlightFareHint() {
+  const v = document.getElementById("flight_type").value;
+  document.getElementById("flight_hint").textContent = flightHints[v] || "";
 }
 
-document.getElementById("destination")
-.addEventListener("change", function(){
+/* ── Toggle sections based on transport mode ── */
 
-    let destination = this.value;
+function onTransportChange() {
 
-    if(destination === "") return;
+  const mode = document.getElementById("transport_mode").value;
 
-    fetch(
-        `/get_distance?destination=${encodeURIComponent(destination)}&lat=${userLat}&lon=${userLon}`
-    )
+  const vehicleSection  = document.getElementById("vehicle_section");
+  const fuelSection     = document.getElementById("fuel_section");
+  const tollSection     = document.getElementById("toll_section");
+  const busOptions      = document.getElementById("bus_options");
+  const trainOptions    = document.getElementById("train_options");
+  const flightOptions   = document.getElementById("flight_options");
 
-    .then(response => response.json())
+  // Hide all optional sections first
+  vehicleSection.style.display  = "none";
+  fuelSection.style.display     = "none";
+  tollSection.style.display     = "none";
+  busOptions.style.display      = "none";
+  trainOptions.style.display    = "none";
+  flightOptions.style.display   = "none";
 
+  // Reset mileage so backend doesn't use it
+  document.getElementById("mileage").value = 0;
+  document.getElementById("toll_charges").value = 0;
+
+  if (mode === "bike" || mode === "car") {
+    vehicleSection.style.display = "block";
+    fuelSection.style.display    = "block";
+    tollSection.style.display    = "block";
+    document.getElementById("mileage").value = 20;
+  }
+
+  if (mode === "bus") {
+    busOptions.style.display = "block";
+    updateBusFareHint();
+  }
+
+  if (mode === "train") {
+    trainOptions.style.display = "block";
+    updateTrainFareHint();
+  }
+
+  if (mode === "flight") {
+    flightOptions.style.display = "block";
+    updateFlightFareHint();
+  }
+}
+
+function toggleRentalCost() {
+  const vt = document.getElementById("vehicle_type").value;
+  const rd = document.getElementById("rental_cost_div");
+  const rc = document.getElementById("vehicle_rental_cost");
+  if (vt === "own") {
+    rd.style.display = "none";
+    rc.value = 0;
+  } else {
+    rd.style.display = "block";
+  }
+}
+
+/* ── Geolocation ── */
+
+function getUserLocation() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      function(pos) {
+        userLat = pos.coords.latitude;
+        userLon = pos.coords.longitude;
+        document.getElementById("user_lat").value = userLat;
+        document.getElementById("user_lon").value = userLon;
+      },
+      function() {
+        alert("Please allow location access.");
+      }
+    );
+  }
+}
+
+/* ── Distance auto-calc ── */
+
+document.getElementById("destination").addEventListener("change", function() {
+  const destination = this.value;
+  if (!destination) return;
+
+  fetch(`/get_distance?destination=${encodeURIComponent(destination)}&lat=${userLat}&lon=${userLon}`)
+    .then(r => r.json())
     .then(data => {
 
-        document.getElementById("distance").value =
-            data.distance;
+      document.getElementById("distance").value    = data.distance;
+      document.getElementById("travel_time").value = data.duration + " Hours";
 
-        document.getElementById("travel_time").value =
-            data.duration + " Hours";
-
-        /* Simple Toll Estimation */
-
+      // Toll only relevant for car/bike
+      const mode = document.getElementById("transport_mode").value;
+      if (mode === "car" || mode === "bike") {
         let toll = 0;
-
-        if(data.distance <= 100)
-            toll = 0;
-
-        else if(data.distance <= 300)
-            toll = 150;
-
-        else if(data.distance <= 600)
-            toll = 400;
-
-        else
-            toll = 700;
-
-        document.getElementById("toll_charges").value =
-            toll;
-
+        if      (data.distance <= 100) toll = 0;
+        else if (data.distance <= 300) toll = 150;
+        else if (data.distance <= 600) toll = 400;
+        else                           toll = 700;
+        document.getElementById("toll_charges").value = toll;
+      }
     })
-
-    .catch(error => {
-
-        console.log(error);
-
-        alert(
-            "Unable to calculate distance."
-        );
-
+    .catch(err => {
+      console.error(err);
+      alert("Unable to calculate distance.");
     });
-
 });
 
-</script>
+/* ── Init ── */
 
+window.onload = function() {
+  getUserLocation();
+  onTransportChange();   // set correct UI on page load
+};
+
+</script>
 </body>
 </html>

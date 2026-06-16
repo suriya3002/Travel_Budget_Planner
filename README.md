@@ -1,94 +1,268 @@
-# Travel Budget Planner
+# 🌍 Travel Budget Planner
 
-## Introduction
+A professional Flask-based web application that helps users estimate and manage travel expenses efficiently.
 
-Travel Budget Planner is a Python-based application that helps users estimate the total cost of a trip. It calculates fuel expenses, hotel costs, toll charges, and the cost per traveler,etc.
+## 🚀 Features
 
-## Features
+### 💰 Budget Calculation
+- Calculate total trip budget
+- Calculate cost per traveler
+- Fuel cost estimation
+- Food expense calculation
+- Room cost calculation
+- Toll charge calculation
+- Parking fee calculation
+- Tourist place entry fee calculation
 
-* Enter destination name
-* Calculate fuel cost
-* Add hotel expenses
-* Add toll charges
-* Enter number of places
-* Places entry fee
-* Enter number of travelers
-* Calculate total trip budget
-* Calculate cost per person
+### 🚗 Vehicle Management
+- Own Vehicle option
+- Rental Vehicle option
+- Automatic rental cost visibility
+- Mileage-based fuel calculation
 
-## Technologies Used
+### 🗺 Travel Planning
+- Destination selection
+- One-way and Round-trip calculation
+- Distance tracking
+- Google Maps route integration
+- Live route navigation
 
-* Python 3
+### 📊 Reporting
+- Professional Trip Summary
+- Share Report button
+- Download PDF report
+- Download Image option
+- Travel destination image display
 
-## Project Structure
+### 🎨 User Interface
+- Responsive design
+- Mobile-friendly layout
+- Modern travel-themed UI
+- Professional dashboard
+
+---
+
+## 📂 Project Structure
 
 ```text
-travel_budget_planner/
+Travel_Budget_Planner/
 │
-├── main.py
+├── app.py
+│
+├── static/
+│   └── style.css
+│
+├── templates/
+│   ├── index.html
+│   └── result.html
+│
 └── README.md
 ```
 
-## How to Run
+---
 
-1. Install Python 3.
-2. Download or clone the project.
-3. Open a terminal in the project folder.
-4. Run the program:
+## 🛠 Technologies Used
+
+- Python
+- Flask
+- HTML5
+- CSS3
+- JavaScript
+- Google Maps Integration
+- Jinja2 Templates
+
+---
+
+## 📦 Installation
+
+### Clone the Repository
 
 ```bash
-python main.py
+git clone https://github.com/yourusername/travel-budget-planner.git
 ```
 
-## Sample Input
+### Navigate to Project
+
+```bash
+cd travel-budget-planner
+```
+
+### Create Virtual Environment
+
+```bash
+python -m venv venv
+```
+
+### Activate Virtual Environment
+
+Windows:
+
+```bash
+venv\Scripts\activate
+```
+
+Linux/Mac:
+
+```bash
+source venv/bin/activate
+```
+
+### Install Dependencies
+
+```bash
+pip install flask
+```
+
+---
+
+## ▶ Run the Application
+
+```bash
+python app.py
+```
+
+Open browser:
 
 ```text
-Destination: Valparai
-Distance: 250
-Mileage: 20
-Fuel Price: 105
-Hotel Cost: 2000
-Toll Charges: 180
-Number of Travelers: 5
+http://127.0.0.1:5000
 ```
 
-## Sample Output
+---
+
+## 📋 Input Parameters
+
+| Parameter | Description |
+|------------|------------|
+| Travelers | Number of travelers |
+| Destination | Travel destination |
+| Distance | Trip distance in km |
+| Places to Visit | Number of tourist places |
+| Entry Fee | Fee per tourist place |
+| Vehicle Type | Own or Rental |
+| Vehicle Rental Cost | Rental vehicle charge |
+| Parking Fee | Parking charges |
+| Mileage | Vehicle mileage |
+| Fuel Price | Fuel cost per litre |
+| Food Cost | Food expense per person |
+| Room Cost | Accommodation cost |
+| Toll Charges | Highway toll fees |
+| Round Trip | Yes / No |
+
+---
+
+## 🧮 Budget Formula
 
 ```text
-===== Trip Summary =====
-Destination: Valparai
-Fuel Cost: ₹1312.50
-Hotel Cost: ₹2000
-Toll Charges: ₹180
-Number of Travelers: 5
-Total Budget: ₹3492.50
-Cost Per Person: ₹698.50
+Total Budget =
+Fuel Cost
++ Food Cost
++ Room Cost
++ Toll Charges
++ Parking Fee
++ Entry Fees
++ Vehicle Rental Cost
 ```
 
-## Learning Objectives
+```text
+Cost Per Person =
+Total Budget / Number of Travelers
+```
 
-This project helps beginners learn:
+---
 
-* Variables
-* Functions
-* User Input
-* Mathematical Calculations
-* Program Structure
-* Python Best Practices
+## ✨ Key Features
 
-## Future Enhancements
+### Fuel Cost Calculation
 
-* Add food expenses
-* Add parking charges
-* Round-trip calculation
-* Save trip history to a file
-* Create a graphical user interface (GUI)
-* Build a web application using Flask
+```python
+fuel_cost = (total_distance / mileage) * fuel_price
+```
 
-## Author
+### Round Trip Support
 
-Lily
+```python
+if round_trip == "yes":
+    total_distance = distance * 2
+```
 
-## License
+### Rental Vehicle Support
 
-This project is created for educational and learning purposes.
+```python
+if vehicle_type == "rental":
+    vehicle_cost = vehicle_rental_cost
+else:
+    vehicle_cost = 0
+```
+
+### Google Maps Route
+
+- Opens route from current location to destination
+- Live navigation support
+- Real-time travel directions
+
+---
+
+## 📸 Screenshots
+
+### Home Page
+
+- Enter travel details
+- Select vehicle type
+- Add expenses
+- Calculate budget
+
+### Report Page
+
+- Destination image
+- Expense breakdown
+- Total budget
+- Cost per person
+- Share report
+- Download PDF
+- Google Maps route
+
+---
+
+## 🔮 Future Enhancements
+
+- Weather Forecast API
+- Expense Pie Chart using Chart.js
+- Hotel Recommendation System
+- Fuel Station Finder
+- SQLite Database Integration
+- User Authentication
+- Trip History Management
+- AI Travel Assistant
+- Export to Excel
+- Email Report Sharing
+
+---
+
+## 🎯 Learning Outcomes
+
+This project demonstrates:
+
+- Python Programming
+- Flask Framework
+- HTML Forms
+- CSS Styling
+- JavaScript Functions
+- Web Application Development
+- Route Handling
+- Budget Calculations
+- Dynamic Templates
+- Google Maps Integration
+
+---
+
+## 👨‍💻 Author
+
+**Lily**
+
+Python Developer | Flask Learner | Travel Enthusiast
+
+---
+
+## 📄 License
+
+This project is open-source and available for learning and educational purposes.

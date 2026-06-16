@@ -179,7 +179,7 @@ def calculate():
         rate = float(
             request.form.get(
                 "bus_type",
-                1.5
+                0.835   # Govt Ordinary default (avg ₹0.67–1.0/km)
             )
         )
 
@@ -194,7 +194,7 @@ def calculate():
         rate = float(
             request.form.get(
                 "train_type",
-                0.8
+                0.40    # General/2S default (avg ₹0.30–0.50/km)
             )
         )
 
@@ -209,7 +209,7 @@ def calculate():
         rate = float(
             request.form.get(
                 "flight_type",
-                6
+                4.75    # Budget LCC default (avg ₹3.5–6.0/km)
             )
         )
 
