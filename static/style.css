@@ -211,3 +211,42 @@ form button{
     margin:8px 0;
     font-size:16px;
 }
+
+.section-card {
+    background: #f0f8ff;
+    border: 1px solid #d0e8f5;
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin-top: 18px;
+  }
+  .section-card h3 {
+    margin: 0 0 12px;
+    font-size: 15px;
+    color: #2c5f8a;
+    font-weight: 700;
+  }
+  .fare-hint {
+    font-size: 12px;
+    color: #666;
+    margin-top: 4px;
+    margin-bottom: 0;
+  }
+  .transport-rate-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 15px;
+    font-weight: 600;
+    color: #444;
+  }
+  .transport-rate-label .badge {
+    font-size: 12px;
+    background: #e8f4fd;
+    color: #1a6a9e;
+    padding: 2px 10px;
+    border-radius: 99px;
+    font-weight: 500;
+  }
+  select option.opt-govt { color: #085041; }
+  select option.opt-pvt  { color: #3C3489; }
+  select option.opt-air  { color: #0C447C; }
