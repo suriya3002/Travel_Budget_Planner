@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trip Budget Report</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="container">
+
+    <div id="report">
+
+        <h1>✈️ Travel Budget Report</h1>
+
+        <img src="{{ image_url }}"
+             alt="{{ destination }}"
+             class="trip-image">
+
+        <div class="result-card">
+
+            <h2>📍 {{ destination }}</h2>
+
+            <div class="summary-grid">
+
+                <div class="summary-item">
+                    <span>👥 Travelers</span>
+                    <strong>{{ travelers }}</strong>
+                </div>
+
+                <div class="summary-item">
+                    <span>🛣 Distance</span>
+                    <strong>{{ total_distance }} km</strong>
+                </div>
+
+                <div class="summary-item">
+                    <span>⛽ Fuel Cost</span>
+                    <strong>₹{{ fuel_cost }}</strong>
+                </div>
+
+                <div class="summary-item">
+                    <span>🍽 Food Cost</span>
+                    <strong>₹{{ food_cost }}</strong>
+                </div>
+
+                <div class="summary-item">
+                    <span>🏨 Room Cost</span>
+                    <strong>₹{{ room_cost }}</strong>
+                </div>
+
+                <div class="summary-item">
+                    <span>🚧 Toll Charges</span>
+                    <strong>₹{{ toll_charges }}</strong>
+                </div>
+
+                <div class="summary-item">
+                    <span>🅿 Parking Fee</span>
+                    <strong>₹{{ parking_fee }}</strong>
+                </div>
+
+                <div class="summary-item">
+                    <span>🎟 Entry Fees</span>
+                    <strong>₹{{ places_fee_total }}</strong>
+                </div>
+
+                {% if vehicle_type == 'rental' %}
+                <div class="summary-item">
+                    <span>🚗 Rental Cost</span>
+                    <strong>₹{{ vehicle_rental_cost }}</strong>
+                </div>
+                {% endif %}
+
+            </div>
+
+            <hr>
+
+            <div class="total-box">
+
+                <h2>💰 Total Budget</h2>
+
+                <h1>₹{{ total_budget }}</h1>
+
+                <p>
+                    Cost Per Person:
+                    <strong>₹{{ cost_per_person }}</strong>
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="button-group">
+
+        <button onclick="shareReport()">
+            📤 Share Report
+        </button>
+
+        <button onclick="window.print()">
+            📄 Download PDF
+        </button>
+
+        <button onclick="downloadImage()">
+            🖼 Download Image
+        </button>
+
+        <button onclick="openRoute()">
+            🚗 Show Route
+        </button>
+
+    </div>
+
+    <br>
+
+    <a href="/" class="back-btn">
+        ⬅ Plan Another Trip
+    </a>
+
+</div>
+
+<script>
+function shareReport() {
+
+    const report =
+`Travel Budget Report
+
+Destination: {{ destination }}
+
+Travelers: {{ travelers }}
+
+Distance: {{ total_distance }} km
+
+Fuel Cost: ₹{{ fuel_cost }}
+
+Food Cost: ₹{{ food_cost }}
+
+Room Cost: ₹{{ room_cost }}
+
+Toll Charges: ₹{{ toll_charges }}
+
+Parking Fee: ₹{{ parking_fee }}
+
+Total Budget: ₹{{ total_budget }}
+
+Cost Per Person: ₹{{ cost_per_person }}`;
+
+    if (navigator.share) {
+
+        navigator.share({
+            title: 'Travel Budget Report',
+            text: report
+        });
+
+    } else {
+
+        navigator.clipboard.writeText(report);
+
+        alert("Report copied to clipboard!");
+    }
+}
+
+function downloadImage() {
+
+    alert(
+        "Use your browser screenshot tool or install html2canvas for automatic image download."
+    );
+}
+</script>
+
+<script>
+function openRoute() {
+
+    navigator.geolocation.getCurrentPosition(function(position){
+
+        let lat = position.coords.latitude;
+        let lon = position.coords.longitude;
+
+        let destination =
+            encodeURIComponent("{{ destination }}");
+
+        let url =
+            `https://www.google.com/maps/dir/${lat},${lon}/${destination}`;
+
+        window.open(url, "_blank");
+        
+
+
+    });
+
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Travel Budget Planner</title>
+
+<link rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}">
+
+<script>
+
+function toggleRentalCost() {
+
+    const vehicleType =
+        document.getElementById("vehicle_type").value;
+
+    const rentalDiv =
+        document.getElementById("rental_cost_div");
+
+    const rentalCost =
+        document.getElementById("vehicle_rental_cost");
+
+    if(vehicleType === "own") {
+
+        rentalDiv.style.display = "none";
+        rentalCost.value = 0;
+
+    } else {
+
+        rentalDiv.style.display = "block";
+
+    }
+}
+
+window.onload = function() {
+
+    toggleRentalCost();
+
+    getUserLocation();
+};
+
+</script>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>🌍 Travel Budget Planner</h1>
+
+<form action="/calculate" method="POST">
+
+    <!-- Travelers -->
+
+    <label>👥 Number of Travelers</label>
+
+    <input
+        type="number"
+        name="travelers"
+        min="1"
+        required>
+
+<label>🚗 Transport Mode</label>
+
+<select id="transport_mode" name="transport_mode">
+
+    <option value="walk">🚶 Walk</option>
+
+    <option value="bike">🏍 Bike</option>
+
+    <option value="car">🚗 Car</option>
+
+    <option value="bus">🚌 Bus</option>
+
+    <option value="train">🚆 Train</option>
+
+    <option value="flight">✈ Flight</option>
+
+</select>
+
+    <!-- Destination -->
+
+    <label>📍 Destination</label>
+
+    <input
+        type="text"
+        id="destination"
+        name="destination"
+        placeholder="Example: Valparai"
+        required>
+
+    <!-- Distance -->
+
+    <label>🛣 Distance (km)</label>
+
+    <input
+        type="number"
+        step="0.01"
+        name="distance"
+        id="distance"
+        placeholder="Auto Calculating..."
+        readonly>
+
+    <!-- Travel Time -->
+
+    <label>⏰ Travel Time</label>
+
+    <input
+        type="text"
+        id="travel_time"
+        placeholder="Auto Calculating..."
+        readonly>
+
+    <!-- Places -->
+
+    <label>🏞 Number of Places to Visit</label>
+
+    <input
+        type="number"
+        name="places_to_visit"
+        value="0">
+
+    <!-- Entry Fee -->
+
+    <label>🎟 Entry Fee Per Place (₹)</label>
+
+    <input
+        type="number"
+        step="0.01"
+        name="per_places_entry_fee"
+        value="0">
+
+    <!-- Vehicle -->
+
+    <label>🚗 Vehicle Type</label>
+
+    <select
+        name="vehicle_type"
+        id="vehicle_type"
+        onchange="toggleRentalCost()">
+
+        <option value="own">
+            Own Vehicle
+        </option>
+
+        <option value="rental">
+            Rental Vehicle
+        </option>
+
+    </select>
+
+    <!-- Rental Cost -->
+
+    <div id="rental_cost_div">
+
+        <label>🚘 Vehicle Rental Cost (₹)</label>
+
+        <input
+            type="number"
+            step="0.01"
+            name="vehicle_rental_cost"
+            id="vehicle_rental_cost"
+            value="0">
+
+    </div>
+
+    <!-- Parking -->
+
+    <label>🅿 Parking Fee (₹)</label>
+
+    <input
+        type="number"
+        step="0.01"
+        name="parking_fee"
+        value="0">
+
+    <!-- Mileage -->
+
+    <label>⛽ Mileage (km/l)</label>
+
+    <input
+        type="number"
+        step="0.01"
+        name="mileage"
+        value="20"
+        required>
+
+    <!-- Fuel Type -->
+
+    <label>⛽ Fuel Type</label>
+
+    <select name="fuel_type">
+
+        <option value="petrol">
+            Petrol (₹108.85/L)
+        </option>
+
+        <option value="diesel">
+            Diesel (₹101.60/L)
+        </option>
+
+    </select>
+
+    <!-- Food -->
+
+    <label>🍽 Food Cost Per Person (₹)</label>
+
+    <input
+        type="number"
+        step="0.01"
+        name="food_cost_per_person"
+        value="0">
+
+    <!-- Room -->
+
+    <label>🏨 Room Cost (₹)</label>
+
+    <input
+        type="number"
+        step="0.01"
+        name="room_cost"
+        value="0">
+
+    <!-- Toll -->
+
+    <label>🚧 Toll Charges (₹)</label>
+
+    <input
+        type="number"
+        step="0.01"
+        name="toll_charges"
+        id="toll_charges"
+        value="0">
+
+    <!-- Round Trip -->
+
+    <label>🔄 Round Trip?</label>
+
+    <select name="round_trip">
+
+        <option value="yes">
+            Yes
+        </option>
+
+        <option value="no">
+            No
+        </option>
+
+    </select>
+
+    <!-- Hidden GPS -->
+
+    <input
+        type="hidden"
+        name="user_lat"
+        id="user_lat">
+
+    <input
+        type="hidden"
+        name="user_lon"
+        id="user_lon">
+
+    <br><br>
+
+    <button type="submit">
+        ✈️ Calculate Budget
+    </button>
+
+</form>
+
+</div>
+
+<script>
+
+let userLat = 0;
+let userLon = 0;
+
+function getUserLocation() {
+
+    if(navigator.geolocation) {
+
+        navigator.geolocation.getCurrentPosition(
+
+            function(position){
+
+                userLat = position.coords.latitude;
+                userLon = position.coords.longitude;
+
+                document.getElementById("user_lat").value =
+                    userLat;
+
+                document.getElementById("user_lon").value =
+                    userLon;
+            },
+
+            function(error){
+
+                alert(
+                    "Please allow location access."
+                );
+            }
+
+        );
+
+    }
+}
+
+document.getElementById("destination")
+.addEventListener("change", function(){
+
+    let destination = this.value;
+
+    if(destination === "") return;
+
+    fetch(
+        `/get_distance?destination=${encodeURIComponent(destination)}&lat=${userLat}&lon=${userLon}`
+    )
+
+    .then(response => response.json())
+
+    .then(data => {
+
+        document.getElementById("distance").value =
+            data.distance;
+
+        document.getElementById("travel_time").value =
+            data.duration + " Hours";
+
+        /* Simple Toll Estimation */
+
+        let toll = 0;
+
+        if(data.distance <= 100)
+            toll = 0;
+
+        else if(data.distance <= 300)
+            toll = 150;
+
+        else if(data.distance <= 600)
+            toll = 400;
+
+        else
+            toll = 700;
+
+        document.getElementById("toll_charges").value =
+            toll;
+
+    })
+
+    .catch(error => {
+
+        console.log(error);
+
+        alert(
+            "Unable to calculate distance."
+        );
+
+    });
+
+});
+
+</script>
+
+</body>
+</html>
