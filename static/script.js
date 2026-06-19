@@ -151,3 +151,33 @@ window.onload = function() {
   getUserLocation();
   onTransportChange();   // set correct UI on page load
 };
+
+document.getElementById("distance").value = data.distance;
+
+
+
+async function getDistance(){
+
+navigator.geolocation.getCurrentPosition(
+async function(position){
+
+let lat = position.coords.latitude;
+let lon = position.coords.longitude;
+
+let destination =
+document.getElementById(
+"destination"
+).value;
+
+let res = await fetch(
+`/get_distance?destination=${encodeURIComponent(destination)}&lat=${lat}&lon=${lon}`
+);
+
+let data = await res.json();
+
+document.getElementById(
+"distance"
+).value = data.distance;
+
+});
+}

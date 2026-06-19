@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Trip</title>
+
+```
+<style>
+    <link rel="stylesheet"
+    href="{{ url_for('static', filename='style.css') }}">
+</style>
+```
+
+</head>
+<body>
+
+<div class="container">
+
+```
+<h1>✏️ Edit Trip</h1>
+
+<form method="POST">
+
+    <label>Destination</label>
+    <input
+        type="text"
+        name="destination"
+        value="{{ trip[1] }}"
+        required>
+
+    <label>Travelers</label>
+    <input
+        type="number"
+        name="travelers"
+        value="{{ trip[2] }}"
+        required>
+
+    <label>Total Budget (₹)</label>
+    <input
+        type="number"
+        step="0.01"
+        name="budget"
+        value="{{ trip[16] if trip[16] else trip[3] }}"
+        required>
+
+    <button type="submit" class="btn">
+        💾 Update Trip
+    </button>
+
+</form>
+
+<a href="/trips" class="back-btn">
+    ⬅ Back to Saved Trips
+</a>
+```
+
+</div>
+
+</body>
+</html>

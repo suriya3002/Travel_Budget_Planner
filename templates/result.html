@@ -51,6 +51,29 @@
                     <strong>₹{{ room_cost }}</strong>
                 </div>
 
+<hr>
+
+<h2>Alternative Transport Costs</h2>
+
+<div class="summary-grid">
+
+<div class="summary-item">
+    <span>🚌 Bus</span>
+    <strong>₹{{ bus_cost }}</strong>
+</div>
+
+<div class="summary-item">
+    <span>🚆 Train</span>
+    <strong>₹{{ train_cost }}</strong>
+</div>
+
+<div class="summary-item">
+    <span>✈ Flight</span>
+    <strong>₹{{ flight_cost }}</strong>
+</div>
+
+</div>
+
                 <div class="summary-item">
                     <span>🚧 Toll Charges</span>
                     <strong>₹{{ toll_charges }}</strong>
@@ -193,6 +216,33 @@ function openRoute() {
 
 }
 </script>
+
+<form action="/save_trips" method="POST">
+
+    <input type="hidden"
+           name="destination"
+           value="{{ destination }}">
+
+    <input type="hidden"
+           name="travelers"
+           value="{{ travelers }}">
+
+    <input type="hidden"
+           name="total_budget"
+           value="{{ total_budget }}">
+
+    <button type="submit">
+        💾 Save Trip
+    </button>
+
+
+</form>
+
+<br>
+
+<a href="/trips">
+    📋 View Saved Trips
+</a>
 
 </body>
 </html>

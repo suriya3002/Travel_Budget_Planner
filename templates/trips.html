@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saved Trips</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
+
+    <style>
+    <link rel="stylesheet"
+    href="{{ url_for('static', filename='style.css') }}">
+</style>
+</head>
+<body>
+
+<div class="container">
+
+    <h1>📋 Saved Trips</h1>
+
+    {% if trips %}
+
+    <table>
+
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Destination</th>
+                <th>Travelers</th>
+                <th>Budget</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+
+        <tbody>
+
+            {% for trip in trips %}
+            <tr>
+
+                <td>{{ trip[0] }}</td>
+
+                <td>{{ trip[1] }}</td>
+
+                <td>{{ trip[2] }}</td>
+
+                <td>₹{{ trip[16] if trip[16] else trip[3] }}</td>
+
+                <td>
+
+                    <a href="/edit/{{ trip[0] }}"
+                       class="edit-btn">
+                        Edit
+                    </a>
+
+                    <a href="/delete/{{ trip[0] }}"
+                       class="delete-btn"
+                       onclick="return confirm('Delete this trip?')">
+                        Delete
+                    </a>
+
+                </td>
+
+            </tr>
+            {% endfor %}
+
+        </tbody>
+
+    </table>
+
+    {% else %}
+
+        <div class="empty">
+            No trips saved yet.
+        </div>
+
+    {% endif %}
+
+    <a href="/" class="back-btn">
+        ⬅ Back Home
+    </a>
+
+</div>
+
+</body>
+</html>
