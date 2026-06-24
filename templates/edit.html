@@ -58,5 +58,11 @@
 
 </div>
 
+{% if edit_mode %}
+<input type="hidden"
+       name="trip_id"
+       value="{{ trip[0] }}">
+{% endif %}
+
 </body>
 </html>

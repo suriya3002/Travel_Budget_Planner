@@ -25,6 +25,7 @@
 
         <thead>
             <tr>
+                <th>S.No</th>
                 <th>ID</th>
                 <th>Destination</th>
                 <th>Travelers</th>
@@ -38,6 +39,8 @@
             {% for trip in trips %}
             <tr>
 
+                <td>{{ loop.index }}</td>
+
                 <td>{{ trip[0] }}</td>
 
                 <td>{{ trip[1] }}</td>
@@ -49,14 +52,14 @@
                 <td>
 
                     <a href="/edit/{{ trip[0] }}"
-                       class="edit-btn">
+                       class="edit-btn">✏
                         Edit
                     </a>
 
                     <a href="/delete/{{ trip[0] }}"
                        class="delete-btn"
                        onclick="return confirm('Delete this trip?')">
-                        Delete
+                       🗑 Delete
                     </a>
 
                 </td>

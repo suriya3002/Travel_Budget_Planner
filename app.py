@@ -93,41 +93,18 @@ def trips():
     )
 
 #Update from Database
-@app.route('/edit/<int:id>', methods=['GET', 'POST'])
+@app.route('/edit/<int:id>')
 def edit_trip(id):
 
     conn = sqlite3.connect("travel_budget.db")
     cursor = conn.cursor()
 
-    if request.method == "POST":
-
-        destination = request.form['destination']
-        travelers = request.form['travelers']
-        budget = request.form['budget']
-
-        cursor.execute(
-            """
-            UPDATE trips
-            SET destination=?,
-                travelers=?,
-                total_budget=?
-            WHERE id=?
-            """,
-            (
-                destination,
-                travelers,
-                budget,
-                id
-            )
-        )
-
-        conn.commit()
-        conn.close()
-
-        return redirect('/trips')
-
     cursor.execute(
-        "SELECT * FROM trips WHERE id=?",
+        """
+        SELECT *
+        FROM trips
+        WHERE id=?
+        """,
         (id,)
     )
 
@@ -135,21 +112,67 @@ def edit_trip(id):
 
     conn.close()
 
+   
     return render_template(
-        "edit.html",
-        trip=trip
+        "index.html",
+        trip=trip,
+        edit_mode=True,
+        trip_id=trip[0],
+        destination=trip[1],
+        travelers=trip[2],
+        total_distance=trip[3],
+        transport_mode=trip[4],
+        total_budget=trip[5]
     )
 
 # Delete from Database
 @app.route('/delete/<int:id>')
 def delete_trip(id):
 
+    print("Deleting Trip;",id)
     conn = sqlite3.connect("travel_budget.db")
     cursor = conn.cursor()
 
     cursor.execute(
         "DELETE FROM trips WHERE id=?",
         (id,)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return redirect('/trips')
+
+
+
+@app.route('/update_trip', methods=['POST'])
+def update_trip():
+
+    trip_id = request.form['trip_id']
+
+    destination = request.form['destination']
+
+    travelers = request.form['travelers']
+
+    total_budget = request.form['total_budget']
+
+    conn = sqlite3.connect("travel_budget.db")
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        UPDATE trips
+        SET destination=?,
+            travelers=?,
+            total_budget=?
+        WHERE id=?
+        """,
+        (
+            destination,
+            travelers,
+            total_budget,
+            trip_id
+        )
     )
 
     conn.commit()
@@ -452,6 +475,8 @@ def calculate():
     print("Vehicle Cost:", vehicle_cost)
     print("Places Fee Total:", places_fee_total)
 
+   
+
     return render_template(
         'result.html',
         destination=destination,
@@ -473,11 +498,11 @@ def calculate():
         vehicle_rental_cost=round(vehicle_rental_cost, 2),
         places_fee_total=round(places_fee_total, 2),
         total_budget=round(total_budget, 2),
+        trip_id=request.form.get('trip_id'),
+        edit_mode=True if request.form.get('trip_id') else False,
         cost_per_person=round(cost_per_person, 2),
         image_url=image_url
     )
-
-    return render_template("edit.html", trip=trip)
 if __name__ == '__main__':
     print(app.url_map)
     app.run(debug=True)

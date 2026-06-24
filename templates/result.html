@@ -22,96 +22,103 @@
 
         <div class="result-card">
 
-            <h2>📍 {{ destination }}</h2>
+            <div class="result-card">
 
-            <div class="summary-grid">
-
-                <div class="summary-item">
-                    <span>👥 Travelers</span>
-                    <strong>{{ travelers }}</strong>
-                </div>
-
-                <div class="summary-item">
-                    <span>🛣 Distance</span>
-                    <strong>{{ total_distance }} km</strong>
-                </div>
-
-                <div class="summary-item">
-                    <span>⛽ Fuel Cost</span>
-                    <strong>₹{{ fuel_cost }}</strong>
-                </div>
-
-                <div class="summary-item">
-                    <span>🍽 Food Cost</span>
-                    <strong>₹{{ food_cost }}</strong>
-                </div>
-
-                <div class="summary-item">
-                    <span>🏨 Room Cost</span>
-                    <strong>₹{{ room_cost }}</strong>
-                </div>
-
-<hr>
-
-<h2>Alternative Transport Costs</h2>
+```
+<h2>📍 {{ destination }}</h2>
 
 <div class="summary-grid">
 
-<div class="summary-item">
-    <span>🚌 Bus</span>
-    <strong>₹{{ bus_cost }}</strong>
+    <div class="summary-item">
+        <span>👥 Travelers</span>
+        <strong>{{ travelers }}</strong>
+    </div>
+
+    <div class="summary-item">
+        <span>🛣 Distance</span>
+        <strong>{{ total_distance }} km</strong>
+    </div>
+
+    <div class="summary-item">
+        <span>⛽ Fuel Cost</span>
+        <strong>₹{{ fuel_cost }}</strong>
+    </div>
+
+    <div class="summary-item">
+        <span>🍽 Food Cost</span>
+        <strong>₹{{ food_cost }}</strong>
+    </div>
+
+    <div class="summary-item">
+        <span>🏨 Room Cost</span>
+        <strong>₹{{ room_cost }}</strong>
+    </div>
+
+    <div class="summary-item">
+        <span>🚧 Toll Charges</span>
+        <strong>₹{{ toll_charges }}</strong>
+    </div>
+
+    <div class="summary-item">
+        <span>🅿 Parking Fee</span>
+        <strong>₹{{ parking_fee }}</strong>
+    </div>
+
+    <div class="summary-item">
+        <span>🎟 Entry Fees</span>
+        <strong>₹{{ places_fee_total }}</strong>
+    </div>
+
+    {% if vehicle_type == 'rental' %}
+    <div class="summary-item">
+        <span>🚗 Rental Cost</span>
+        <strong>₹{{ vehicle_rental_cost }}</strong>
+    </div>
+    {% endif %}
+
 </div>
 
-<div class="summary-item">
-    <span>🚆 Train</span>
-    <strong>₹{{ train_cost }}</strong>
+<hr>
+
+<h2>🚍 Alternative Transport Costs</h2>
+
+<div class="summary-grid">
+
+    <div class="summary-item">
+        <span>🚌 Bus</span>
+        <strong>₹{{ bus_cost }}</strong>
+    </div>
+
+    <div class="summary-item">
+        <span>🚆 Train</span>
+        <strong>₹{{ train_cost }}</strong>
+    </div>
+
+    <div class="summary-item">
+        <span>✈️ Flight</span>
+        <strong>₹{{ flight_cost }}</strong>
+    </div>
+
 </div>
 
-<div class="summary-item">
-    <span>✈ Flight</span>
-    <strong>₹{{ flight_cost }}</strong>
-</div>
+<hr>
+
+<div class="total-box">
+
+    <h2>💰 Total Budget</h2>
+
+    <h1>₹{{ total_budget }}</h1>
+
+    <p>
+        Cost Per Person:
+        <strong>₹{{ cost_per_person }}</strong>
+    </p>
 
 </div>
+```
 
-                <div class="summary-item">
-                    <span>🚧 Toll Charges</span>
-                    <strong>₹{{ toll_charges }}</strong>
-                </div>
+</div>
 
-                <div class="summary-item">
-                    <span>🅿 Parking Fee</span>
-                    <strong>₹{{ parking_fee }}</strong>
-                </div>
-
-                <div class="summary-item">
-                    <span>🎟 Entry Fees</span>
-                    <strong>₹{{ places_fee_total }}</strong>
-                </div>
-
-                {% if vehicle_type == 'rental' %}
-                <div class="summary-item">
-                    <span>🚗 Rental Cost</span>
-                    <strong>₹{{ vehicle_rental_cost }}</strong>
-                </div>
-                {% endif %}
-
-            </div>
-
-            <hr>
-
-            <div class="total-box">
-
-                <h2>💰 Total Budget</h2>
-
-                <h1>₹{{ total_budget }}</h1>
-
-                <p>
-                    Cost Per Person:
-                    <strong>₹{{ cost_per_person }}</strong>
-                </p>
-
-            </div>
 
         </div>
 
@@ -217,7 +224,19 @@ function openRoute() {
 }
 </script>
 
+{% if edit_mode %}
+
+<form action="/update_trip" method="POST">
+
+<input type="hidden"
+       name="trip_id"
+       value="{{ trip_id }}">
+
+{% else %}
+
 <form action="/save_trips" method="POST">
+
+{% endif %}
 
     <input type="hidden"
            name="destination"
@@ -231,18 +250,21 @@ function openRoute() {
            name="total_budget"
            value="{{ total_budget }}">
 
+    {% if edit_mode %}
     <button type="submit">
+        🔄 Update Trip
+        </button>
+    {% else %}
+    <button formaction="/save_trips">
         💾 Save Trip
-    </button>
-
+        </button>
+    {% endif %}
 
 </form>
 
 <br>
 
-<a href="/trips">
-    📋 View Saved Trips
-</a>
+
 
 </body>
 </html>

@@ -17,17 +17,24 @@
 
   <!-- Travelers -->
   <label>👥 Number of Travelers</label>
-  <input type="number" name="travelers" min="1" required>
+  <input type="number" name="travelers" min="1" value="{{ trip[2] if edit_mode else '' }}" required>
 
   <!-- Transport Mode -->
   <label>🚗 Transport Mode</label>
   <select id="transport_mode" name="transport_mode" onchange="onTransportChange()">
     <option value="walk">🚶 Walk</option>
+    {% if edit_mode and trip[5] =='walk' %}selected{% endif %}
     <option value="bike">🏍️ Bike</option>
+    {% if edit_mode and trip[5] =='bike' %}selected{% endif %}
     <option value="car">🚗 Car</option>
+    {% if edit_mode and trip[5] =='car' %}selected{% endif %}
     <option value="bus">🚌 Bus</option>
+    {% if edit_mode and trip[5] =='bus' %}selected{% endif %}
     <option value="train">🚆 Train</option>
-    <option value="flight">✈️ Flight</option>
+    {% if edit_mode and trip[5] =='train' %}selected{% endif %}
+    <option value="flight">✈️ 
+    {% if edit_mode and trip[5] =='flight' %}selected{% endif %}
+    Flight</option>
   </select>
 
   <!-- BUS sub-types -->
@@ -70,14 +77,15 @@
 
   <!-- Destination -->
   <label>📍 Destination</label>
-  <input type="text" id="destination" name="destination"
+  <input type="text" name="destination" id="destination"
+         value="{{ trip[1] if edit_mode else '' }}"
          autocomplete="off" required>
-<div id ="suggestions"></div>
+  <div id="suggestions"></div>
 
   <!-- Distance -->
   <label>🛣️ Distance (km)</label>
   <input type="number" step="0.01" name="distance" id="distance"
-         placeholder="Auto Calculating..." readonly>
+         placeholder="Auto Calculating..." readonly value="{{ trip[4] if edit_mode else '' }}">
 
   <!-- Travel Time -->
   <label>⏰ Travel Time</label>
@@ -146,6 +154,10 @@
   <input type="hidden" name="user_lat" id="user_lat">
   <input type="hidden" name="user_lon" id="user_lon">
 
+{% if edit_mode %}
+<input type="hidden" name="trip_id" value="{{ trip[0] }}">
+{% endif %}
+
   <br><br>
   <button type="submit">✈️ Calculate Budget</button>
 
@@ -153,6 +165,10 @@
 </div>
 
 <script src="{{ url_for('static', filename='script.js') }}"></script>
+
+<a href="/trips">
+    📋 View Saved Trips
+</a>
 
 </body>
 </html>
