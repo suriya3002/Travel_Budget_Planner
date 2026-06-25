@@ -224,8 +224,8 @@ function openRoute() {
 }
 </script>
 
+<div class="action-center">
 {% if edit_mode %}
-
 <form action="/update_trip" method="POST">
 
 <input type="hidden"
@@ -234,6 +234,7 @@ function openRoute() {
 
 {% else %}
 
+<div class="save-trip-container">
 <form action="/save_trips" method="POST">
 
 {% endif %}
@@ -261,6 +262,8 @@ function openRoute() {
     {% endif %}
 
 </form>
+</div>
+</div>
 
 <br>
 
