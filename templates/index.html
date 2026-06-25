@@ -11,7 +11,15 @@
 <body>
 <div class="container">
 
-<h1>🌍 Travel Budget Planner</h1>
+<div class="top-bar">
+
+    <h1>🌍 Travel Budget Planner</h1>
+
+    <a href="/trips" class="saved-trips-btn">
+        📋 View Saved Trips
+    </a>
+
+</div>
 
 <form action="/calculate" method="POST">
 
@@ -79,7 +87,8 @@
   <label>📍 Destination</label>
   <input type="text" name="destination" id="destination"
          value="{{ trip[1] if edit_mode else '' }}"
-         autocomplete="off" required>
+         autocomplete="off" placeholder="search destination"
+         required>
   <div id="suggestions"></div>
 
   <!-- Distance -->
@@ -166,9 +175,8 @@
 
 <script src="{{ url_for('static', filename='script.js') }}"></script>
 
-<a href="/trips">
-    📋 View Saved Trips
-</a>
+<link rel="stylesheet"
+      href="{{ url_for('static', filename='index.css') }}">
 
 </body>
 </html>
