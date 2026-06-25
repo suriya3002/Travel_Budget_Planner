@@ -206,9 +206,15 @@ def get_float(field):
 # -----------------------------
 # Home Page
 # -----------------------------
-@app.route('/')
-def home():
-    return render_template('index.html')
+
+@app.route("/")
+def landing():
+    return render_template("landing.html")
+
+@app.route("/planner")
+def planner():
+    return render_template("index.html",edit_mode=False)
+                           
 
 
 # -----------------------------

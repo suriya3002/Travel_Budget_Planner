@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Travel Budget Planner</title>
+
+<link rel="stylesheet"
+      href="{{ url_for('static', filename='landing.css') }}">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+<nav class="navbar">
+
+```
+<div class="logo">
+    🌍 TravelBudget
+</div>
+
+<div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#how">How It Works</a>
+    <a href="/trips">Saved Trips</a>
+</div>
+```
+
+</nav>
+
+<section class="hero">
+
+```
+<div class="overlay"></div>
+
+<div class="hero-content">
+
+    <h1>
+        Smart Travel
+        <span>Budget Planner</span>
+    </h1>
+
+    <p>
+        Plan trips, calculate fuel, train, bus and flight costs,
+        estimate budgets instantly and save your journeys.
+    </p>
+
+    <div class="hero-buttons">
+
+        <a href="/planner" class="btn-primary">
+            ✈ Start Planning
+        </a>
+
+        <a href="/trips" class="btn-secondary">
+            📋 Saved Trips
+        </a>
+
+    </div>
+
+</div>
+```
+
+</section>
+
+<section id="features" class="features">
+
+```
+<h2>Why Choose TravelBudget?</h2>
+
+<div class="feature-grid">
+
+    <div class="feature-card">
+        🧮
+        <h3>Smart Calculation</h3>
+        <p>Accurate travel budget estimation.</p>
+    </div>
+
+    <div class="feature-card">
+        ⛽
+        <h3>Fuel & Mileage</h3>
+        <p>Calculate fuel expenses instantly.</p>
+    </div>
+
+    <div class="feature-card">
+        🚆
+        <h3>All Transport Modes</h3>
+        <p>Bus, Train, Flight & Road travel.</p>
+    </div>
+
+    <div class="feature-card">
+        💾
+        <h3>Save Trips</h3>
+        <p>Store and manage all journeys.</p>
+    </div>
+
+</div>
+```
+
+</section>
+
+<section class="destinations">
+
+```
+<h2>Popular Destinations</h2>
+
+<div class="destination-grid">
+
+    <div class="destination-card">
+        <img src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee">
+        <h3>Manali</h3>
+    </div>
+
+    <div class="destination-card">
+        <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb">
+        <h3>Munnar</h3>
+    </div>
+
+    <div class="destination-card">
+        <img src="https://images.unsplash.com/photo-1519046904884-53103b34b206">
+        <h3>Goa</h3>
+    </div>
+
+    <div class="destination-card">
+        <img src="https://images.unsplash.com/photo-1564507592333-c60657eea523">
+        <h3>Agra</h3>
+    </div>
+
+</div>
+```
+
+</section>
+
+<section id="how" class="how-it-works">
+
+```
+<h2>Plan Your Trip in 4 Easy Steps</h2>
+
+<div class="steps">
+
+    <div class="step">
+        <span>1</span>
+        <h3>Enter Details</h3>
+    </div>
+
+    <div class="step">
+        <span>2</span>
+        <h3>Get Distance</h3>
+    </div>
+
+    <div class="step">
+        <span>3</span>
+        <h3>Calculate Budget</h3>
+    </div>
+
+    <div class="step">
+        <span>4</span>
+        <h3>Save Trip</h3>
+    </div>
+
+</div>
+```
+
+</section>
+
+<section class="cta">
+
+```
+<h2>Ready To Plan Your Next Adventure?</h2>
+
+<a href="/planner" class="btn-primary">
+    Start Planning Now
+</a>
+```
+
+</section>
+
+</body>
+</html>
