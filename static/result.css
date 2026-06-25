@@ -1,6 +1,6 @@
 body{
     font-family:'Segoe UI',sans-serif;
-    background:linear-gradient(135deg,#74ebd5,#9face6);
+    background:linear-gradient(135deg,#74ebd5,#bd9fe6);
     padding:30px;
 }
 
@@ -17,7 +17,7 @@ body{
 }
 
 .result-card{
-    background:white;
+    background:rgb(169, 255, 229);
     padding:25px;
     border-radius:15px;
     margin-top:20px;
@@ -30,7 +30,7 @@ body{
 }
 
 .summary-item{
-    background:#f8f9fa;
+    background:#88cdfead;
     padding:15px;
     border-radius:12px;
 }
@@ -38,7 +38,7 @@ body{
 .total-box{
     margin-top:20px;
     text-align:center;
-    background:#467ee5;
+    background:#3d77ff;
     color:rgb(255, 255, 255);
     padding:20px;
     border-radius:15px;
@@ -63,6 +63,8 @@ body{
 .back-btn{
     display:inline-block;
     margin-top:20px;
+    right:650px;
+    position:absolute;
     background:#4f46e5;
     color:white;
     text-decoration:none;

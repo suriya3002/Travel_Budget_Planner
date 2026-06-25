@@ -417,7 +417,7 @@ def calculate():
 
     # Toll
 
-    if transport_mode in ["car", "bike"]:
+    if transport_mode in ["car"]:
 
         if distance <= 100:
             toll_charges = 0
