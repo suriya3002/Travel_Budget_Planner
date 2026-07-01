@@ -509,6 +509,7 @@ def calculate():
         cost_per_person=round(cost_per_person, 2),
         image_url=image_url
     )
+app.run(host="0.0.0.0", port=5000, debug=True)
 if __name__ == '__main__':
     print(app.url_map)
     app.run(debug=True)
