@@ -66,3 +66,24 @@ button:hover{
     border-radius:10px;
 }
 
+.location-row{
+    display:flex;
+    gap:10px;
+}
+
+.location-row input{
+    flex:1;
+}
+
+.gps-btn{
+    width:130px;
+    background:#0ea5e9;
+    color:white;
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
+}
+
+.gps-btn:hover{
+    background:#0284c7;
+}

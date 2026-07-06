@@ -1,184 +1,223 @@
+// ===============================
+// Travel Budget Planner Script
+// ===============================
+
 let userLat = 0;
 let userLon = 0;
 
-/* ── Fare hint updaters ─────────────────── */
+// --------------------
+// Fare Hint Data
+// --------------------
 
 const busHints = {
-  "0.835": "Rate used: ₹0.84/km per person (avg of ₹0.67–1.0)",
-  "1.90":  "Rate used: ₹1.90/km per person (avg of ₹1.5–2.3)",
-  "2.00":  "Rate used: ₹2.00/km per person (avg of ₹1.5–2.5)",
-  "3.25":  "Rate used: ₹3.25/km per person (avg of ₹2.5–4.0)"
+    "0.835":"Rate used: ₹0.84/km per person",
+    "1.90":"Rate used: ₹1.90/km per person",
+    "2.00":"Rate used: ₹2.00/km per person",
+    "3.25":"Rate used: ₹3.25/km per person"
 };
+
 const trainHints = {
-  "0.40":  "Rate used: ₹0.40/km per person (avg of ₹0.30–0.50)",
-  "0.65":  "Rate used: ₹0.65/km per person (avg of ₹0.50–0.80)",
-  "1.80":  "Rate used: ₹1.80/km per person (avg of ₹1.2–2.4)",
-  "2.50":  "Rate used: ₹2.50/km per person (avg of ₹2.0–3.0)",
-  "3.10":  "Rate used: ₹3.10/km per person (avg of ₹2.4–3.8)",
-  "4.00":  "Rate used: ₹4.00/km per person (avg of ₹3.0–5.0)"
+    "0.40":"Rate used: ₹0.40/km per person",
+    "0.65":"Rate used: ₹0.65/km per person",
+    "1.80":"Rate used: ₹1.80/km per person",
+    "2.50":"Rate used: ₹2.50/km per person",
+    "3.10":"Rate used: ₹3.10/km per person",
+    "4.00":"Rate used: ₹4.00/km per person"
 };
+
 const flightHints = {
-  "4.75":  "Rate used: ₹4.75/km per person (avg of ₹3.5–6.0)",
-  "7.00":  "Rate used: ₹7.00/km per person (avg of ₹5.0–9.0)",
-  "14.00": "Rate used: ₹14.00/km per person (avg of ₹8–20+)",
-  "27.50": "Rate used: ₹27.50/km per person (avg of ₹15–40)"
+    "4.75":"Rate used: ₹4.75/km per person",
+    "7.00":"Rate used: ₹7.00/km per person",
+    "14.00":"Rate used: ₹14.00/km per person",
+    "27.50":"Rate used: ₹27.50/km per person"
 };
 
-function updateBusFareHint() {
-  const v = document.getElementById("bus_type").value;
-  document.getElementById("bus_hint").textContent = busHints[v] || "";
-}
-function updateTrainFareHint() {
-  const v = document.getElementById("train_type").value;
-  document.getElementById("train_hint").textContent = trainHints[v] || "";
-}
-function updateFlightFareHint() {
-  const v = document.getElementById("flight_type").value;
-  document.getElementById("flight_hint").textContent = flightHints[v] || "";
+// --------------------
+// Fare Hint Functions
+// --------------------
+
+function updateBusFareHint(){
+    document.getElementById("bus_hint").textContent =
+        busHints[document.getElementById("bus_type").value];
 }
 
-/* ── Toggle sections based on transport mode ── */
-
-function onTransportChange() {
-
-  const mode = document.getElementById("transport_mode").value;
-
-  const vehicleSection  = document.getElementById("vehicle_section");
-  const fuelSection     = document.getElementById("fuel_section");
-  const tollSection     = document.getElementById("toll_section");
-  const busOptions      = document.getElementById("bus_options");
-  const trainOptions    = document.getElementById("train_options");
-  const flightOptions   = document.getElementById("flight_options");
-
-  // Hide all optional sections first
-  vehicleSection.style.display  = "none";
-  fuelSection.style.display     = "none";
-  tollSection.style.display     = "none";
-  busOptions.style.display      = "none";
-  trainOptions.style.display    = "none";
-  flightOptions.style.display   = "none";
-
-  // Reset mileage so backend doesn't use it
-  document.getElementById("mileage").value = 0;
-  document.getElementById("toll_charges").value = 0;
-
-  if (mode === "bike" || mode === "car") {
-    vehicleSection.style.display = "block";
-    fuelSection.style.display    = "block";
-    tollSection.style.display    = "block";
-    document.getElementById("mileage").value = 20;
-  }
-
-  if (mode === "bus") {
-    busOptions.style.display = "block";
-    updateBusFareHint();
-  }
-
-  if (mode === "train") {
-    trainOptions.style.display = "block";
-    updateTrainFareHint();
-  }
-
-  if (mode === "flight") {
-    flightOptions.style.display = "block";
-    updateFlightFareHint();
-  }
+function updateTrainFareHint(){
+    document.getElementById("train_hint").textContent =
+        trainHints[document.getElementById("train_type").value];
 }
 
-function toggleRentalCost() {
-  const vt = document.getElementById("vehicle_type").value;
-  const rd = document.getElementById("rental_cost_div");
-  const rc = document.getElementById("vehicle_rental_cost");
-  if (vt === "own") {
-    rd.style.display = "none";
-    rc.value = 0;
-  } else {
-    rd.style.display = "block";
-  }
+function updateFlightFareHint(){
+    document.getElementById("flight_hint").textContent =
+        flightHints[document.getElementById("flight_type").value];
 }
 
-/* ── Geolocation ── */
+// --------------------
+// Transport Mode
+// --------------------
 
-function getUserLocation() {
-  if (navigator.geolocation) {
+function onTransportChange(){
+
+    const mode=document.getElementById("transport_mode").value;
+
+    document.getElementById("vehicle_section").style.display="none";
+    document.getElementById("fuel_section").style.display="none";
+    document.getElementById("toll_section").style.display="none";
+
+    document.getElementById("bus_options").style.display="none";
+    document.getElementById("train_options").style.display="none";
+    document.getElementById("flight_options").style.display="none";
+
+    if(mode==="bike" || mode==="car"){
+
+        document.getElementById("vehicle_section").style.display="block";
+        document.getElementById("fuel_section").style.display="block";
+        document.getElementById("toll_section").style.display="block";
+
+        document.getElementById("mileage").value=20;
+    }
+
+    if(mode==="bus"){
+
+        document.getElementById("bus_options").style.display="block";
+        updateBusFareHint();
+
+    }
+
+    if(mode==="train"){
+
+        document.getElementById("train_options").style.display="block";
+        updateTrainFareHint();
+
+    }
+
+    if(mode==="flight"){
+
+        document.getElementById("flight_options").style.display="block";
+        updateFlightFareHint();
+
+    }
+
+}
+
+// --------------------
+// Rental Vehicle
+// --------------------
+
+function toggleRentalCost(){
+
+    const vehicle=document.getElementById("vehicle_type").value;
+
+    if(vehicle==="rental"){
+
+        document.getElementById("rental_cost_div").style.display="block";
+
+    }
+    else{
+
+        document.getElementById("rental_cost_div").style.display="none";
+        document.getElementById("vehicle_rental_cost").value=0;
+
+    }
+
+}
+
+// --------------------
+// Current GPS
+// --------------------
+
+function getUserLocation(){
+
+    if(!navigator.geolocation){
+
+        alert("Geolocation not supported.");
+
+        return;
+
+    }
+
     navigator.geolocation.getCurrentPosition(
-      function(pos) {
-        userLat = pos.coords.latitude;
-        userLon = pos.coords.longitude;
-        document.getElementById("user_lat").value = userLat;
-        document.getElementById("user_lon").value = userLon;
-      },
-      function() {
-        alert("Please allow location access.");
-      }
+
+        function(position){
+
+            userLat=position.coords.latitude;
+            userLon=position.coords.longitude;
+
+            document.getElementById("user_lat").value=userLat;
+            document.getElementById("user_lon").value=userLon;
+
+            console.log(userLat,userLon);
+
+        },
+
+        function(){
+
+            alert("Please enable Location.");
+
+        }
+
     );
-  }
+
 }
 
-/* ── Distance auto-calc ── */
+// --------------------
+// Use Current Location
+// --------------------
+function useCurrentLocation(){
 
-document.getElementById("destination").addEventListener("change", function() {
-  const destination = this.value;
-  if (!destination) return;
+navigator.geolocation.getCurrentPosition(async function(position){
 
-  fetch(`/get_distance?destination=${encodeURIComponent(destination)}&lat=${userLat}&lon=${userLon}`)
-    .then(r => r.json())
-    .then(data => {
+const lat=position.coords.latitude;
+const lon=position.coords.longitude;
 
-      document.getElementById("distance").value    = data.distance;
-      document.getElementById("travel_time").value = data.duration + " Hours";
-
-      // Toll only relevant for car/bike
-      const mode = document.getElementById("transport_mode").value;
-      if (mode === "car" || mode === "bike") {
-        let toll = 0;
-        if      (data.distance <= 100) toll = 0;
-        else if (data.distance <= 300) toll = 150;
-        else if (data.distance <= 600) toll = 400;
-        else                           toll = 700;
-        document.getElementById("toll_charges").value = toll;
-      }
-    })
-    .catch(err => {
-      console.error(err);
-      alert("Unable to calculate distance.");
-    });
-});
-
-/* ── Init ── */
-
-window.onload = function() {
-  getUserLocation();
-  onTransportChange();   // set correct UI on page load
-};
-
-document.getElementById("distance").value = data.distance;
-
-
-
-async function getDistance(){
-
-navigator.geolocation.getCurrentPosition(
-async function(position){
-
-let lat = position.coords.latitude;
-let lon = position.coords.longitude;
-
-let destination =
-document.getElementById(
-"destination"
-).value;
-
-let res = await fetch(
-`/get_distance?destination=${encodeURIComponent(destination)}&lat=${lat}&lon=${lon}`
+const response=await fetch(
+`/reverse_geocode?lat=${lat}&lon=${lon}`
 );
 
-let data = await res.json();
+const data=await response.json();
 
-document.getElementById(
-"distance"
-).value = data.distance;
+document.getElementById("from_location").value=data.location;
 
 });
+
 }
 
+
+async function calculateDistance() {
+
+    const from = document.getElementById("from_location").value;
+    const destination = document.getElementById("destination").value;
+
+    if (from === "" || destination === "")
+        return;
+
+    const response = await fetch(
+        `/get_distance?from=${encodeURIComponent(from)}&destination=${encodeURIComponent(destination)}`
+    );
+
+    const data = await response.json();
+
+    if (data.error) {
+        alert(data.error);
+        return;
+    }
+
+    document.getElementById("distance").value = data.distance;
+    document.getElementById("travel_time").value = data.duration + " Hours";
+}
+
+document.getElementById("from_location").addEventListener("change", calculateDistance);
+document.getElementById("destination").addEventListener("change", calculateDistance);
+
+// --------------------
+// Page Load
+// --------------------
+
+window.onload=function(){
+
+    getUserLocation();
+
+    onTransportChange();
+
+    toggleRentalCost();
+
+};

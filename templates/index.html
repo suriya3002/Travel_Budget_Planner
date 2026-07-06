@@ -84,13 +84,24 @@
     <p class="fare-hint" id="flight_hint">Rate used: ₹4.75/km per person (avg of ₹3.5–6.0)</p>
   </div>
 
-  <!-- Destination -->
-  <label>📍 Destination</label>
-  <input type="text" name="destination" id="destination"
-         value="{{ trip[1] if edit_mode else '' }}"
-         autocomplete="off" placeholder="search destination"
-         required>
-  <div id="suggestions"></div>
+<!-- From Location -->
+<label>📍 From Location</label>
+<input
+    type="text"
+    id="from_location"
+    name="from_location"
+    placeholder="Enter starting location"
+    required>
+
+<label>📍 Destination</label>
+<input
+    type="text"
+    id="destination"
+    name="destination"
+    placeholder="Enter destination"
+    required>
+
+<div id="suggestions"></div>
 
   <!-- Distance -->
   <label>🛣️ Distance (km)</label>

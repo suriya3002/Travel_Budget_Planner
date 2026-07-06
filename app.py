@@ -3,6 +3,33 @@ from geopy.geocoders import Nominatim
 import openrouteservice
 import sqlite3
 
+import requests
+
+ORS_API_KEY = "YOUR_OPENROUTESERVICE_API_KEY"
+
+
+def geocode(place):
+    url = "https://nominatim.openstreetmap.org/search"
+
+    params = {
+        "q": place,
+        "format": "json",
+        "limit": 1
+    }
+
+    headers = {
+        "User-Agent": "TravelBudgetPlanner"
+    }
+
+    response = requests.get(url, params=params, headers=headers)
+
+    data = response.json()
+
+    if len(data) == 0:
+        return None
+
+    return float(data[0]["lon"]), float(data[0]["lat"])
+
 app = Flask(__name__)
 
 #create Database
@@ -220,77 +247,72 @@ def planner():
 # -----------------------------
 # Distance API
 # -----------------------------
-@app.route('/get_distance')
+@app.route("/get_distance")
 def get_distance():
 
-    print("GET DISTANCE CALLED")
+    from_place = request.args.get("from")
+    destination = request.args.get("destination")
 
-    destination = request.args.get('destination')
-    user_lat = request.args.get('lat')
-    user_lon = request.args.get('lon')
+    if not from_place or not destination:
+        return jsonify({"error": "Enter both locations"})
 
-    if not destination or not user_lat or not user_lon:
-        return jsonify({
-            "distance": 0,
-            "duration": 0
-        })
+    start = geocode(from_place)
+    end = geocode(destination)
 
-    try:
+    if start is None:
+        return jsonify({"error": "Invalid From Location"})
 
-        geolocator = Nominatim(
-            user_agent="travel_budget_planner"
-        )
+    if end is None:
+        return jsonify({"error": "Invalid Destination"})
 
-        location = geolocator.geocode(destination)
+    url = "https://api.openrouteservice.org/v2/directions/driving-car"
 
-        if not location:
-            print("Location not found")
-            return jsonify({"distance": 0})
+    headers = {
+        "Authorization": ORS_API_KEY,
+        "Content-Type": "application/json"
+    }
 
-        dest_lat = location.latitude
-        dest_lon = location.longitude
+    body = {
+        "coordinates": [
+            list(start),
+            list(end)
+        ]
+    }
 
-        client = openrouteservice.Client(
-            key=ORS_API_KEY
-        )
+    response = requests.post(url, headers=headers, json=body)
 
-        route = client.directions(
-            coordinates=[
-                (float(user_lon), float(user_lat)),
-                (dest_lon, dest_lat)
-            ],
-            profile='driving-car',
-            format='geojson'
-        )
+    data = response.json()
 
-        summary = route['features'][0]['properties']['summary']
+    if "routes" not in data:
+        return jsonify({"error": "Unable to calculate route"})
 
-        distance = round(
-            summary['distance'] / 1000,
-            2
-        )
+    summary = data["routes"][0]["summary"]
 
-        duration = round(
-            summary['duration'] / 3600,
-            2
-        )
+    distance = round(summary["distance"] / 1000, 2)
+    duration = round(summary["duration"] / 3600, 2)
 
-        return jsonify({
-            "distance": distance,
-            "duration": duration,
-            "dest_lat": dest_lat,
-            "dest_lon": dest_lon
-        })
+    return jsonify({
+        "distance": distance,
+        "duration": duration
+    })
 
-    except Exception as e:
-        print(f"Route Error: {e}")
+@app.route("/reverse_geocode")
+def reverse_geocode():
 
-        return jsonify({
-            "distance": 0,
-            "duration": 0,
-            "error": str(e)
-        })
+    lat=request.args.get("lat")
+    lon=request.args.get("lon")
 
+    url=f"https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat={lat}&lon={lon}"
+
+    headers={
+        "User-Agent":"TravelBudgetPlanner"
+    }
+
+    r=requests.get(url,headers=headers).json()
+
+    return jsonify({
+        "location":r["display_name"]
+    })
 
 # -----------------------------
 # Budget trips
