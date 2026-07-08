@@ -9,28 +9,48 @@ ORS_API_KEY = "YOUR_OPENROUTESERVICE_API_KEY"
 
 
 def geocode(place):
-    url = "https://nominatim.openstreetmap.org/search"
 
-    params = {
-        "q": place,
-        "format": "json",
-        "limit": 1
+    headers={
+
+        "User-Agent":"TravelBudgetPlanner"
+
     }
 
-    headers = {
-        "User-Agent": "TravelBudgetPlanner"
-    }
+    response=requests.get(
 
-    response = requests.get(url, params=params, headers=headers)
+        "https://nominatim.openstreetmap.org/search",
 
-    data = response.json()
+        params={
 
-    if len(data) == 0:
+            "q":place,
+
+            "format":"json",
+
+            "limit":1
+
+        },
+
+        headers=headers
+
+    )
+
+    data=response.json()
+
+    if not data:
+
         return None
 
-    return float(data[0]["lon"]), float(data[0]["lat"])
+    return (
+
+        float(data[0]["lon"]),
+
+        float(data[0]["lat"])
+
+    )
+
 
 app = Flask(__name__)
+
 
 #create Database
 def init_db():
@@ -250,50 +270,62 @@ def planner():
 @app.route("/get_distance")
 def get_distance():
 
-    from_place = request.args.get("from")
-    destination = request.args.get("destination")
+    from_place=request.args.get("from")
 
-    if not from_place or not destination:
-        return jsonify({"error": "Enter both locations"})
+    destination=request.args.get("destination")
 
-    start = geocode(from_place)
-    end = geocode(destination)
+    start=geocode(from_place)
+
+    end=geocode(destination)
 
     if start is None:
-        return jsonify({"error": "Invalid From Location"})
+
+        return jsonify({"error":"Invalid From Location"})
 
     if end is None:
-        return jsonify({"error": "Invalid Destination"})
 
-    url = "https://api.openrouteservice.org/v2/directions/driving-car"
+        return jsonify({"error":"Invalid Destination"})
 
-    headers = {
-        "Authorization": ORS_API_KEY,
-        "Content-Type": "application/json"
+    headers={
+
+        "Authorization":ORS_API_KEY,
+
+        "Content-Type":"application/json"
+
     }
 
-    body = {
-        "coordinates": [
+    body={
+
+        "coordinates":[
+
             list(start),
+
             list(end)
+
         ]
+
     }
 
-    response = requests.post(url, headers=headers, json=body)
+    response=requests.post(
 
-    data = response.json()
+        "https://api.openrouteservice.org/v2/directions/driving-car",
 
-    if "routes" not in data:
-        return jsonify({"error": "Unable to calculate route"})
+        headers=headers,
 
-    summary = data["routes"][0]["summary"]
+        json=body
 
-    distance = round(summary["distance"] / 1000, 2)
-    duration = round(summary["duration"] / 3600, 2)
+    )
+
+    data=response.json()
+
+    summary=data["routes"][0]["summary"]
 
     return jsonify({
-        "distance": distance,
-        "duration": duration
+
+        "distance":round(summary["distance"]/1000,2),
+
+        "duration":round(summary["duration"]/3600,2)
+
     })
 
 @app.route("/reverse_geocode")

@@ -208,6 +208,70 @@ async function calculateDistance() {
 document.getElementById("from_location").addEventListener("change", calculateDistance);
 document.getElementById("destination").addEventListener("change", calculateDistance);
 
+async function autocomplete(inputId, suggestionId){
+
+    const text=document.getElementById(inputId).value;
+
+    if(text.length<2){
+
+        document.getElementById(suggestionId).innerHTML="";
+
+        return;
+
+    }
+
+    const response=await fetch(
+
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text)}`
+
+    );
+
+    const data=await response.json();
+
+    let html="";
+
+    data.forEach(place=>{
+
+        html+=`
+
+        <div class="suggestion-item"
+
+        onclick="selectPlace('${inputId}','${suggestionId}','${place.display_name.replace(/'/g,"\\'")}')">
+
+        ${place.display_name}
+
+        </div>
+
+        `;
+
+    });
+
+    document.getElementById(suggestionId).innerHTML=html;
+
+}
+
+function selectPlace(inputId,suggestionId,value){
+
+    document.getElementById(inputId).value=value;
+
+    document.getElementById(suggestionId).innerHTML="";
+
+    calculateDistance();
+
+}
+
+document.getElementById("from_location").addEventListener("keyup",function(){
+
+    autocomplete("from_location","from_suggestions");
+
+});
+
+document.getElementById("destination").addEventListener("keyup",function(){
+
+    autocomplete("destination","destination_suggestions");
+
+});
+
 // --------------------
 // Page Load
 // --------------------

@@ -91,17 +91,19 @@
     id="from_location"
     name="from_location"
     placeholder="Enter starting location"
+    autocomplete="off"
     required>
-
+<div id="from_suggestions"class="suggestions"></div>
 <label>📍 Destination</label>
 <input
     type="text"
     id="destination"
     name="destination"
-    placeholder="Enter destination"
+    placeholder="Enter destination location"
+    autocomplete="off"
     required>
 
-<div id="suggestions"></div>
+<div id="destination_suggestions"class="suggestions"></div>
 
   <!-- Distance -->
   <label>🛣️ Distance (km)</label>
