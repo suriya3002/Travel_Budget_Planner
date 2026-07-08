@@ -99,6 +99,43 @@ function onTransportChange(){
 
 }
 
+const speed = {
+
+walk:5,
+bike:45,
+car:70,
+bus:50,
+train:80,
+flight:700
+
+};
+
+function updateTravelTime(){
+
+const mode=document.getElementById("transport_mode").value;
+
+const distance=parseFloat(
+document.getElementById("distance").value
+);
+
+if(isNaN(distance)) return;
+
+const hours=distance/speed[mode];
+
+const h=Math.floor(hours);
+
+const m=Math.round((hours-h)*60);
+
+document.getElementById("travel_time").value=
+
+`${h} hr ${m} min`;
+
+document.getElementById("duration_card").innerHTML=
+
+`${h} hr ${m} min`;
+
+}
+
 // --------------------
 // Rental Vehicle
 // --------------------
@@ -201,77 +238,84 @@ async function calculateDistance() {
         return;
     }
 
-    document.getElementById("distance").value = data.distance;
+   document.getElementById("distance").value=data.distance;
+
+document.getElementById("distance_card").innerHTML=
+
+data.distance+" km";
+
+updateTravelTime();
     document.getElementById("travel_time").value = data.duration + " Hours";
+    document.getElementById("distance_card").textContent = data.distance + " km";
+    document.getElementById("duration_card").textContent = data.duration + " hr";
 }
 
 document.getElementById("from_location").addEventListener("change", calculateDistance);
 document.getElementById("destination").addEventListener("change", calculateDistance);
 
-async function autocomplete(inputId, suggestionId){
+async function searchLocation(inputId, boxId){
 
-    const text=document.getElementById(inputId).value;
+const query=document.getElementById(inputId).value;
 
-    if(text.length<2){
+if(query.length<2) return;
 
-        document.getElementById(suggestionId).innerHTML="";
+const response=await fetch(
 
-        return;
+`https://nominatim.openstreetmap.org/search?format=json&q=${query}`
 
-    }
+);
 
-    const response=await fetch(
+const data=await response.json();
 
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text)}`
+let html="";
 
-    );
+data.forEach(place=>{
 
-    const data=await response.json();
+html+=`
 
-    let html="";
+<div class="suggestion-item"
 
-    data.forEach(place=>{
+onclick="selectLocation('${inputId}','${boxId}','${place.display_name.replace(/'/g,"\\'")}')">
 
-        html+=`
+${place.display_name}
 
-        <div class="suggestion-item"
+</div>
 
-        onclick="selectPlace('${inputId}','${suggestionId}','${place.display_name.replace(/'/g,"\\'")}')">
-
-        ${place.display_name}
-
-        </div>
-
-        `;
-
-    });
-
-    document.getElementById(suggestionId).innerHTML=html;
-
-}
-
-function selectPlace(inputId,suggestionId,value){
-
-    document.getElementById(inputId).value=value;
-
-    document.getElementById(suggestionId).innerHTML="";
-
-    calculateDistance();
-
-}
-
-document.getElementById("from_location").addEventListener("keyup",function(){
-
-    autocomplete("from_location","from_suggestions");
+`;
 
 });
 
-document.getElementById("destination").addEventListener("keyup",function(){
+const box=document.getElementById(boxId);
 
-    autocomplete("destination","destination_suggestions");
+box.innerHTML=html;
+
+box.style.display="block";
+
+}
+
+function selectLocation(inputId,boxId,value){
+
+document.getElementById(inputId).value=value;
+
+document.getElementById(boxId).style.display="none";
+
+calculateDistance();
+
+}
+
+document.getElementById("from_location")
+.addEventListener("input",()=>{
+
+searchLocation("from_location","from_suggestions");
 
 });
 
+document.getElementById("destination")
+.addEventListener("input",()=>{
+
+searchLocation("destination","destination_suggestions");
+
+});
 // --------------------
 // Page Load
 // --------------------
