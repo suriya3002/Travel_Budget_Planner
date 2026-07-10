@@ -346,6 +346,35 @@ def reverse_geocode():
         "location":r["display_name"]
     })
 
+
+def calculate_travel_time(distance, transport_mode):
+
+    speed = {
+        "walk": 5,       # km/h
+        "bike": 45,
+        "car": 60,
+        "bus": 45,
+        "train": 80,
+        "flight": 700
+    }
+
+    avg_speed = speed.get(transport_mode, 60)
+
+    if distance <= 0:
+        return "0 mins"
+
+    hours = distance / avg_speed
+
+    total_minutes = int(hours * 60)
+
+    h = total_minutes // 60
+    m = total_minutes % 60
+
+    if h == 0:
+        return f"{m} mins"
+
+    return f"{h} hr {m} mins"
+
 # -----------------------------
 # Budget trips
 # -----------------------------
@@ -399,6 +428,11 @@ def calculate():
         "transport_mode",
         "car"
     )
+
+    travel_time = calculate_travel_time(
+    total_distance,
+    transport_mode
+)
 
     transport_cost = 0
     fuel_cost = 0
@@ -535,13 +569,14 @@ def calculate():
     print("Vehicle Cost:", vehicle_cost)
     print("Places Fee Total:", places_fee_total)
 
-   
+    travel_time = calculate_travel_time(total_distance, transport_mode)
 
     return render_template(
         'result.html',
         destination=destination,
         travelers=travelers,
         total_distance=round(total_distance, 2),
+        travel_time=travel_time,
         transport_mode=transport_mode,
         transport_cost=round(transport_cost, 2),
         fuel_type=fuel_type,
@@ -563,7 +598,7 @@ def calculate():
         cost_per_person=round(cost_per_person, 2),
         image_url=image_url
     )
-app.run(host="0.0.0.0", port=5000, debug=True)
-if __name__ == '__main__':
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
     print(app.url_map)
     app.run(debug=True)
