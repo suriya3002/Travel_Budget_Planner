@@ -4,94 +4,56 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Saved Trips</title>
-
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='style.css') }}">
-
-    <style>
-    <link rel="stylesheet"
-    href="{{ url_for('static', filename='style.css') }}">
-</style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='trip.css') }}">
 </head>
 <body>
 
 <div class="container">
 
 <div class="top-bar">
-
     <h1>📋 Saved Trips</h1>
-
-    <a href="/" class="back-btn">
-       🏠 Add
-    </a>
-
+    <a href="/planner" class="back-btn">➕ Plan New Trip</a>
 </div>
 
     {% if trips %}
-
     <table>
-
         <thead>
             <tr>
-                <th>S.No</th>
-                <th>ID</th>
+                <th>#</th>
                 <th>Destination</th>
                 <th>Travelers</th>
+                <th>Distance</th>
+                <th>Transport</th>
                 <th>Budget</th>
+                <th>Per Person</th>
                 <th>Actions</th>
             </tr>
         </thead>
-
         <tbody>
-
             {% for trip in trips %}
             <tr>
-
                 <td>{{ loop.index }}</td>
-
-                <td>{{ trip[0] }}</td>
-
-                <td>{{ trip[1] }}</td>
-
-                <td>{{ trip[2] }}</td>
-
-                <td>₹{{ trip[16] if trip[16] else trip[3] }}</td>
-
-                <td>
-
-                    <a href="/edit/{{ trip[0] }}"
-                       class="edit-btn">✏
-                        Edit
-                    </a>
-
-                    <a href="/delete/{{ trip[0] }}"
-                       class="delete-btn"
-                       onclick="return confirm('Delete this trip?')">
-                       🗑 Delete
-                    </a>
-
+                <td>{{ trip['destination'] }}</td>
+                <td>{{ trip['travelers'] }}</td>
+                <td>{{ trip['total_distance'] or '—' }} km</td>
+                <td>{{ trip['transport_mode'] or '—' }}</td>
+                <td>₹{{ trip['total_budget'] }}</td>
+                <td>₹{{ trip['cost_per_person'] or '—' }}</td>
+                <td class="actions">
+                    <a href="/edit/{{ trip['id'] }}" class="edit-btn">✏️ Edit</a>
+                    <a href="/delete/{{ trip['id'] }}" class="delete-btn"
+                       onclick="return confirm('Delete this trip?')">🗑 Delete</a>
                 </td>
-
             </tr>
             {% endfor %}
-
         </tbody>
-
     </table>
-
     {% else %}
-
-        <div class="empty">
-            No trips saved yet.
-        </div>
-
+        <div class="empty">No trips saved yet. <a href="/planner">Plan your first trip!</a></div>
     {% endif %}
 
-
 </div>
-
-<link rel="stylesheet"
-      href="{{ url_for('static', filename='trips.css') }}">
 
 </body>
 </html>

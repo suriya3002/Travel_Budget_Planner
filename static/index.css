@@ -55,15 +55,13 @@ button:hover{
     background:#4338ca;
 }
 
-.saved-trips-btn{
-    position:absolute;
-    top:103px;
-    right:350px;
-    text-decoration:none;
-    background:#ff6b00;
-    color:white;
-    padding:10px 18px;
-    border-radius:10px;
+.saved-trips-btn {
+    text-decoration: none;
+    background: #ff6b00;
+    color: white;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-weight: 600;
 }
 
 .location-row{

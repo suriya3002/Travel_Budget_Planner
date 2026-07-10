@@ -5,154 +5,105 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Travel Budget Planner</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-
+<link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
 </head>
 
 <body>
-  
+
 <div class="container">
 
 <div class="top-bar">
-
     <h1>🌍 Travel Budget Planner</h1>
-
-    <a href="/trips" class="saved-trips-btn">
-        📋 View Saved Trips
-    </a>
-
+    <a href="/trips" class="saved-trips-btn">📋 View Saved Trips</a>
 </div>
 
 <form action="/calculate" method="POST">
 
-  <!-- Travelers -->
   <label>👥 Number of Travelers</label>
-  <input type="number" name="travelers" min="1" value="{{ trip[2] if edit_mode else '' }}" required>
+  <input type="number" name="travelers" min="1" required>
 
-  <!-- Transport Mode -->
   <label>🚗 Transport Mode</label>
   <select id="transport_mode" name="transport_mode" onchange="onTransportChange()">
     <option value="walk">🚶 Walk</option>
-    {% if edit_mode and trip[5] =='walk' %}selected{% endif %}
     <option value="bike">🏍️ Bike</option>
-    {% if edit_mode and trip[5] =='bike' %}selected{% endif %}
-    <option value="car">🚗 Car</option>
-    {% if edit_mode and trip[5] =='car' %}selected{% endif %}
+    <option value="car" selected>🚗 Car</option>
     <option value="bus">🚌 Bus</option>
-    {% if edit_mode and trip[5] =='bus' %}selected{% endif %}
     <option value="train">🚆 Train</option>
-    {% if edit_mode and trip[5] =='train' %}selected{% endif %}
-    <option value="flight">✈️ 
-    {% if edit_mode and trip[5] =='flight' %}selected{% endif %}
-    Flight</option>
+    <option value="flight">✈️ Flight</option>
   </select>
 
-  <!-- BUS sub-types -->
   <div id="bus_options" class="section-card" style="display:none">
     <h3>🚌 Select Bus Type</h3>
     <select name="bus_type" id="bus_type" onchange="updateBusFareHint()">
-      <option value="0.835" class="opt-govt">Govt Ordinary (SRTC) — ₹0.67–1.0/km</option>
-      <option value="1.90"  class="opt-govt">Govt AC / Deluxe (Airavat, Volvo SRTC) — ₹1.5–2.3/km</option>
-      <option value="2.00"  class="opt-pvt">Private Non-AC Sleeper — ₹1.5–2.5/km</option>
-      <option value="3.25"  class="opt-pvt">Private AC Sleeper (Volvo, Scania) — ₹2.5–4.0/km</option>
+      <option value="0.835">Govt Ordinary (SRTC) — ₹0.67–1.0/km</option>
+      <option value="1.90">Govt AC / Deluxe — ₹1.5–2.3/km</option>
+      <option value="2.00">Private Non-AC Sleeper — ₹1.5–2.5/km</option>
+      <option value="3.25">Private AC Sleeper — ₹2.5–4.0/km</option>
     </select>
-    <p class="fare-hint" id="bus_hint">Rate used: ₹0.84/km per person (avg of ₹0.67–1.0)</p>
+    <p class="fare-hint" id="bus_hint">Rate used: ₹0.84/km per person</p>
   </div>
 
-  <!-- TRAIN sub-types -->
   <div id="train_options" class="section-card" style="display:none">
     <h3>🚆 Select Train Class</h3>
     <select name="train_type" id="train_type" onchange="updateTrainFareHint()">
-      <option value="0.40"  class="opt-govt">General / 2S — ₹0.30–0.50/km</option>
-      <option value="0.65"  class="opt-govt">Sleeper Class (SL) — ₹0.50–0.80/km</option>
-      <option value="1.80"  class="opt-govt">3AC (incl. Vande Bharat 3AC) — ₹1.2–2.4/km</option>
-      <option value="2.50"  class="opt-govt">2AC (Rajdhani, Duronto) — ₹2.0–3.0/km</option>
-      <option value="3.10"  class="opt-govt">Vande Bharat Sleeper — ₹2.4–3.8/km</option>
-      <option value="4.00"  class="opt-govt">1AC / Executive Chair — ₹3.0–5.0/km</option>
+      <option value="0.40">General / 2S — ₹0.30–0.50/km</option>
+      <option value="0.65">Sleeper Class (SL) — ₹0.50–0.80/km</option>
+      <option value="1.80">3AC — ₹1.2–2.4/km</option>
+      <option value="2.50">2AC — ₹2.0–3.0/km</option>
+      <option value="3.10">Vande Bharat Sleeper — ₹2.4–3.8/km</option>
+      <option value="4.00">1AC / Executive — ₹3.0–5.0/km</option>
     </select>
-    <p class="fare-hint" id="train_hint">Rate used: ₹0.40/km per person (avg of ₹0.30–0.50)</p>
+    <p class="fare-hint" id="train_hint">Rate used: ₹0.40/km per person</p>
   </div>
 
-  <!-- FLIGHT sub-types -->
   <div id="flight_options" class="section-card" style="display:none">
     <h3>✈️ Select Flight Class</h3>
     <select name="flight_type" id="flight_type" onchange="updateFlightFareHint()">
-      <option value="4.75"  class="opt-air">Budget Economy LCC (IndiGo, SpiceJet) — ₹3.5–6.0/km</option>
-      <option value="7.00"  class="opt-air">Full-Service Economy (Air India, Vistara) — ₹5.0–9.0/km</option>
-      <option value="14.00" class="opt-air">Last-Minute / Peak Fare — ₹8–20+/km</option>
-      <option value="27.50" class="opt-air">Business Class — ₹15–40/km</option>
+      <option value="4.75">Budget Economy LCC — ₹3.5–6.0/km</option>
+      <option value="7.00">Full-Service Economy — ₹5.0–9.0/km</option>
+      <option value="14.00">Last-Minute / Peak — ₹8–20+/km</option>
+      <option value="27.50">Business Class — ₹15–40/km</option>
     </select>
-    <p class="fare-hint" id="flight_hint">Rate used: ₹4.75/km per person (avg of ₹3.5–6.0)</p>
+    <p class="fare-hint" id="flight_hint">Rate used: ₹4.75/km per person</p>
   </div>
 
-<div class="travel-card">
+  <div class="travel-card">
+    <div class="travel-box">
+      🚗 Distance
+      <h2 id="distance_card">0 km</h2>
+    </div>
+    <div class="travel-box">
+      ⏰ Duration
+      <h2 id="duration_card">0 hr</h2>
+    </div>
+  </div>
 
-<div class="travel-box">
+  <label>📍 From Location</label>
+  <div class="location-row">
+    <input type="text" id="from_location" name="from_location"
+           placeholder="Search starting location" autocomplete="off" required>
+    <button type="button" class="gps-btn" onclick="useCurrentLocation()">📍 GPS</button>
+  </div>
+  <div id="from_suggestions" class="suggestions"></div>
 
-🚗 Distance
+  <label>📍 Destination</label>
+  <input type="text" id="destination" name="destination"
+         placeholder="Search destination location" autocomplete="off" required>
+  <div id="destination_suggestions" class="suggestions"></div>
 
-<h2 id="distance_card">
-
-0 km
-
-</h2>
-
-</div>
-
-<div class="travel-box">
-
-⏰ Duration
-
-<h2 id="duration_card">
-
-0 hr
-
-</h2>
-
-</div>
-
-</div>
-
-<!-- From Location -->
-<label>📍 From Location</label>
-<input
-    type="text"
-    id="from_location"
-    name="from_location"
-    placeholder="Search starting location"
-    autocomplete="off"
-    required>
-<div id="from_suggestions"class="suggestions"></div>
-<div class="input-group">
-  
-<label>📍 Destination</label>
-<input
-    type="text"
-    id="destination"
-    name="destination"
-    placeholder="Search destination location"
-    autocomplete="off"
-    required>
-
-<div id="destination_suggestions"class="suggestions"></div>
-
-  <!-- Distance -->
   <label>🛣️ Distance (km)</label>
   <input type="number" step="0.01" name="distance" id="distance"
-         placeholder="Auto Calculating..." readonly value="{{ trip[4] if edit_mode else '' }}">
+         placeholder="Auto calculating..." readonly>
 
-  <!-- Travel Time -->
   <label>⏰ Travel Time</label>
-  <input type="text" id="travel_time" placeholder="Auto Calculating..." readonly>
+  <input type="text" id="travel_time" placeholder="Auto calculating..." readonly>
 
-  <!-- Places -->
   <label>🏞️ Number of Places to Visit</label>
-  <input type="number" name="places_to_visit" value="0">
+  <input type="number" name="places_to_visit" value="0" min="0">
 
-  <!-- Entry Fee -->
   <label>🎟️ Entry Fee Per Place (₹)</label>
-  <input type="number" step="0.01" name="per_places_entry_fee" value="0">
+  <input type="number" step="0.01" name="per_places_entry_fee" value="0" min="0">
 
-  <!-- Vehicle section — only for bike / car -->
   <div id="vehicle_section">
     <label>🚗 Vehicle Type</label>
     <select name="vehicle_type" id="vehicle_type" onchange="toggleRentalCost()">
@@ -163,16 +114,15 @@
     <div id="rental_cost_div" style="display:none">
       <label>🚘 Vehicle Rental Cost (₹)</label>
       <input type="number" step="0.01" name="vehicle_rental_cost"
-             id="vehicle_rental_cost" value="0">
+             id="vehicle_rental_cost" value="0" min="0">
     </div>
 
     <label>🅿️ Parking Fee (₹)</label>
-    <input type="number" step="0.01" name="parking_fee" id="parking_fee" value="0">
+    <input type="number" step="0.01" name="parking_fee" id="parking_fee" value="0" min="0">
 
-    <!-- Mileage & Fuel — only for bike/car -->
     <div id="fuel_section">
       <label>⛽ Mileage (km/l)</label>
-      <input type="number" step="0.01" name="mileage" id="mileage" value="20">
+      <input type="number" step="0.01" name="mileage" id="mileage" value="20" min="1">
 
       <label>⛽ Fuel Type</label>
       <select name="fuel_type">
@@ -182,45 +132,31 @@
     </div>
   </div>
 
-  <!-- Toll (only for car/bike) -->
   <div id="toll_section">
-    <label>🚧 Toll Charges (₹)</label>
-    <input type="number" step="0.01" name="toll_charges" id="toll_charges" value="0">
+    <label>🚧 Toll Charges (₹) — auto-estimated for car</label>
+    <input type="number" step="0.01" name="toll_charges" id="toll_charges" value="0" min="0">
   </div>
 
-  <!-- Food -->
   <label>🍽️ Food Cost Per Person (₹)</label>
-  <input type="number" step="0.01" name="food_cost_per_person" value="0">
+  <input type="number" step="0.01" name="food_cost_per_person" value="0" min="0">
 
-  <!-- Room -->
   <label>🏨 Room Cost (₹)</label>
-  <input type="number" step="0.01" name="room_cost" value="0">
+  <input type="number" step="0.01" name="room_cost" value="0" min="0">
 
-  <!-- Round Trip -->
   <label>🔄 Round Trip?</label>
   <select name="round_trip">
-    <option value="yes">Yes</option>
     <option value="no">No</option>
+    <option value="yes">Yes</option>
   </select>
 
-  <!-- Hidden GPS -->
   <input type="hidden" name="user_lat" id="user_lat">
   <input type="hidden" name="user_lon" id="user_lon">
 
-{% if edit_mode %}
-<input type="hidden" name="trip_id" value="{{ trip[0] }}">
-{% endif %}
-
-  <br><br>
-  <button type="submit">✈️ Calculate Budget</button>
+  <button type="submit" style="width:100%; margin-top:25px;">✈️ Calculate Budget</button>
 
 </form>
 </div>
 
 <script src="{{ url_for('static', filename='script.js') }}"></script>
-
-<link rel="stylesheet"
-      href="{{ url_for('static', filename='index.css') }}">
-
 </body>
 </html>

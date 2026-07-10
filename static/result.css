@@ -60,16 +60,19 @@ body{
     cursor:pointer;
 }
 
-.back-btn{
-    display:inline-block;
-    margin-top:90px;
-    right:670px;
-    position:absolute;
-    background:#4f46e5;
-    color:white;
-    text-decoration:none;
-    padding:12px 20px;
-    border-radius:10px;
+.back-btn {
+    display: inline-block;
+    margin-top: 20px;
+    background: #4f46e5;
+    color: white;
+    text-decoration: none;
+    padding: 12px 20px;
+    border-radius: 10px;
+}
+
+.chart-container {
+    max-width: 400px;
+    margin: 20px auto;
 }
 
 .save-trip-container{
