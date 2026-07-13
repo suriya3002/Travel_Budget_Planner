@@ -263,6 +263,33 @@ Python Developer | Flask Learner | Travel Enthusiast
 
 ---
 
+## Development and production
+
+### Development
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+$env:FLASK_DEBUG = "1"
+python app.py
+```
+
+Open `http://127.0.0.1:5000` for the landing page or `/planner` for the planner.
+
+### Production
+
+```powershell
+pip install -r requirements.txt
+$env:PORT = "8000"
+waitress-serve --host=0.0.0.0 --port=$env:PORT app:app
+```
+
+The included `Procfile` uses the same production command. Set `ORS_API_KEY` only
+when you want OpenRouteService; otherwise OSRM supplies the route estimate.
+
+---
+
 ## 📄 License
 
 This project is open-source and available for learning and educational purposes.

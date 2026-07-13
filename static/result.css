@@ -1,147 +1,31 @@
-body{
-    font-family:'Segoe UI',sans-serif;
-    background:linear-gradient(135deg,#74ebd5,#bd9fe6);
-    padding:30px;
-}
-
-.container{
-    max-width:1100px;
-    margin:auto;
-}
-
-.trip-image{
-    width:100%;
-    height:350px;
-    object-fit:cover;
-    border-radius:15px;
-}
-
-.result-card{
-    background:rgb(169, 255, 229);
-    padding:25px;
-    border-radius:15px;
-    margin-top:20px;
-}
-
-.summary-grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-    gap:15px;
-}
-
-.summary-item{
-    background:#88cdfead;
-    padding:15px;
-    border-radius:12px;
-}
-
-.total-box{
-    margin-top:20px;
-    text-align:center;
-    background:#3d77ff;
-    color:rgb(255, 255, 255);
-    padding:20px;
-    border-radius:15px;
-}
-
-.button-group{
-    display:flex;
-    gap:10px;
-    justify-content:center;
-    flex-wrap:wrap;
-    margin-top:20px;
-}
-
-.button-group button{
-    padding:12px 20px;
-    border:none;
-    border-radius:10px;
-    color:rgb(0, 0, 0);
-    cursor:pointer;
-}
-
-.back-btn {
-    display: inline-block;
-    margin-top: 20px;
-    background: #4f46e5;
-    color: white;
-    text-decoration: none;
-    padding: 12px 20px;
-    border-radius: 10px;
-}
-
-.chart-container {
-    max-width: 400px;
-    margin: 20px auto;
-}
-
-.save-trip-container{
-    display:flex;
-    justify-content:center;
-    margin-top:30px;
-}
-
-.save-trip-container form{
-    width:100%;
-    max-width:350px;
-}
-
-.save-trip-container button{
-    width:100%;
-    padding:15px;
-    font-size:18px;
-    font-weight:700;
-    border:none;
-    border-radius:12px;
-    cursor:pointer;
-    background:linear-gradient(
-        135deg,
-        #00c853,
-        #00e676
-    );
-    color:white;
-    box-shadow:0 8px 20px rgba(0,200,83,.3);
-}
-
-.save-trip-container button:hover{
-    transform:translateY(-2px);
-}
-
-
-
-.action-center{
-    width:100%;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    margin-top:30px;
-}
-
-.action-center form{
-    width:auto;
-}
-
-.update-btn,
-.save-btn{
-    min-width:220px;
-    padding:14px 30px;
-    border:none;
-    border-radius:12px;
-    font-size:16px;
-    font-weight:600;
-    cursor:pointer;
-    color:white;
-}
-
-.update-btn{
-    background:#f39c12;
-}
-
-.save-btn{
-    background:#27ae60;
-}
-
-.update-btn:hover,
-.save-btn:hover{
-    transform:translateY(-2px);
-}
+body { font-family: 'Manrope', 'Segoe UI', sans-serif; background: #f3f7fb; color: #172033; padding: 0; }
+.container { max-width: 1160px; padding: 32px 24px 48px; background: transparent; box-shadow: none; }
+#report { overflow: hidden; border-radius: 28px; background: #fff; box-shadow: 0 24px 60px rgba(16, 36, 70, .12); }
+.report-hero { min-height: 305px; display: flex; align-items: end; padding: 38px; color: #fff; position: relative; background: linear-gradient(120deg, rgba(6, 25, 52, .92), rgba(16, 87, 115, .52)), var(--trip-image) center/cover; }
+.report-hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(4, 18, 38, .5), transparent 62%); }
+.hero-copy { position: relative; z-index: 1; max-width: 680px; }
+.eyebrow { margin: 0 0 10px; color: #a8f0d2; font-size: .75rem; font-weight: 800; text-transform: uppercase; letter-spacing: .14em; }
+.report-hero h1 { color: #fff; font-size: clamp(2rem, 5vw, 3.55rem); line-height: 1.05; margin: 0; }
+.hero-meta { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 17px; font-size: .95rem; color: #e4edf6; }
+.result-card { margin: 0; padding: 34px 38px 40px; background: #fff; }
+.section-title { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin: 8px 0 18px; }
+.section-title h2 { font-size: 1.08rem; color: #172033; }
+.section-title p { font-size: .84rem; color: #6a778a; }
+.summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); gap: 12px; }
+.summary-item { min-height: 104px; padding: 17px; border: 1px solid #e6edf4; border-radius: 16px; background: #fbfcfe; display: flex; flex-direction: column; justify-content: space-between; }
+.summary-item span { color: #627086; font-size: .78rem; font-weight: 600; }
+.summary-item strong { color: #1c2d47; font-size: 1.08rem; }
+.report-divider { height: 1px; border: 0; background: #e8eef4; margin: 32px 0; }
+.insights { display: grid; grid-template-columns: minmax(260px, .9fr) minmax(300px, 1.1fr); align-items: center; gap: 28px; }
+.chart-container { max-width: 320px; margin: auto; }
+.total-box { margin: 0; padding: 30px; border-radius: 20px; text-align: left; background: linear-gradient(135deg, #123c5a, #0b766d); box-shadow: 0 16px 28px rgba(11, 118, 109, .22); }
+.total-box h2 { color: #b9f6df; text-transform: uppercase; letter-spacing: .1em; font-size: .78rem; }
+.total-box h1 { margin: 8px 0; color: #fff; font-size: 2.45rem; }
+.total-box p { color: #e0f8ed; }
+.button-group { padding: 26px 0 12px; }
+.button-group button, .back-btn { background: #fff; color: #25415e; border: 1px solid #dce6ef; border-radius: 12px; box-shadow: none; }
+.button-group button:hover, .back-btn:hover { background: #edf8f5; color: #087b69; }
+.action-center { margin-top: 16px; }
+.save-trip-container button { background: linear-gradient(135deg, #0b766d, #14945f); }
+@media print { body { background: #fff; } .button-group, .action-center, .back-btn { display: none !important; } .container { max-width: none; padding: 0; } #report { box-shadow: none; } }
+@media (max-width: 650px) { .container { padding: 0; } #report { border-radius: 0; } .report-hero { padding: 27px 22px; min-height: 255px; } .result-card { padding: 26px 20px; } .insights { grid-template-columns: 1fr; } }

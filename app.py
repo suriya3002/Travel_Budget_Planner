@@ -4,10 +4,7 @@ import sqlite3
 import requests
 from flask import Flask, jsonify, redirect, render_template, request
 
-ORS_API_KEY = os.environ.get(
-    "ORS_API_KEY",
-    "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjE4NTE1ZmM3ZTY0ODRkZjk4YWMzYzVkM2YwZDYxNzU5IiwiaCI6Im11cm11cjY0In0=",
-)
+ORS_API_KEY = os.environ.get("ORS_API_KEY")
 
 app = Flask(__name__)
 
@@ -51,6 +48,8 @@ init_db()
 
 
 def geocode(place):
+    if not place or not place.strip():
+        return None
     headers = {"User-Agent": "TravelBudgetPlanner"}
     response = requests.get(
         "https://nominatim.openstreetmap.org/search",
@@ -58,6 +57,7 @@ def geocode(place):
         headers=headers,
         timeout=10,
     )
+    response.raise_for_status()
     data = response.json()
     if not data:
         return None
@@ -356,31 +356,71 @@ def update_trip():
 
 @app.route("/get_distance")
 def get_distance():
-    from_place = request.args.get("from")
-    destination = request.args.get("destination")
-    start = geocode(from_place)
-    end = geocode(destination)
+    from_place = request.args.get("from", "").strip()
+    destination = request.args.get("destination", "").strip()
+    try:
+        start = geocode(from_place)
+        end = geocode(destination)
+    except requests.RequestException:
+        return jsonify({"error": "Location search is temporarily unavailable. Please try again."}), 503
 
     if start is None:
         return jsonify({"error": "Invalid From Location"})
     if end is None:
         return jsonify({"error": "Invalid Destination"})
 
-    response = requests.post(
-        "https://api.openrouteservice.org/v2/directions/driving-car",
-        headers={
-            "Authorization": ORS_API_KEY,
-            "Content-Type": "application/json",
-        },
-        json={"coordinates": [list(start), list(end)]},
-        timeout=15,
-    )
-    data = response.json()
-    summary = data["routes"][0]["summary"]
-    return jsonify({
-        "distance": round(summary["distance"] / 1000, 2),
-        "duration": round(summary["duration"] / 3600, 2),
-    })
+    # OSRM provides a dependable keyless route estimate.  ORS remains optional
+    # for deployments that set ORS_API_KEY.
+    try:
+        if ORS_API_KEY:
+            response = requests.post(
+                "https://api.openrouteservice.org/v2/directions/driving-car",
+                headers={"Authorization": ORS_API_KEY, "Content-Type": "application/json"},
+                json={"coordinates": [list(start), list(end)]},
+                timeout=15,
+            )
+            response.raise_for_status()
+            summary = response.json()["routes"][0]["summary"]
+        else:
+            coordinates = f"{start[0]},{start[1]};{end[0]},{end[1]}"
+            response = requests.get(
+                f"https://router.project-osrm.org/route/v1/driving/{coordinates}",
+                params={"overview": "false"},
+                headers={"User-Agent": "TravelBudgetPlanner/1.0"},
+                timeout=15,
+            )
+            response.raise_for_status()
+            route = response.json().get("routes", [None])[0]
+            if not route:
+                raise ValueError("No route found")
+            summary = route
+        return jsonify({
+            "distance": round(summary["distance"] / 1000, 2),
+            "duration": round(summary["duration"] / 3600, 2),
+        })
+    except (requests.RequestException, KeyError, IndexError, TypeError, ValueError):
+        return jsonify({"error": "We couldn't find a drivable route between those locations."}), 422
+
+
+@app.route("/location_suggestions")
+def location_suggestions():
+    query = request.args.get("q", "").strip()
+    if len(query) < 2:
+        return jsonify([])
+    try:
+        response = requests.get(
+            "https://nominatim.openstreetmap.org/search",
+            params={"q": query, "format": "jsonv2", "limit": 5, "addressdetails": 1},
+            headers={"User-Agent": "TravelBudgetPlanner/1.0 (local planner)"},
+            timeout=10,
+        )
+        response.raise_for_status()
+        return jsonify([
+            {"label": place["display_name"], "lat": place["lat"], "lon": place["lon"]}
+            for place in response.json()
+        ])
+    except requests.RequestException:
+        return jsonify([]), 503
 
 
 @app.route("/reverse_geocode")
@@ -389,8 +429,12 @@ def reverse_geocode():
     lon = request.args.get("lon")
     url = f"https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat={lat}&lon={lon}"
     headers = {"User-Agent": "TravelBudgetPlanner"}
-    result = requests.get(url, headers=headers, timeout=10).json()
-    return jsonify({"location": result["display_name"]})
+    try:
+        result = requests.get(url, headers=headers, timeout=10)
+        result.raise_for_status()
+        return jsonify({"location": result.json().get("display_name", "")})
+    except requests.RequestException:
+        return jsonify({"error": "Could not identify your current location."}), 503
 
 
 @app.route("/calculate", methods=["POST"])
@@ -406,4 +450,4 @@ def calculate():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=os.environ.get("FLASK_DEBUG") == "1")

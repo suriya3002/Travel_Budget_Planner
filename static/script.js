@@ -1,346 +1,160 @@
-// ===============================
-// Travel Budget Planner Script
-// ===============================
-
-let userLat = 0;
-let userLon = 0;
 let oneWayDistance = 0;
 let currentStep = 1;
 const totalSteps = 3;
+let searchTimer;
+let activeSearch;
 
-const busHints = {
-    "0.835": "Rate used: ₹0.84/km per person",
-    "1.90":  "Rate used: ₹1.90/km per person",
-    "2.00":  "Rate used: ₹2.00/km per person",
-    "3.25":  "Rate used: ₹3.25/km per person"
+const fareHints = {
+    bus_type: { "0.835": "Rate used: ₹0.84/km per person", "1.90": "Rate used: ₹1.90/km per person", "2.00": "Rate used: ₹2.00/km per person", "3.25": "Rate used: ₹3.25/km per person" },
+    train_type: { "0.40": "Rate used: ₹0.40/km per person", "0.65": "Rate used: ₹0.65/km per person", "1.80": "Rate used: ₹1.80/km per person", "2.50": "Rate used: ₹2.50/km per person", "3.10": "Rate used: ₹3.10/km per person", "4.00": "Rate used: ₹4.00/km per person" },
+    flight_type: { "4.75": "Rate used: ₹4.75/km per person", "7.00": "Rate used: ₹7.00/km per person", "14.00": "Rate used: ₹14.00/km per person", "27.50": "Rate used: ₹27.50/km per person" }
 };
-
-const trainHints = {
-    "0.40": "Rate used: ₹0.40/km per person",
-    "0.65": "Rate used: ₹0.65/km per person",
-    "1.80": "Rate used: ₹1.80/km per person",
-    "2.50": "Rate used: ₹2.50/km per person",
-    "3.10": "Rate used: ₹3.10/km per person",
-    "4.00": "Rate used: ₹4.00/km per person"
-};
-
-const flightHints = {
-    "4.75":  "Rate used: ₹4.75/km per person",
-    "7.00":  "Rate used: ₹7.00/km per person",
-    "14.00": "Rate used: ₹14.00/km per person",
-    "27.50": "Rate used: ₹27.50/km per person"
-};
-
-const speed = {
-    walk: 5,
-    bike: 45,
-    car: 70,
-    bus: 50,
-    train: 80,
-    flight: 700
-};
-
-// --------------------
-// Multi-step form
-// --------------------
+const speed = { walk: 5, bike: 45, car: 70, bus: 50, train: 80, flight: 700 };
 
 function changeStep(direction) {
     const next = currentStep + direction;
-    if (next < 1 || next > totalSteps) return;
-
-    if (direction > 0 && !validateStep(currentStep)) return;
-
-    const currentEl = document.querySelector(`.form-step[data-step="${currentStep}"]`);
-    currentEl.classList.remove("active");
-    if (direction > 0) currentEl.classList.add("exit-left");
-
+    if (next < 1 || next > totalSteps || (direction > 0 && !validateStep(currentStep))) return;
+    document.querySelector(`.form-step[data-step="${currentStep}"]`).classList.remove("active");
     currentStep = next;
-
-    setTimeout(() => {
-        document.querySelectorAll(".form-step").forEach(s => s.classList.remove("exit-left"));
-        const nextEl = document.querySelector(`.form-step[data-step="${currentStep}"]`);
-        nextEl.classList.add("active");
-
-        nextEl.querySelectorAll(".animate-in").forEach(el => {
-            el.style.animation = "none";
-            el.offsetHeight;
-            el.style.animation = "";
-        });
-    }, direction > 0 ? 280 : 0);
-
+    document.querySelector(`.form-step[data-step="${currentStep}"]`).classList.add("active");
     updateStepUI();
 }
 
 function validateStep(step) {
-    if (step === 1) {
-        const travelers = document.getElementById("travelers");
-        if (!travelers.value || travelers.value < 1) {
-            travelers.focus();
-            shakeField(travelers);
-            return false;
+    const ids = step === 1 ? ["travelers"] : step === 2 ? ["from_location", "destination"] : [];
+    for (const id of ids) {
+        const field = document.getElementById(id);
+        if (!field.value.trim() || (id === "travelers" && Number(field.value) < 1)) {
+            field.focus(); shakeField(field); return false;
         }
     }
-    if (step === 2) {
-        const from = document.getElementById("from_location");
-        const dest = document.getElementById("destination");
-        const dist = document.getElementById("distance");
-        if (!from.value.trim()) { shakeField(from); from.focus(); return false; }
-        if (!dest.value.trim()) { shakeField(dest); dest.focus(); return false; }
-        if (!dist.value || parseFloat(dist.value) <= 0) {
-            alert("Please wait for distance to calculate, or check your locations.");
-            return false;
-        }
+    if (step === 2 && Number(document.getElementById("distance").value) <= 0) {
+        alert("Select valid locations and wait for the route to calculate."); return false;
     }
     return true;
 }
 
-function shakeField(el) {
-    el.closest(".field-group")?.classList.add("shake");
-    setTimeout(() => el.closest(".field-group")?.classList.remove("shake"), 500);
+function shakeField(element) {
+    const group = element.closest(".field-group");
+    group?.classList.add("shake");
+    setTimeout(() => group?.classList.remove("shake"), 500);
 }
 
 function updateStepUI() {
-    const progress = (currentStep / totalSteps) * 100;
-    document.getElementById("progress_bar").style.width = progress + "%";
-
+    document.getElementById("progress_bar").style.width = `${(currentStep / totalSteps) * 100}%`;
     document.querySelectorAll(".step-dot").forEach(dot => {
-        const s = parseInt(dot.dataset.step);
-        dot.classList.toggle("active", s === currentStep);
-        dot.classList.toggle("done", s < currentStep);
+        const step = Number(dot.dataset.step);
+        dot.classList.toggle("active", step === currentStep);
+        dot.classList.toggle("done", step < currentStep);
     });
-
     document.getElementById("btn_prev").style.display = currentStep > 1 ? "block" : "none";
     document.getElementById("btn_next").style.display = currentStep < totalSteps ? "block" : "none";
     document.getElementById("btn_submit").style.display = currentStep === totalSteps ? "block" : "none";
 }
 
-// --------------------
-// Duration formatting
-// --------------------
-
-function formatDuration(totalMinutes) {
-    if (!totalMinutes || totalMinutes <= 0) return "—";
-    const h = Math.floor(totalMinutes / 60);
-    const m = Math.round(totalMinutes % 60);
-    if (h === 0) return `${m} min`;
-    if (m === 0) return `${h} hr`;
-    return `${h} hr ${m} min`;
-}
-
-function getEffectiveDistance() {
-    const roundTrip = document.getElementById("round_trip").value;
-    return roundTrip === "yes" ? oneWayDistance * 2 : oneWayDistance;
+function formatDuration(minutes) {
+    if (!minutes || minutes <= 0) return "—";
+    const hours = Math.floor(minutes / 60), remaining = Math.round(minutes % 60);
+    return hours ? `${hours} hr${remaining ? ` ${remaining} min` : ""}` : `${remaining} min`;
 }
 
 function updateTravelTime() {
-    const mode = document.getElementById("transport_mode").value;
-    const distance = getEffectiveDistance();
-
-    const distCard = document.getElementById("distance_card");
-    const durCard = document.getElementById("duration_card");
-    const distInput = document.getElementById("distance");
-
-    if (!distance || distance <= 0) {
-        distCard.textContent = "—";
-        durCard.textContent = "—";
-        return;
-    }
-
-    const displayDist = Math.round(distance * 100) / 100;
-    distInput.value = oneWayDistance;
-    distCard.textContent = displayDist + " km";
-    pulseCard(distCard);
-
-    const avgSpeed = speed[mode] || 60;
-    const totalMinutes = (distance / avgSpeed) * 60;
-    const formatted = formatDuration(totalMinutes);
-
-    durCard.textContent = formatted;
-    document.getElementById("travel_time").value = formatted;
-    pulseCard(durCard);
-}
-
-function pulseCard(el) {
-    el.classList.remove("pulse");
-    el.offsetHeight;
-    el.classList.add("pulse");
+    const distance = document.getElementById("round_trip").value === "yes" ? oneWayDistance * 2 : oneWayDistance;
+    const distanceCard = document.getElementById("distance_card");
+    const durationCard = document.getElementById("duration_card");
+    if (distance <= 0) { distanceCard.textContent = "—"; durationCard.textContent = "—"; return; }
+    document.getElementById("distance").value = oneWayDistance;
+    distanceCard.textContent = `${Math.round(distance * 100) / 100} km`;
+    const duration = formatDuration((distance / (speed[document.getElementById("transport_mode").value] || 60)) * 60);
+    durationCard.textContent = duration;
+    document.getElementById("travel_time").value = duration;
 }
 
 function setLoadingState(loading) {
-    const durCard = document.getElementById("duration_card");
-    const distCard = document.getElementById("distance_card");
-    if (loading) {
-        durCard.textContent = "Calculating…";
-        distCard.textContent = "Calculating…";
-        durCard.classList.add("loading");
-        distCard.classList.add("loading");
-    } else {
-        durCard.classList.remove("loading");
-        distCard.classList.remove("loading");
-    }
+    ["distance_card", "duration_card"].forEach(id => {
+        const card = document.getElementById(id);
+        card.classList.toggle("loading", loading);
+        if (loading) card.textContent = "Calculating…";
+    });
 }
 
-// --------------------
-// Fare hints
-// --------------------
-
-function updateBusFareHint() {
-    document.getElementById("bus_hint").textContent =
-        busHints[document.getElementById("bus_type").value];
+function updateFareHint(selectId, hintId) {
+    document.getElementById(hintId).textContent = fareHints[selectId][document.getElementById(selectId).value];
 }
-
-function updateTrainFareHint() {
-    document.getElementById("train_hint").textContent =
-        trainHints[document.getElementById("train_type").value];
-}
-
-function updateFlightFareHint() {
-    document.getElementById("flight_hint").textContent =
-        flightHints[document.getElementById("flight_type").value];
-}
-
-// --------------------
-// Transport mode
-// --------------------
+function updateBusFareHint() { updateFareHint("bus_type", "bus_hint"); }
+function updateTrainFareHint() { updateFareHint("train_type", "train_hint"); }
+function updateFlightFareHint() { updateFareHint("flight_type", "flight_hint"); }
 
 function onTransportChange() {
     const mode = document.getElementById("transport_mode").value;
-
-    document.getElementById("vehicle_section").style.display = "none";
-    document.getElementById("toll_section").style.display = "none";
-    document.getElementById("bus_options").style.display = "none";
-    document.getElementById("train_options").style.display = "none";
-    document.getElementById("flight_options").style.display = "none";
-
-    if (mode === "bike" || mode === "car") {
-        document.getElementById("vehicle_section").style.display = "block";
-        document.getElementById("toll_section").style.display = "block";
-        document.getElementById("fuel_section").style.display = "block";
-        document.getElementById("fuel_type_group").style.display = "block";
-        document.getElementById("mileage").value = 20;
+    ["vehicle_section", "toll_section", "fuel_section", "fuel_type_group", "bus_options", "train_options", "flight_options"].forEach(id => document.getElementById(id).style.display = "none");
+    if (["bike", "car"].includes(mode)) {
+        ["vehicle_section", "toll_section", "fuel_section", "fuel_type_group"].forEach(id => document.getElementById(id).style.display = "block");
+        document.getElementById("mileage").value ||= 20;
     }
-
-    if (mode === "bus") {
-        document.getElementById("bus_options").style.display = "block";
-        updateBusFareHint();
+    if (["bus", "train", "flight"].includes(mode)) {
+        document.getElementById(`${mode}_options`).style.display = "block";
+        ({ bus: updateBusFareHint, train: updateTrainFareHint, flight: updateFlightFareHint })[mode]();
     }
-    if (mode === "train") {
-        document.getElementById("train_options").style.display = "block";
-        updateTrainFareHint();
-    }
-    if (mode === "flight") {
-        document.getElementById("flight_options").style.display = "block";
-        updateFlightFareHint();
-    }
-
     updateTravelTime();
 }
 
 function toggleRentalCost() {
-    const vehicle = document.getElementById("vehicle_type").value;
-    const div = document.getElementById("rental_cost_div");
-    if (vehicle === "rental") {
-        div.style.display = "block";
-    } else {
-        div.style.display = "none";
-        document.getElementById("vehicle_rental_cost").value = 0;
-    }
+    const rental = document.getElementById("vehicle_type").value === "rental";
+    document.getElementById("rental_cost_div").style.display = rental ? "block" : "none";
+    if (!rental) document.getElementById("vehicle_rental_cost").value = 0;
 }
 
-// --------------------
-// GPS
-// --------------------
-
-function getUserLocation() {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-        function (position) {
-            userLat = position.coords.latitude;
-            userLon = position.coords.longitude;
-            document.getElementById("user_lat").value = userLat;
-            document.getElementById("user_lon").value = userLon;
-        },
-        function () { /* location denied — silent */ }
-    );
+async function useCurrentLocation() {
+    if (!navigator.geolocation) return alert("Your browser does not support location access.");
+    navigator.geolocation.getCurrentPosition(async position => {
+        try {
+            const response = await fetch(`/reverse_geocode?lat=${position.coords.latitude}&lon=${position.coords.longitude}`);
+            const data = await response.json();
+            if (!response.ok || !data.location) throw new Error(data.error);
+            document.getElementById("from_location").value = data.location;
+            calculateDistance();
+        } catch (error) { alert(error.message || "Could not identify your current location."); }
+    }, () => alert("Please enable location access to use GPS."));
 }
-
-function useCurrentLocation() {
-    navigator.geolocation.getCurrentPosition(async function (position) {
-        const lat = position.coords.latitude;
-        const lon = position.coords.longitude;
-        const response = await fetch(`/reverse_geocode?lat=${lat}&lon=${lon}`);
-        const data = await response.json();
-        const input = document.getElementById("from_location");
-        input.value = data.location;
-        input.dispatchEvent(new Event("change"));
-        calculateDistance();
-    }, function () {
-        alert("Please enable location access to use GPS.");
-    });
-}
-
-// --------------------
-// Distance API
-// --------------------
 
 async function calculateDistance() {
-    const from = document.getElementById("from_location").value;
-    const destination = document.getElementById("destination").value;
-
-    if (from === "" || destination === "") return;
-
+    const from = document.getElementById("from_location").value.trim();
+    const destination = document.getElementById("destination").value.trim();
+    if (!from || !destination) return;
     setLoadingState(true);
-
     try {
-        const response = await fetch(
-            `/get_distance?from=${encodeURIComponent(from)}&destination=${encodeURIComponent(destination)}`
-        );
+        const response = await fetch(`/get_distance?from=${encodeURIComponent(from)}&destination=${encodeURIComponent(destination)}`);
         const data = await response.json();
-
-        if (data.error) {
-            alert(data.error);
-            setLoadingState(false);
-            document.getElementById("duration_card").textContent = "—";
-            document.getElementById("distance_card").textContent = "—";
-            return;
-        }
-
-        oneWayDistance = data.distance;
+        if (!response.ok || data.error) throw new Error(data.error || "Unable to calculate this route.");
+        oneWayDistance = Number(data.distance);
         updateTravelTime();
-    } catch (err) {
-        alert("Could not calculate distance. Check your connection.");
-        document.getElementById("duration_card").textContent = "—";
+    } catch (error) {
+        oneWayDistance = 0;
+        document.getElementById("distance").value = "";
         document.getElementById("distance_card").textContent = "—";
-    }
+        document.getElementById("duration_card").textContent = "—";
+        alert(error.message || "Could not calculate distance. Check your connection.");
+    } finally { setLoadingState(false); }
 }
 
-document.getElementById("from_location").addEventListener("change", calculateDistance);
-document.getElementById("destination").addEventListener("change", calculateDistance);
-
-// --------------------
-// Location search
-// --------------------
-
 async function searchLocation(inputId, boxId) {
-    const query = document.getElementById(inputId).value;
-    if (query.length < 2) return;
-
-    const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`
-    );
-    const data = await response.json();
-
-    let html = "";
-    data.forEach(place => {
-        const safe = place.display_name.replace(/'/g, "\\'");
-        html += `<div class="suggestion-item"
-            onclick="selectLocation('${inputId}','${boxId}','${safe}')">
-            ${place.display_name}</div>`;
-    });
-
+    const query = document.getElementById(inputId).value.trim();
     const box = document.getElementById(boxId);
-    box.innerHTML = html;
-    box.style.display = html ? "block" : "none";
+    if (query.length < 2) { box.replaceChildren(); box.style.display = "none"; return; }
+    activeSearch?.abort(); activeSearch = new AbortController();
+    try {
+        const response = await fetch(`/location_suggestions?q=${encodeURIComponent(query)}`, { signal: activeSearch.signal });
+        const places = await response.json();
+        box.replaceChildren();
+        places.forEach(place => {
+            const item = document.createElement("button");
+            item.type = "button"; item.className = "suggestion-item"; item.textContent = place.label;
+            item.addEventListener("click", () => selectLocation(inputId, boxId, place.label));
+            box.appendChild(item);
+        });
+        box.style.display = places.length ? "block" : "none";
+    } catch (error) { if (error.name !== "AbortError") box.style.display = "none"; }
 }
 
 function selectLocation(inputId, boxId, value) {
@@ -348,21 +162,10 @@ function selectLocation(inputId, boxId, value) {
     document.getElementById(boxId).style.display = "none";
     calculateDistance();
 }
+function scheduleLocationSearch(inputId, boxId) { clearTimeout(searchTimer); searchTimer = setTimeout(() => searchLocation(inputId, boxId), 350); }
 
-document.getElementById("from_location").addEventListener("input", () => {
-    searchLocation("from_location", "from_suggestions");
-});
-document.getElementById("destination").addEventListener("input", () => {
-    searchLocation("destination", "destination_suggestions");
-});
-
-// --------------------
-// Page load
-// --------------------
-
-window.onload = function () {
-    getUserLocation();
-    onTransportChange();
-    toggleRentalCost();
-    updateStepUI();
-};
+document.getElementById("from_location").addEventListener("change", calculateDistance);
+document.getElementById("destination").addEventListener("change", calculateDistance);
+document.getElementById("from_location").addEventListener("input", () => scheduleLocationSearch("from_location", "from_suggestions"));
+document.getElementById("destination").addEventListener("input", () => scheduleLocationSearch("destination", "destination_suggestions"));
+window.onload = () => { onTransportChange(); toggleRentalCost(); updateStepUI(); };

@@ -1,232 +1,41 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trip Budget Report</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='result.css') }}">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ destination }} · Trip budget</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='result.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
-
-<div class="container">
-
-    <div id="report">
-        <h1>✈️ Travel Budget Report</h1>
-
-        <img src="{{ image_url }}" alt="{{ destination }}" class="trip-image">
-
-        <div class="result-card">
-            <h2>📍 {{ destination }}</h2>
-
-            <div class="summary-grid">
-                <div class="summary-item">
-                    <span>👥 Travelers</span>
-                    <strong>{{ travelers }}</strong>
-                </div>
-                <div class="summary-item">
-                    <span>🛣 Distance</span>
-                    <strong>{{ total_distance }} km</strong>
-                </div>
-                <div class="summary-item">
-                    <span>🚗 Transport</span>
-                    <strong>{{ transport_mode | capitalize }}</strong>
-                </div>
-                <div class="summary-item">
-                    <span>🕒 Travel Time</span>
-                    <strong>{{ travel_time }}</strong>
-                </div>
-                <div class="summary-item">
-                    <span>⛽ Fuel / Transport</span>
-                    <strong>₹{{ transport_cost }}</strong>
-                </div>
-                <div class="summary-item">
-                    <span>🍽 Food Cost</span>
-                    <strong>₹{{ food_cost }}</strong>
-                </div>
-                <div class="summary-item">
-                    <span>🏨 Room Cost</span>
-                    <strong>₹{{ room_cost }}</strong>
-                </div>
-                <div class="summary-item">
-                    <span>🚧 Toll Charges</span>
-                    <strong>₹{{ toll_charges }}</strong>
-                </div>
-                <div class="summary-item">
-                    <span>🅿 Parking Fee</span>
-                    <strong>₹{{ parking_fee }}</strong>
-                </div>
-                <div class="summary-item">
-                    <span>🎟 Entry Fees</span>
-                    <strong>₹{{ places_fee_total }}</strong>
-                </div>
-                {% if vehicle_type == 'rental' %}
-                <div class="summary-item">
-                    <span>🚗 Rental Cost</span>
-                    <strong>₹{{ vehicle_rental_cost }}</strong>
-                </div>
-                {% endif %}
-            </div>
-
-            <hr>
-
-            <h2>📊 Expense Breakdown</h2>
-            <div class="chart-container">
-                <canvas id="expenseChart"></canvas>
-            </div>
-
-            <hr>
-
-            <h2>🚍 Alternative Transport Costs</h2>
-            <div class="summary-grid">
-                <div class="summary-item">
-                    <span>🚌 Bus</span>
-                    <strong>₹{{ bus_cost }}</strong>
-                </div>
-                <div class="summary-item">
-                    <span>🚆 Train</span>
-                    <strong>₹{{ train_cost }}</strong>
-                </div>
-                <div class="summary-item">
-                    <span>✈️ Flight</span>
-                    <strong>₹{{ flight_cost }}</strong>
-                </div>
-            </div>
-
-            <div class="total-box">
-                <h2>💰 Total Budget</h2>
-                <h1>₹{{ total_budget }}</h1>
-                <p>Cost Per Person: <strong>₹{{ cost_per_person }}</strong></p>
-            </div>
-        </div>
+<main class="container">
+  <section id="report">
+    <header class="report-hero" style="--trip-image: url('{{ image_url }}')">
+      <div class="hero-copy"><p class="eyebrow">Your trip budget</p><h1>{{ destination }}</h1><div class="hero-meta"><span>{{ travelers }} traveler{{ '' if travelers == 1 else 's' }}</span><span>{{ total_distance }} km total</span><span>{{ transport_mode|capitalize }} · {{ travel_time }}</span></div></div>
+    </header>
+    <div class="result-card">
+      <div class="section-title"><h2>Trip at a glance</h2><p>Calculated from your itinerary</p></div>
+      <div class="summary-grid">
+        <div class="summary-item"><span>Travelers</span><strong>{{ travelers }}</strong></div><div class="summary-item"><span>Distance</span><strong>{{ total_distance }} km</strong></div><div class="summary-item"><span>Transport</span><strong>{{ transport_mode|capitalize }}</strong></div><div class="summary-item"><span>Travel time</span><strong>{{ travel_time }}</strong></div>
+      </div>
+      <hr class="report-divider">
+      <div class="insights"><div><div class="section-title"><h2>Where your money goes</h2><p>Expense breakdown</p></div><div class="chart-container"><canvas id="expenseChart"></canvas></div></div><div class="total-box"><h2>Total estimated budget</h2><h1>₹{{ '%.2f'|format(total_budget) }}</h1><p>₹{{ '%.2f'|format(cost_per_person) }} per traveler</p></div></div>
+      <hr class="report-divider">
+      <div class="section-title"><h2>Expense details</h2><p>Adjust your plan any time</p></div>
+      <div class="summary-grid">
+        <div class="summary-item"><span>Transport / fuel</span><strong>₹{{ '%.2f'|format(transport_cost) }}</strong></div><div class="summary-item"><span>Food</span><strong>₹{{ '%.2f'|format(food_cost) }}</strong></div><div class="summary-item"><span>Stay</span><strong>₹{{ '%.2f'|format(room_cost) }}</strong></div><div class="summary-item"><span>Tolls</span><strong>₹{{ '%.2f'|format(toll_charges) }}</strong></div><div class="summary-item"><span>Parking</span><strong>₹{{ '%.2f'|format(parking_fee) }}</strong></div><div class="summary-item"><span>Entry fees</span><strong>₹{{ '%.2f'|format(places_fee_total) }}</strong></div>{% if vehicle_type == 'rental' %}<div class="summary-item"><span>Vehicle rental</span><strong>₹{{ '%.2f'|format(vehicle_rental_cost) }}</strong></div>{% endif %}
+      </div>
+      <hr class="report-divider"><div class="section-title"><h2>Compare transport options</h2><p>For the same trip distance</p></div>
+      <div class="summary-grid"><div class="summary-item"><span>Bus</span><strong>₹{{ '%.2f'|format(bus_cost) }}</strong></div><div class="summary-item"><span>Train</span><strong>₹{{ '%.2f'|format(train_cost) }}</strong></div><div class="summary-item"><span>Flight</span><strong>₹{{ '%.2f'|format(flight_cost) }}</strong></div></div>
     </div>
-
-    <div class="button-group">
-        <button onclick="shareReport()">📤 Share Report</button>
-        <button onclick="window.print()">📄 Download PDF</button>
-        <button onclick="openRoute()">🗺 Show Route</button>
-    </div>
-
-    <div class="action-center">
-        {% if edit_mode %}
-        <form action="/update_trip" method="POST" class="save-trip-container">
-            <input type="hidden" name="from_result" value="1">
-            <input type="hidden" name="trip_id" value="{{ trip_id }}">
-        {% else %}
-        <form action="/save_trips" method="POST" class="save-trip-container">
-            <input type="hidden" name="from_result" value="1">
-        {% endif %}
-            <input type="hidden" name="destination" value="{{ destination }}">
-            <input type="hidden" name="travelers" value="{{ travelers }}">
-            <input type="hidden" name="total_distance" value="{{ total_distance }}">
-            <input type="hidden" name="transport_mode" value="{{ transport_mode }}">
-            <input type="hidden" name="transport_cost" value="{{ transport_cost }}">
-            <input type="hidden" name="fuel_type" value="{{ fuel_type }}">
-            <input type="hidden" name="fuel_price" value="{{ fuel_price }}">
-            <input type="hidden" name="fuel_cost" value="{{ fuel_cost }}">
-            <input type="hidden" name="food_cost" value="{{ food_cost }}">
-            <input type="hidden" name="room_cost" value="{{ room_cost }}">
-            <input type="hidden" name="toll_charges" value="{{ toll_charges }}">
-            <input type="hidden" name="parking_fee" value="{{ parking_fee }}">
-            <input type="hidden" name="vehicle_type" value="{{ vehicle_type }}">
-            <input type="hidden" name="vehicle_rental_cost" value="{{ vehicle_rental_cost }}">
-            <input type="hidden" name="places_fee_total" value="{{ places_fee_total }}">
-            <input type="hidden" name="total_budget" value="{{ total_budget }}">
-            <input type="hidden" name="cost_per_person" value="{{ cost_per_person }}">
-            {% if edit_mode %}
-            <button type="submit">🔄 Update Trip</button>
-            {% else %}
-            <button type="submit">💾 Save Trip</button>
-            {% endif %}
-        </form>
-    </div>
-
-    <a href="/planner" class="back-btn">⬅ Plan Another Trip</a>
-</div>
-
+  </section>
+  <div class="button-group"><button type="button" onclick="shareReport()">Share report</button><button type="button" onclick="window.print()">Print / save PDF</button><button type="button" onclick="openRoute()">Open route</button></div>
+  <div class="action-center"><form action="{{ '/update_trip' if edit_mode else '/save_trips' }}" method="post" class="save-trip-container"><input type="hidden" name="from_result" value="1">{% if edit_mode %}<input type="hidden" name="trip_id" value="{{ trip_id }}">{% endif %}<input type="hidden" name="destination" value="{{ destination }}"><input type="hidden" name="travelers" value="{{ travelers }}"><input type="hidden" name="total_distance" value="{{ total_distance }}"><input type="hidden" name="transport_mode" value="{{ transport_mode }}"><input type="hidden" name="transport_cost" value="{{ transport_cost }}"><input type="hidden" name="fuel_type" value="{{ fuel_type }}"><input type="hidden" name="fuel_price" value="{{ fuel_price }}"><input type="hidden" name="fuel_cost" value="{{ fuel_cost }}"><input type="hidden" name="food_cost" value="{{ food_cost }}"><input type="hidden" name="room_cost" value="{{ room_cost }}"><input type="hidden" name="toll_charges" value="{{ toll_charges }}"><input type="hidden" name="parking_fee" value="{{ parking_fee }}"><input type="hidden" name="vehicle_type" value="{{ vehicle_type }}"><input type="hidden" name="vehicle_rental_cost" value="{{ vehicle_rental_cost }}"><input type="hidden" name="places_fee_total" value="{{ places_fee_total }}"><input type="hidden" name="total_budget" value="{{ total_budget }}"><input type="hidden" name="cost_per_person" value="{{ cost_per_person }}"><button type="submit">{{ 'Update saved trip' if edit_mode else 'Save this trip' }}</button></form></div>
+  <a class="back-btn" href="/planner">Plan another trip</a>
+</main>
 <script>
-const expenses = {
-    transport: {{ transport_cost }},
-    food: {{ food_cost }},
-    room: {{ room_cost }},
-    toll: {{ toll_charges }},
-    parking: {{ parking_fee }},
-    entry: {{ places_fee_total }},
-    rental: {{ vehicle_rental_cost if vehicle_type == 'rental' else 0 }}
-};
-
-const labels = [];
-const values = [];
-const colors = ['#4f46e5','#22c55e','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899'];
-const colorMap = {
-    transport: colors[0], food: colors[1], room: colors[2],
-    toll: colors[3], parking: colors[4], entry: colors[5], rental: colors[6]
-};
-const nameMap = {
-    transport: 'Transport/Fuel', food: 'Food', room: 'Room',
-    toll: 'Toll', parking: 'Parking', entry: 'Entry Fees', rental: 'Rental'
-};
-
-Object.entries(expenses).forEach(([key, val]) => {
-    if (val > 0) { labels.push(nameMap[key]); values.push(val); }
-});
-
-if (values.length > 0) {
-    new Chart(document.getElementById('expenseChart'), {
-        type: 'doughnut',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: values,
-                backgroundColor: labels.map((_, i) => colors[i % colors.length]),
-                borderWidth: 2,
-                borderColor: '#fff'
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: { position: 'bottom' }
-            }
-        }
-    });
-}
-
-function shareReport() {
-    const report = `Travel Budget Report
-
-Destination: {{ destination }}
-Travelers: {{ travelers }}
-Distance: {{ total_distance }} km
-Transport: ₹{{ transport_cost }}
-Food Cost: ₹{{ food_cost }}
-Room Cost: ₹{{ room_cost }}
-Toll Charges: ₹{{ toll_charges }}
-Parking Fee: ₹{{ parking_fee }}
-Total Budget: ₹{{ total_budget }}
-Cost Per Person: ₹{{ cost_per_person }}`;
-
-    if (navigator.share) {
-        navigator.share({ title: 'Travel Budget Report', text: report });
-    } else {
-        navigator.clipboard.writeText(report);
-        alert('Report copied to clipboard!');
-    }
-}
-
-function openRoute() {
-    navigator.geolocation.getCurrentPosition(function(position) {
-        const lat = position.coords.latitude;
-        const lon = position.coords.longitude;
-        const dest = encodeURIComponent('{{ destination }}');
-        window.open(`https://www.google.com/maps/dir/${lat},${lon}/${dest}`, '_blank');
-    }, function() {
-        const dest = encodeURIComponent('{{ destination }}');
-        window.open(`https://www.google.com/maps/search/${dest}`, '_blank');
-    });
-}
+const expenses={Transport:{{ transport_cost }},Food:{{ food_cost }},Stay:{{ room_cost }},Tolls:{{ toll_charges }},Parking:{{ parking_fee }},"Entry fees":{{ places_fee_total }},Rental:{{ vehicle_rental_cost if vehicle_type == 'rental' else 0 }}};const values=Object.entries(expenses).filter(([,v])=>v>0);if(values.length)new Chart(document.getElementById('expenseChart'),{type:'doughnut',data:{labels:values.map(([k])=>k),datasets:[{data:values.map(([,v])=>v),backgroundColor:['#0b766d','#3c82c7','#f0a74d','#e66d65','#865ec1','#2aa9ad','#e890ba'],borderWidth:0}]},options:{plugins:{legend:{position:'bottom'}}}});
+function shareReport(){const text=`Trip budget for {{ destination }}: ₹{{ '%.2f'|format(total_budget) }} total (₹{{ '%.2f'|format(cost_per_person) }} per person).`;navigator.share?navigator.share({title:'Travel budget',text}):navigator.clipboard.writeText(text).then(()=>alert('Budget summary copied.'));}function openRoute(){window.open(`https://www.google.com/maps/search/${encodeURIComponent('{{ destination }}')}`,'_blank');}
 </script>
-
-</body>
-</html>
+</body></html>
