@@ -288,6 +288,22 @@ waitress-serve --host=0.0.0.0 --port=$env:PORT app:app
 The included `Procfile` uses the same production command. Set `ORS_API_KEY` only
 when you want OpenRouteService; otherwise OSRM supplies the route estimate.
 
+### Google Maps setup
+
+Set these environment variables before starting the app:
+
+```powershell
+$env:GOOGLE_DIRECTIONS_API_KEY = "your-server-directions-key"
+$env:GOOGLE_PLACES_API_KEY = "your-server-places-key"
+$env:GOOGLE_MAPS_JS_API_KEY = "your-browser-maps-key"
+```
+
+Enable Directions API, Places API, and Maps JavaScript API in the same Google
+Cloud project. Restrict the browser key to your site URL (and `localhost` while
+developing); restrict the Directions and Places keys to your production server's
+outbound IP address. The app falls back to public routing/search if these values
+are not set.
+
 ---
 
 ## 📄 License

@@ -124,6 +124,8 @@
       </div>
     </div>
 
+    {% if google_maps_js_api_key %}<div id="route_map" class="route-map" aria-label="Route map preview"></div>{% endif %}
+
     <div class="field-group animate-in" style="--delay:0.2s">
       <div class="location-row">
         <input type="text" id="from_location" name="from_location"
@@ -230,5 +232,8 @@
 </div>
 
 <script src="{{ url_for('static', filename='script.js') }}"></script>
+{% if google_maps_js_api_key %}
+<script async defer src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_js_api_key }}&libraries=places&callback=initGooglePlaces"></script>
+{% endif %}
 </body>
 </html>

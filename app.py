@@ -5,6 +5,9 @@ import requests
 from flask import Flask, jsonify, redirect, render_template, request
 
 ORS_API_KEY = os.environ.get("ORS_API_KEY")
+GOOGLE_DIRECTIONS_API_KEY = os.environ.get("GOOGLE_DIRECTIONS_API_KEY")
+GOOGLE_MAPS_JS_API_KEY = os.environ.get("GOOGLE_MAPS_JS_API_KEY")
+GOOGLE_PLACES_API_KEY = os.environ.get("GOOGLE_PLACES_API_KEY")
 
 app = Flask(__name__)
 
@@ -273,7 +276,11 @@ def landing():
 
 @app.route("/planner")
 def planner():
-    return render_template("index.html", edit_mode=False)
+    return render_template(
+        "index.html",
+        edit_mode=False,
+        google_maps_js_api_key=GOOGLE_MAPS_JS_API_KEY,
+    )
 
 
 @app.route("/trips")
@@ -358,6 +365,34 @@ def update_trip():
 def get_distance():
     from_place = request.args.get("from", "").strip()
     destination = request.args.get("destination", "").strip()
+    # The Google Directions API gives the most accurate road result when the
+    # deployment has a restricted server key. Keep OSRM as a no-key fallback.
+    if GOOGLE_DIRECTIONS_API_KEY:
+        try:
+            response = requests.get(
+                "https://maps.googleapis.com/maps/api/directions/json",
+                params={
+                    "origin": from_place,
+                    "destination": destination,
+                    "mode": "driving",
+                    "key": GOOGLE_DIRECTIONS_API_KEY,
+                },
+                timeout=15,
+            )
+            response.raise_for_status()
+            route = response.json().get("routes", [None])[0]
+            leg = route["legs"][0] if route else None
+            if not leg:
+                raise ValueError("No route found")
+            return jsonify({
+                "distance": round(leg["distance"]["value"] / 1000, 2),
+                "duration": round(leg["duration"]["value"] / 3600, 2),
+            })
+        except (requests.RequestException, KeyError, IndexError, TypeError, ValueError):
+            # Continue to the public fallback if the Google key is restricted,
+            # unavailable, or has no route for this journey.
+            pass
+
     try:
         start = geocode(from_place)
         end = geocode(destination)
@@ -407,6 +442,22 @@ def location_suggestions():
     query = request.args.get("q", "").strip()
     if len(query) < 2:
         return jsonify([])
+    if GOOGLE_PLACES_API_KEY:
+        try:
+            response = requests.get(
+                "https://maps.googleapis.com/maps/api/place/autocomplete/json",
+                params={"input": query, "key": GOOGLE_PLACES_API_KEY, "components": "country:in"},
+                timeout=10,
+            )
+            response.raise_for_status()
+            predictions = response.json().get("predictions", [])
+            if predictions:
+                return jsonify([
+                    {"label": prediction["description"]}
+                    for prediction in predictions[:5]
+                ])
+        except requests.RequestException:
+            pass
     try:
         response = requests.get(
             "https://nominatim.openstreetmap.org/search",

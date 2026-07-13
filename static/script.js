@@ -3,6 +3,9 @@ let currentStep = 1;
 const totalSteps = 3;
 let searchTimer;
 let activeSearch;
+let routeMap;
+let directionsService;
+let directionsRenderer;
 
 const fareHints = {
     bus_type: { "0.835": "Rate used: ₹0.84/km per person", "1.90": "Rate used: ₹1.90/km per person", "2.00": "Rate used: ₹2.00/km per person", "3.25": "Rate used: ₹3.25/km per person" },
@@ -129,6 +132,7 @@ async function calculateDistance() {
         if (!response.ok || data.error) throw new Error(data.error || "Unable to calculate this route.");
         oneWayDistance = Number(data.distance);
         updateTravelTime();
+        drawRoutePreview(from, destination);
     } catch (error) {
         oneWayDistance = 0;
         document.getElementById("distance").value = "";
@@ -136,6 +140,40 @@ async function calculateDistance() {
         document.getElementById("duration_card").textContent = "—";
         alert(error.message || "Could not calculate distance. Check your connection.");
     } finally { setLoadingState(false); }
+}
+
+// Called by the optional Maps JavaScript API. The custom suggestion list still
+// works when the browser key is not configured.
+function initGooglePlaces() {
+    if (!window.google?.maps?.places) return;
+    ["from_location", "destination"].forEach(id => {
+        const input = document.getElementById(id);
+        const autocomplete = new google.maps.places.Autocomplete(input, {
+            componentRestrictions: { country: "in" },
+            fields: ["formatted_address", "name", "geometry"]
+        });
+        autocomplete.addListener("place_changed", () => {
+            const place = autocomplete.getPlace();
+            input.value = place.formatted_address || place.name || input.value;
+            document.getElementById(id === "from_location" ? "from_suggestions" : "destination_suggestions").style.display = "none";
+            calculateDistance();
+        });
+    });
+}
+
+function drawRoutePreview(origin, destination) {
+    if (!window.google?.maps?.DirectionsService) return;
+    const mapElement = document.getElementById("route_map");
+    if (!mapElement) return;
+    if (!routeMap) {
+        routeMap = new google.maps.Map(mapElement, { center: { lat: 20.5937, lng: 78.9629 }, zoom: 5, mapTypeControl: false, streetViewControl: false });
+        directionsService = new google.maps.DirectionsService();
+        directionsRenderer = new google.maps.DirectionsRenderer({ map: routeMap, suppressMarkers: false });
+    }
+    directionsService.route({ origin, destination, travelMode: google.maps.TravelMode.DRIVING }, (result, status) => {
+        if (status === "OK") { directionsRenderer.setDirections(result); mapElement.style.display = "block"; }
+        else { mapElement.style.display = "none"; }
+    });
 }
 
 async function searchLocation(inputId, boxId) {
@@ -166,6 +204,6 @@ function scheduleLocationSearch(inputId, boxId) { clearTimeout(searchTimer); sea
 
 document.getElementById("from_location").addEventListener("change", calculateDistance);
 document.getElementById("destination").addEventListener("change", calculateDistance);
-document.getElementById("from_location").addEventListener("input", () => scheduleLocationSearch("from_location", "from_suggestions"));
-document.getElementById("destination").addEventListener("input", () => scheduleLocationSearch("destination", "destination_suggestions"));
+document.getElementById("from_location").addEventListener("input", () => { if (!window.google?.maps?.places) scheduleLocationSearch("from_location", "from_suggestions"); });
+document.getElementById("destination").addEventListener("input", () => { if (!window.google?.maps?.places) scheduleLocationSearch("destination", "destination_suggestions"); });
 window.onload = () => { onTransportChange(); toggleRentalCost(); updateStepUI(); };
