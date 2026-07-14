@@ -35,7 +35,7 @@ if round_trip == "yes":
 else:
     total_distance = distance
 
-#calculation for trip budget
+#calculation for trip budgetz
 
 fuel_cost = total_distance/mileage*fuel_price
 total_budget = (fuel_cost
