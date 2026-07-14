@@ -28,6 +28,9 @@
       </div>
       <hr class="report-divider"><div class="section-title"><h2>Compare transport options</h2><p>For the same trip distance</p></div>
       <div class="summary-grid"><div class="summary-item"><span>Bus</span><strong>₹{{ '%.2f'|format(bus_cost) }}</strong></div><div class="summary-item"><span>Train</span><strong>₹{{ '%.2f'|format(train_cost) }}</strong></div><div class="summary-item"><span>Flight</span><strong>₹{{ '%.2f'|format(flight_cost) }}</strong></div></div>
+      <hr class="report-divider"><div class="section-title"><h2>Eco & economy guide</h2><p>Estimated impact for {{ total_distance }} km</p></div>
+      <div class="recommendations"><div class="recommendation eco-recommendation"><span>Most eco-friendly</span><strong>{{ eco_choice.label }}</strong><small>{{ eco_choice.emissions }} kg CO₂e estimated</small></div><div class="recommendation economy-recommendation"><span>Most economical</span><strong>{{ economy_choice.label }}</strong><small>₹{{ '%.2f'|format(economy_choice.cost) }} estimated transport cost</small></div></div>
+      <div class="impact-table-wrap"><table class="impact-table"><thead><tr><th>Transport</th><th>Estimated cost</th><th>CO₂e pollution</th></tr></thead><tbody>{% for option in mode_impacts %}<tr class="{% if option.mode == transport_mode %}selected-mode{% endif %}"><td>{{ option.label }}{% if option.mode == transport_mode %}<small>Your choice</small>{% endif %}</td><td>₹{{ '%.2f'|format(option.cost) }}</td><td>{{ option.emissions }} kg</td></tr>{% endfor %}</tbody></table></div>
     </div>
   </section>
   <div class="button-group"><button type="button" onclick="shareReport()">Share report</button><button type="button" onclick="window.print()">Print / save PDF</button><button type="button" onclick="openRoute()">Open route</button></div>

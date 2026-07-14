@@ -117,7 +117,7 @@ def calculate_emissions(distance, transport_mode):
     """Estimate kg CO2e for this trip; values are per passenger-kilometre."""
     factors = {
         "walk": 0,
-        "bike": 0,
+        "bike": 0.103,
         "car": 0.192,
         "bus": 0.105,
         "train": 0.041,
@@ -205,6 +205,25 @@ def trip_from_form():
     emissions_kg = calculate_emissions(total_distance, transport_mode)
     # A simple, distance-sensitive impact indicator: 100 kg CO2e equals 100%.
     pollution_percent = min(round(emissions_kg, 1), 100)
+    comparison_costs = {
+        "walk": 0,
+        "bike": round((total_distance / (mileage or 45)) * fuel_price, 2),
+        "car": round((total_distance / (mileage or 15)) * fuel_price, 2),
+        "bus": round(bus_cost, 2),
+        "train": round(train_cost, 2),
+        "flight": round(flight_cost, 2),
+    }
+    mode_impacts = [
+        {
+            "mode": mode,
+            "label": mode.capitalize(),
+            "cost": comparison_costs[mode],
+            "emissions": calculate_emissions(total_distance, mode),
+        }
+        for mode in ("walk", "bike", "car", "bus", "train", "flight")
+    ]
+    eco_choice = min(mode_impacts, key=lambda item: item["emissions"])
+    economy_choice = min(mode_impacts, key=lambda item: item["cost"])
 
     return {
         "from_location": from_location,
@@ -230,6 +249,9 @@ def trip_from_form():
         "travel_time": travel_time,
         "emissions_kg": emissions_kg,
         "pollution_percent": pollution_percent,
+        "mode_impacts": mode_impacts,
+        "eco_choice": eco_choice,
+        "economy_choice": economy_choice,
         "bus_cost": round(bus_cost, 2),
         "train_cost": round(train_cost, 2),
         "flight_cost": round(flight_cost, 2),
