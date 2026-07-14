@@ -2,7 +2,7 @@ import os
 import sqlite3
 
 import requests
-from flask import Flask, jsonify, redirect, render_template, request
+from flask import Flask, Response, jsonify, redirect, render_template, request, url_for
 
 ORS_API_KEY = os.environ.get("ORS_API_KEY")
 GOOGLE_DIRECTIONS_API_KEY = os.environ.get("GOOGLE_DIRECTIONS_API_KEY")
@@ -558,6 +558,83 @@ def location_suggestions():
         return jsonify((local_matches + results)[:5])
     except requests.RequestException:
         return jsonify(local_matches)
+
+
+def find_attractions(coordinates, radius=15000):
+    if not GOOGLE_PLACES_API_KEY or not coordinates:
+        return []
+    try:
+        response = requests.get(
+            "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+            params={
+                "location": f"{coordinates[1]},{coordinates[0]}",
+                "radius": radius,
+                "type": "tourist_attraction",
+                "key": GOOGLE_PLACES_API_KEY,
+            },
+            timeout=12,
+        )
+        response.raise_for_status()
+        return [
+            {
+                "name": place.get("name", "Nearby attraction"),
+                "address": place.get("vicinity", "India"),
+                "rating": place.get("rating"),
+                "photo": place.get("photos", [{}])[0].get("photo_reference", ""),
+            }
+            for place in response.json().get("results", [])[:6]
+        ]
+    except requests.RequestException:
+        return []
+
+
+@app.route("/nearby_attractions")
+def nearby_attractions():
+    destination = request.args.get("destination", "")
+    origin = request.args.get("from", "")
+    try:
+        destination_coordinates = geocode(destination)
+        origin_coordinates = geocode(origin) if origin else None
+    except requests.RequestException:
+        return jsonify({"destination": [], "on_the_way": []}), 503
+
+    destination_places = find_attractions(destination_coordinates)
+    on_the_way = []
+    if origin_coordinates and destination_coordinates:
+        midpoint = (
+            (origin_coordinates[0] + destination_coordinates[0]) / 2,
+            (origin_coordinates[1] + destination_coordinates[1]) / 2,
+        )
+        on_the_way = find_attractions(midpoint, radius=25000)
+
+    for group in (destination_places, on_the_way):
+        for place in group:
+            reference = place.pop("photo", "")
+            place["image_url"] = (
+                url_for("place_photo", reference=reference) if reference else ""
+            )
+    return jsonify({"destination": destination_places, "on_the_way": on_the_way})
+
+
+@app.route("/place_photo")
+def place_photo():
+    reference = request.args.get("reference", "")
+    if not GOOGLE_PLACES_API_KEY or not reference or len(reference) > 500:
+        return "", 404
+    try:
+        photo = requests.get(
+            "https://maps.googleapis.com/maps/api/place/photo",
+            params={"maxwidth": 520, "photoreference": reference, "key": GOOGLE_PLACES_API_KEY},
+            timeout=15,
+        )
+        photo.raise_for_status()
+        return Response(
+            photo.content,
+            content_type=photo.headers.get("Content-Type", "image/jpeg"),
+            headers={"Cache-Control": "public, max-age=86400"},
+        )
+    except requests.RequestException:
+        return "", 404
 
 
 @app.route("/estimate_stay_costs")

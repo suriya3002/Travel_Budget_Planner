@@ -304,6 +304,14 @@ developing); restrict the Directions and Places keys to your production server's
 outbound IP address. The app falls back to public routing/search if these values
 are not set.
 
+### Open the site from another network
+
+For devices on the same Wi-Fi, start the app normally and open
+`http://YOUR-COMPUTER-IP:5000` from the other device. Allow Python through the
+Windows firewall if prompted. For access outside your network, deploy the app
+with the included `Procfile` to a HTTPS-capable host; do not expose a local
+development server directly to the internet.
+
 ---
 
 ## 📄 License
