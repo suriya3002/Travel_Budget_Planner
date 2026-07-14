@@ -415,6 +415,16 @@
     margin-top: 8px;
 }
 
+.stay-estimate {
+    margin: -6px 0 20px;
+    padding: 11px 13px;
+    border-left: 3px solid #4ade80;
+    border-radius: 8px;
+    background: rgba(74, 222, 128, .1);
+    color: rgba(255,255,255,.82);
+    font-size: 12px;
+}
+
 /* ===== Suggestions ===== */
 .suggestions {
     position: relative;

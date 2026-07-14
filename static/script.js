@@ -149,6 +149,19 @@ async function calculateDistance() {
     } finally { setLoadingState(false); }
 }
 
+async function estimateStayCosts() {
+    const destination = document.getElementById("destination").value.trim();
+    if (!destination) return;
+    try {
+        const response = await fetch(`/estimate_stay_costs?destination=${encodeURIComponent(destination)}`);
+        const estimate = await response.json();
+        if (!response.ok) return;
+        document.getElementById("food_cost_per_person").value = estimate.food;
+        document.getElementById("room_cost").value = estimate.room;
+        document.getElementById("stay_estimate").textContent = `${estimate.tier}: suggested ₹${estimate.food}/person/day for food and ₹${estimate.room}/day for a room. You can edit both.`;
+    } catch (_) { /* Keep existing values when estimates are unavailable. */ }
+}
+
 // Called by the optional Maps JavaScript API. The custom suggestion list still
 // works when the browser key is not configured.
 function initGooglePlaces() {
@@ -164,6 +177,7 @@ function initGooglePlaces() {
             const place = autocomplete.getPlace();
             input.value = place.formatted_address || place.name || input.value;
             document.getElementById(id === "from_location" ? "from_suggestions" : "destination_suggestions").style.display = "none";
+            if (id === "destination") estimateStayCosts();
             calculateDistance();
         });
     });
@@ -211,12 +225,13 @@ async function searchLocation(inputId, boxId) {
 function selectLocation(inputId, boxId, value) {
     document.getElementById(inputId).value = value;
     document.getElementById(boxId).style.display = "none";
+    if (inputId === "destination") estimateStayCosts();
     calculateDistance();
 }
 function scheduleLocationSearch(inputId, boxId) { clearTimeout(searchTimer); searchTimer = setTimeout(() => searchLocation(inputId, boxId), 350); }
 
 document.getElementById("from_location").addEventListener("change", calculateDistance);
-document.getElementById("destination").addEventListener("change", calculateDistance);
+document.getElementById("destination").addEventListener("change", () => { calculateDistance(); estimateStayCosts(); });
 document.getElementById("from_location").addEventListener("input", () => { if (!window.google?.maps?.places) scheduleLocationSearch("from_location", "from_suggestions"); });
 document.getElementById("destination").addEventListener("input", () => { if (!window.google?.maps?.places) scheduleLocationSearch("destination", "destination_suggestions"); });
 window.onload = () => { onTransportChange(); toggleRentalCost(); updateStepUI(); };

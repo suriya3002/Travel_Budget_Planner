@@ -22,6 +22,18 @@ INDIAN_CITY_SUGGESTIONS = (
     "Thiruvananthapuram, Kerala, India", "Varanasi, Uttar Pradesh, India",
 )
 
+
+def location_cost_estimate(destination):
+    """Daily INR budget estimate by destination tier; users can edit it."""
+    place = (destination or "").lower()
+    premium = ("mumbai", "delhi", "bengaluru", "goa", "manali", "munnar", "shimla")
+    mid_range = ("chennai", "hyderabad", "kolkata", "pune", "jaipur", "kochi", "agra", "mysuru")
+    if any(city in place for city in premium):
+        return {"food": 900, "room": 3500, "tier": "Popular / premium destination"}
+    if any(city in place for city in mid_range):
+        return {"food": 700, "room": 2500, "tier": "City / tourist destination"}
+    return {"food": 550, "room": 1800, "tier": "Standard India estimate"}
+
 app = Flask(__name__)
 
 
@@ -135,6 +147,7 @@ def trip_from_form():
     destination = request.form.get("destination", "")
     from_location = request.form.get("from_location", "")
     distance = get_float("distance")
+    trip_days = max(get_int("trip_days"), 1)
     round_trip = request.form.get("round_trip", "no")
     total_distance = distance * 2 if round_trip == "yes" else distance
 
@@ -171,7 +184,7 @@ def trip_from_form():
     flight_cost = total_distance * 4.75 * travelers
 
     food_cost_per_person = get_float("food_cost_per_person")
-    room_cost = get_float("room_cost")
+    room_cost_per_day = get_float("room_cost")
 
     if transport_mode == "car":
         if distance <= 100:
@@ -185,7 +198,8 @@ def trip_from_form():
     else:
         toll_charges = 0
 
-    food_cost = food_cost_per_person * travelers
+    food_cost = food_cost_per_person * travelers * trip_days
+    room_cost = room_cost_per_day * trip_days
     places_fee_total = places_to_visit * per_places_entry_fee
     total_budget = (
         transport_cost
@@ -231,6 +245,7 @@ def trip_from_form():
         "destination": destination,
         "destination_short": short_location(destination),
         "travelers": travelers,
+        "trip_days": trip_days,
         "total_distance": round(total_distance, 2),
         "transport_mode": transport_mode,
         "transport_cost": round(transport_cost, 2),
@@ -543,6 +558,11 @@ def location_suggestions():
         return jsonify((local_matches + results)[:5])
     except requests.RequestException:
         return jsonify(local_matches)
+
+
+@app.route("/estimate_stay_costs")
+def estimate_stay_costs():
+    return jsonify(location_cost_estimate(request.args.get("destination", "")))
 
 
 @app.route("/reverse_geocode")
