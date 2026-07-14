@@ -12,12 +12,12 @@
 <main class="container">
   <section id="report">
     <header class="report-hero" style="--trip-image: url('{{ image_url }}')">
-      <div class="hero-copy"><p class="eyebrow">Your trip budget</p><h1>{{ destination }}</h1><div class="hero-meta"><span>{{ travelers }} traveler{{ '' if travelers == 1 else 's' }}</span><span>{{ total_distance }} km total</span><span>{{ transport_mode|capitalize }} · {{ travel_time }}</span></div></div>
+      <div class="hero-copy"><p class="eyebrow">Your trip budget</p><h1>{{ destination_short }}</h1><div class="hero-meta"><span>{{ from_short }} → {{ destination_short }}</span><span>{{ travelers }} traveler{{ '' if travelers == 1 else 's' }}</span><span>{{ total_distance }} km total</span><span>{{ transport_mode|capitalize }} · {{ travel_time }}</span></div></div>
     </header>
     <div class="result-card">
       <div class="section-title"><h2>Trip at a glance</h2><p>Calculated from your itinerary</p></div>
       <div class="summary-grid">
-        <div class="summary-item"><span>Travelers</span><strong>{{ travelers }}</strong></div><div class="summary-item"><span>Distance</span><strong>{{ total_distance }} km</strong></div><div class="summary-item"><span>Transport</span><strong>{{ transport_mode|capitalize }}</strong></div><div class="summary-item"><span>Travel time</span><strong>{{ travel_time }}</strong></div>
+        <div class="summary-item route-summary"><span>Route</span><strong>{{ from_short }} → {{ destination_short }}</strong></div><div class="summary-item"><span>Distance</span><strong>{{ total_distance }} km</strong></div><div class="summary-item"><span>Transport</span><strong>{{ transport_mode|capitalize }}</strong></div><div class="summary-item"><span>Travel time</span><strong>{{ travel_time }}</strong></div><div class="summary-item pollution-summary"><span>Estimated CO₂e</span><strong>{{ emissions_kg }} kg</strong><small>for this {{ total_distance }} km trip</small></div>
       </div>
       <hr class="report-divider">
       <div class="insights"><div><div class="section-title"><h2>Where your money goes</h2><p>Expense breakdown</p></div><div class="chart-container"><canvas id="expenseChart"></canvas></div></div><div class="total-box"><h2>Total estimated budget</h2><h1>₹{{ '%.2f'|format(total_budget) }}</h1><p>₹{{ '%.2f'|format(cost_per_person) }} per traveler</p></div></div>

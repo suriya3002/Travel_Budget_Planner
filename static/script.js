@@ -6,13 +6,14 @@ let activeSearch;
 let routeMap;
 let directionsService;
 let directionsRenderer;
+const placeAutocompletes = [];
 
 const fareHints = {
     bus_type: { "0.835": "Rate used: ₹0.84/km per person", "1.90": "Rate used: ₹1.90/km per person", "2.00": "Rate used: ₹2.00/km per person", "3.25": "Rate used: ₹3.25/km per person" },
     train_type: { "0.40": "Rate used: ₹0.40/km per person", "0.65": "Rate used: ₹0.65/km per person", "1.80": "Rate used: ₹1.80/km per person", "2.50": "Rate used: ₹2.50/km per person", "3.10": "Rate used: ₹3.10/km per person", "4.00": "Rate used: ₹4.00/km per person" },
     flight_type: { "4.75": "Rate used: ₹4.75/km per person", "7.00": "Rate used: ₹7.00/km per person", "14.00": "Rate used: ₹14.00/km per person", "27.50": "Rate used: ₹27.50/km per person" }
 };
-const speed = { walk: 5, bike: 45, car: 70, bus: 50, train: 80, flight: 700 };
+const speed = { walk: 5, bike: 80, car: 100, bus: 90, train: 110, flight: 800 };
 
 function changeStep(direction) {
     const next = currentStep + direction;
@@ -152,6 +153,7 @@ function initGooglePlaces() {
             componentRestrictions: { country: "in" },
             fields: ["formatted_address", "name", "geometry"]
         });
+        placeAutocompletes.push(autocomplete);
         autocomplete.addListener("place_changed", () => {
             const place = autocomplete.getPlace();
             input.value = place.formatted_address || place.name || input.value;
@@ -159,6 +161,11 @@ function initGooglePlaces() {
             calculateDistance();
         });
     });
+    navigator.geolocation?.getCurrentPosition(position => {
+        const point = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+        const bounds = new google.maps.Circle({ center: point, radius: 50000 }).getBounds();
+        placeAutocompletes.forEach(autocomplete => autocomplete.setBounds(bounds));
+    }, () => {}, { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 });
 }
 
 function drawRoutePreview(origin, destination) {

@@ -56,7 +56,7 @@ def geocode(place):
     headers = {"User-Agent": "TravelBudgetPlanner"}
     response = requests.get(
         "https://nominatim.openstreetmap.org/search",
-        params={"q": place, "format": "json", "limit": 1},
+        params={"q": place, "format": "json", "limit": 1, "countrycodes": "in"},
         headers=headers,
         timeout=10,
     )
@@ -84,11 +84,11 @@ def get_float(field):
 def calculate_travel_time(distance, transport_mode):
     speed = {
         "walk": 5,
-        "bike": 45,
-        "car": 60,
-        "bus": 45,
-        "train": 80,
-        "flight": 700,
+        "bike": 80,
+        "car": 100,
+        "bus": 90,
+        "train": 110,
+        "flight": 800,
     }
     avg_speed = speed.get(transport_mode, 60)
     if distance <= 0:
@@ -100,9 +100,27 @@ def calculate_travel_time(distance, transport_mode):
     return f"{h} hr {m} mins"
 
 
+def calculate_emissions(distance, transport_mode):
+    """Estimate kg CO2e for this trip; values are per passenger-kilometre."""
+    factors = {
+        "walk": 0,
+        "bike": 0,
+        "car": 0.192,
+        "bus": 0.105,
+        "train": 0.041,
+        "flight": 0.255,
+    }
+    return round(distance * factors.get(transport_mode, 0), 2)
+
+
+def short_location(location):
+    return (location or "").split(",")[0].strip()
+
+
 def trip_from_form():
     travelers = get_int("travelers")
     destination = request.form.get("destination", "")
+    from_location = request.form.get("from_location", "")
     distance = get_float("distance")
     round_trip = request.form.get("round_trip", "no")
     total_distance = distance * 2 if round_trip == "yes" else distance
@@ -167,9 +185,13 @@ def trip_from_form():
     )
     cost_per_person = total_budget / travelers if travelers > 0 else 0
     travel_time = calculate_travel_time(total_distance, transport_mode)
+    emissions_kg = calculate_emissions(total_distance, transport_mode)
 
     return {
+        "from_location": from_location,
+        "from_short": short_location(from_location),
         "destination": destination,
+        "destination_short": short_location(destination),
         "travelers": travelers,
         "total_distance": round(total_distance, 2),
         "transport_mode": transport_mode,
@@ -187,6 +209,7 @@ def trip_from_form():
         "total_budget": round(total_budget, 2),
         "cost_per_person": round(cost_per_person, 2),
         "travel_time": travel_time,
+        "emissions_kg": emissions_kg,
         "bus_cost": round(bus_cost, 2),
         "train_cost": round(train_cost, 2),
         "flight_cost": round(flight_cost, 2),
@@ -461,7 +484,7 @@ def location_suggestions():
     try:
         response = requests.get(
             "https://nominatim.openstreetmap.org/search",
-            params={"q": query, "format": "jsonv2", "limit": 5, "addressdetails": 1},
+            params={"q": query, "format": "jsonv2", "limit": 5, "addressdetails": 1, "countrycodes": "in"},
             headers={"User-Agent": "TravelBudgetPlanner/1.0 (local planner)"},
             timeout=10,
         )

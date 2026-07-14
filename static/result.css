@@ -15,6 +15,10 @@ body { font-family: 'Manrope', 'Segoe UI', sans-serif; background: #f3f7fb; colo
 .summary-item { min-height: 104px; padding: 17px; border: 1px solid #e6edf4; border-radius: 16px; background: #fbfcfe; display: flex; flex-direction: column; justify-content: space-between; }
 .summary-item span { color: #627086; font-size: .78rem; font-weight: 600; }
 .summary-item strong { color: #1c2d47; font-size: 1.08rem; }
+.summary-item small { color: #6a778a; font-size: .72rem; margin-top: 5px; }
+.route-summary { grid-column: span 2; }
+.pollution-summary { background: #effbf4; border-color: #c8ecda; }
+.pollution-summary strong { color: #087b69; }
 .report-divider { height: 1px; border: 0; background: #e8eef4; margin: 32px 0; }
 .insights { display: grid; grid-template-columns: minmax(260px, .9fr) minmax(300px, 1.1fr); align-items: center; gap: 28px; }
 .chart-container { max-width: 320px; margin: auto; }
@@ -29,3 +33,4 @@ body { font-family: 'Manrope', 'Segoe UI', sans-serif; background: #f3f7fb; colo
 .save-trip-container button { background: linear-gradient(135deg, #0b766d, #14945f); }
 @media print { body { background: #fff; } .button-group, .action-center, .back-btn { display: none !important; } .container { max-width: none; padding: 0; } #report { box-shadow: none; } }
 @media (max-width: 650px) { .container { padding: 0; } #report { border-radius: 0; } .report-hero { padding: 27px 22px; min-height: 255px; } .result-card { padding: 26px 20px; } .insights { grid-template-columns: 1fr; } }
+@media (max-width: 500px) { .route-summary { grid-column: span 1; } }
