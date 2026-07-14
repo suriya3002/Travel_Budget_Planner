@@ -9,6 +9,19 @@ GOOGLE_DIRECTIONS_API_KEY = os.environ.get("GOOGLE_DIRECTIONS_API_KEY")
 GOOGLE_MAPS_JS_API_KEY = os.environ.get("GOOGLE_MAPS_JS_API_KEY")
 GOOGLE_PLACES_API_KEY = os.environ.get("GOOGLE_PLACES_API_KEY")
 
+INDIAN_CITY_SUGGESTIONS = (
+    "Agra, Uttar Pradesh, India", "Ahmedabad, Gujarat, India",
+    "Bengaluru, Karnataka, India", "Bhopal, Madhya Pradesh, India",
+    "Chandigarh, India", "Chennai, Tamil Nadu, India",
+    "Coimbatore, Tamil Nadu, India", "Delhi, India", "Goa, India",
+    "Hyderabad, Telangana, India", "Jaipur, Rajasthan, India",
+    "Kochi, Kerala, India", "Kolkata, West Bengal, India",
+    "Lucknow, Uttar Pradesh, India", "Mumbai, Maharashtra, India",
+    "Munnar, Kerala, India", "Mysuru, Karnataka, India",
+    "Pune, Maharashtra, India", "Shimla, Himachal Pradesh, India",
+    "Thiruvananthapuram, Kerala, India", "Varanasi, Uttar Pradesh, India",
+)
+
 app = Flask(__name__)
 
 
@@ -184,8 +197,14 @@ def trip_from_form():
         + places_fee_total
     )
     cost_per_person = total_budget / travelers if travelers > 0 else 0
-    travel_time = calculate_travel_time(total_distance, transport_mode)
+    # Reuse the exact Travel Time shown in the planner. This prevents the
+    # result page from showing a differently rounded/recalculated value.
+    travel_time = request.form.get("travel_time", "").strip()
+    if not travel_time:
+        travel_time = calculate_travel_time(total_distance, transport_mode)
     emissions_kg = calculate_emissions(total_distance, transport_mode)
+    # A simple, distance-sensitive impact indicator: 100 kg CO2e equals 100%.
+    pollution_percent = min(round(emissions_kg, 1), 100)
 
     return {
         "from_location": from_location,
@@ -210,6 +229,7 @@ def trip_from_form():
         "cost_per_person": round(cost_per_person, 2),
         "travel_time": travel_time,
         "emissions_kg": emissions_kg,
+        "pollution_percent": pollution_percent,
         "bus_cost": round(bus_cost, 2),
         "train_cost": round(train_cost, 2),
         "flight_cost": round(flight_cost, 2),
@@ -463,8 +483,13 @@ def get_distance():
 @app.route("/location_suggestions")
 def location_suggestions():
     query = request.args.get("q", "").strip()
-    if len(query) < 2:
+    if not query:
         return jsonify([])
+    local_matches = [
+        {"label": city}
+        for city in INDIAN_CITY_SUGGESTIONS
+        if city.lower().startswith(query.lower())
+    ][:5]
     if GOOGLE_PLACES_API_KEY:
         try:
             response = requests.get(
@@ -489,12 +514,13 @@ def location_suggestions():
             timeout=10,
         )
         response.raise_for_status()
-        return jsonify([
+        results = [
             {"label": place["display_name"], "lat": place["lat"], "lon": place["lon"]}
             for place in response.json()
-        ])
+        ]
+        return jsonify((local_matches + results)[:5])
     except requests.RequestException:
-        return jsonify([]), 503
+        return jsonify(local_matches)
 
 
 @app.route("/reverse_geocode")

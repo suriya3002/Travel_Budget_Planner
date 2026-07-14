@@ -19,6 +19,7 @@ body { font-family: 'Manrope', 'Segoe UI', sans-serif; background: #f3f7fb; colo
 .route-summary { grid-column: span 2; }
 .pollution-summary { background: #effbf4; border-color: #c8ecda; }
 .pollution-summary strong { color: #087b69; }
+.pollution-level { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: .72rem; color: #3a685d; }.pollution-level b { color: #087b69; font-size: .9rem; }.pollution-meter { height: 6px; margin-top: 6px; overflow: hidden; border-radius: 99px; background: #ccebdd; }.pollution-meter i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #22a06b, #e8a43a, #df5454); }
 .report-divider { height: 1px; border: 0; background: #e8eef4; margin: 32px 0; }
 .insights { display: grid; grid-template-columns: minmax(260px, .9fr) minmax(300px, 1.1fr); align-items: center; gap: 28px; }
 .chart-container { max-width: 320px; margin: auto; }

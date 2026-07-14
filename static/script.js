@@ -7,6 +7,7 @@ let routeMap;
 let directionsService;
 let directionsRenderer;
 const placeAutocompletes = [];
+let oneWayRouteMinutes = 0;
 
 const fareHints = {
     bus_type: { "0.835": "Rate used: ₹0.84/km per person", "1.90": "Rate used: ₹1.90/km per person", "2.00": "Rate used: ₹2.00/km per person", "3.25": "Rate used: ₹3.25/km per person" },
@@ -69,7 +70,10 @@ function updateTravelTime() {
     if (distance <= 0) { distanceCard.textContent = "—"; durationCard.textContent = "—"; return; }
     document.getElementById("distance").value = oneWayDistance;
     distanceCard.textContent = `${Math.round(distance * 100) / 100} km`;
-    const duration = formatDuration((distance / (speed[document.getElementById("transport_mode").value] || 60)) * 60);
+    const durationMinutes = oneWayRouteMinutes
+        ? oneWayRouteMinutes * (document.getElementById("round_trip").value === "yes" ? 2 : 1)
+        : (distance / (speed[document.getElementById("transport_mode").value] || 60)) * 60;
+    const duration = formatDuration(durationMinutes);
     durationCard.textContent = duration;
     document.getElementById("travel_time").value = duration;
 }
@@ -132,10 +136,12 @@ async function calculateDistance() {
         const data = await response.json();
         if (!response.ok || data.error) throw new Error(data.error || "Unable to calculate this route.");
         oneWayDistance = Number(data.distance);
+        oneWayRouteMinutes = Number(data.duration) * 60;
         updateTravelTime();
         drawRoutePreview(from, destination);
     } catch (error) {
         oneWayDistance = 0;
+        oneWayRouteMinutes = 0;
         document.getElementById("distance").value = "";
         document.getElementById("distance_card").textContent = "—";
         document.getElementById("duration_card").textContent = "—";
@@ -186,7 +192,7 @@ function drawRoutePreview(origin, destination) {
 async function searchLocation(inputId, boxId) {
     const query = document.getElementById(inputId).value.trim();
     const box = document.getElementById(boxId);
-    if (query.length < 2) { box.replaceChildren(); box.style.display = "none"; return; }
+    if (!query.length) { box.replaceChildren(); box.style.display = "none"; return; }
     activeSearch?.abort(); activeSearch = new AbortController();
     try {
         const response = await fetch(`/location_suggestions?q=${encodeURIComponent(query)}`, { signal: activeSearch.signal });
