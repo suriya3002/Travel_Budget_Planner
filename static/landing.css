@@ -183,3 +183,21 @@ color:white;
 margin-bottom:30px;
 font-size:40px;
 }
+
+@media (max-width: 600px){
+  .navbar{position:absolute;padding:18px 20px;gap:10px;}
+  .logo{font-size:19px;}
+  .nav-links{display:none;}
+  .hero{min-height:620px;height:100dvh;background-position:58% center;}
+  .hero-content{padding:20px;}
+  .hero h1{font-size:42px;}
+  .hero p{font-size:16px;line-height:1.55;}
+  .hero-buttons{display:grid;gap:12px;margin-top:30px;}
+  .btn-primary,.btn-secondary{display:block;margin:0;padding:14px 20px;}
+  .features,.destinations,.how-it-works{padding:52px 20px;}
+  .feature-grid,.destination-grid,.steps{grid-template-columns:1fr;gap:16px;margin-top:25px;}
+  .feature-card,.step{padding:23px;}
+  .destination-card img{height:190px;}
+  .cta{padding:65px 20px;}
+  .cta h2{font-size:28px;}
+}

@@ -524,10 +524,30 @@
 
 /* ===== Responsive ===== */
 @media (max-width: 600px) {
-    .planner-page { padding: 15px 10px; }
-    .planner-container { padding: 22px 18px; }
-    .field-grid { grid-template-columns: 1fr; }
-    .travel-card { flex-direction: column; }
-    .travel-box h2 { font-size: 22px; }
-    .page-title { font-size: 22px; }
+    .planner-page { min-height: 100dvh; padding: 0; background-attachment: scroll; }
+    .planner-container { min-height: 100dvh; padding: max(18px, env(safe-area-inset-top)) 16px calc(94px + env(safe-area-inset-bottom)); border: 0; border-radius: 0; }
+    .top-bar { margin-bottom: 18px; }
+    .logo-link { font-size: 16px; }
+    .saved-trips-btn { padding: 9px 12px; font-size: 12px; }
+    .page-title { margin-top: 6px; font-size: 24px; }
+    .page-subtitle { margin-bottom: 20px; font-size: 13px; }
+    .step-indicators { margin-bottom: 22px; }
+    .step-dot p { font-size: 10px; }
+    .step-dot span { width: 32px; height: 32px; }
+    .step-header { margin-bottom: 18px; }
+    .step-header h2 { font-size: 19px; }
+    .field-grid { grid-template-columns: 1fr; gap: 0; }
+    .field-group { margin-bottom: 14px; }
+    .field-group input, .field-group select { min-height: 56px; font-size: 16px; }
+    .travel-card { gap: 10px; margin-bottom: 16px; }
+    .travel-box { padding: 15px 10px; }
+    .travel-box h2 { font-size: 19px; }
+    .travel-icon { font-size: 19px; }
+    .travel-label { font-size: 10px; letter-spacing: .6px; }
+    .route-map { height: 210px; margin-bottom: 18px; }
+    .location-row { gap: 8px; }
+    .gps-btn { min-width: 68px; padding: 0 10px !important; font-size: 12px !important; }
+    .section-card { padding: 14px; }
+    .form-nav { position: fixed; z-index: 20; right: 0; bottom: 0; left: 0; margin: 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: rgba(15, 23, 42, .96); border-top: 1px solid rgba(255,255,255,.15); box-shadow: 0 -10px 30px rgba(0,0,0,.18); }
+    .btn-prev, .btn-next, .btn-submit { min-height: 52px; padding: 12px 14px !important; font-size: 14px; }
 }
