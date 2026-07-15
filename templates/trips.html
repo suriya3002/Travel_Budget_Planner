@@ -1,33 +1,24 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Saved Trips</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='trip.css') }}">
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Saved Trips</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='trip.css') }}">
 </head>
 <body>
-<div class="container">
-  <div class="top-bar">
-    <h1>Saved Trips</h1>
-    <div class="trip-nav"><a href="/" class="home-btn">Home</a><a href="/planner" class="back-btn">Plan New Trip</a></div>
-  </div>
+<main class="container">
+  <div class="top-bar"><h1>Saved Trips</h1><div class="trip-nav"><a href="/" class="home-btn">Home</a><a href="/planner" class="back-btn">Plan New Trip</a></div></div>
+  <form class="trip-search" method="get" action="/trips" role="search"><label for="trip_search">Search saved trips</label><div><input id="trip_search" type="search" name="q" value="{{ search_query }}" placeholder="Search destination or transport"><button type="submit">Search</button>{% if search_query %}<a href="/trips">Clear</a>{% endif %}</div></form>
   {% if trips %}
-  <table>
-    <thead><tr><th>#</th><th>Destination</th><th>Travelers</th><th>Distance</th><th>Transport</th><th>Budget</th><th>Per Person</th><th>Actions</th></tr></thead>
-    <tbody>
-    {% for trip in trips %}
-      <tr>
-        <td data-label="#">{{ loop.index }}</td><td data-label="Destination">{{ trip['destination'] }}</td><td data-label="Travelers">{{ trip['travelers'] }}</td><td data-label="Distance">{{ trip['total_distance'] or '—' }} km</td><td data-label="Transport">{{ trip['transport_mode'] or '—' }}</td><td data-label="Budget">₹{{ trip['total_budget'] }}</td><td data-label="Per Person">₹{{ trip['cost_per_person'] or '—' }}</td>
-        <td class="actions" data-label="Actions"><a href="/edit/{{ trip['id'] }}" class="edit-btn">Edit</a><a href="/delete/{{ trip['id'] }}" class="delete-btn" onclick="return confirm('Delete this trip?')">Delete</a></td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
+    <p class="trip-count">Showing {{ first_item }}–{{ first_item + trips|length - 1 }} of {{ total }} trip{{ '' if total == 1 else 's' }}</p>
+    <table><thead><tr><th>#</th><th>Destination</th><th>Travelers</th><th>Distance</th><th>Transport</th><th>Budget</th><th>Per Person</th><th>Actions</th></tr></thead><tbody>
+    {% for trip in trips %}<tr><td data-label="#">{{ first_item + loop.index0 }}</td><td data-label="Destination">{{ trip['destination'] }}</td><td data-label="Travelers">{{ trip['travelers'] }}</td><td data-label="Distance">{{ trip['total_distance'] or '—' }} km</td><td data-label="Transport">{{ trip['transport_mode'] or '—' }}</td><td data-label="Budget">₹{{ trip['total_budget'] }}</td><td data-label="Per Person">₹{{ trip['cost_per_person'] or '—' }}</td><td class="actions" data-label="Actions"><a href="/edit/{{ trip['id'] }}" class="edit-btn">Edit</a><a href="/delete/{{ trip['id'] }}" class="delete-btn" onclick="return confirm('Delete this trip?')">Delete</a></td></tr>{% endfor %}
+    </tbody></table>
+    {% if total_pages > 1 %}<nav class="pagination" aria-label="Saved trip pages">{% if page > 1 %}<a href="{{ url_for('trips', q=search_query, page=page - 1) }}">← Previous</a>{% else %}<span class="disabled">← Previous</span>{% endif %}<span>Page {{ page }} of {{ total_pages }}</span>{% if page < total_pages %}<a href="{{ url_for('trips', q=search_query, page=page + 1) }}">Next →</a>{% else %}<span class="disabled">Next →</span>{% endif %}</nav>{% endif %}
   {% else %}
-    <div class="empty">No trips saved yet. <a href="/">Start planning from the home page.</a></div>
+    <div class="empty">{% if search_query %}No saved trips match “{{ search_query }}”. <a href="/trips">Clear search</a>{% else %}No trips saved yet. <a href="/planner">Start planning a trip.</a>{% endif %}</div>
   {% endif %}
-</div>
+</main>
 </body>
 </html>

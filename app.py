@@ -365,12 +365,34 @@ def planner():
 
 @app.route("/trips")
 def trips():
+    search_query = request.args.get("q", "").strip()
+    try:
+        page = max(1, int(request.args.get("page", 1)))
+    except (TypeError, ValueError):
+        page = 1
+    per_page = 8
+    where_clause = ""
+    params = []
+    if search_query:
+        where_clause = "WHERE destination LIKE ? OR transport_mode LIKE ?"
+        term = f"%{search_query}%"
+        params = [term, term]
     conn = get_db()
+    total = conn.execute(
+        f"SELECT COUNT(*) FROM trips {where_clause}", params
+    ).fetchone()[0]
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    page = min(page, total_pages)
     rows = conn.execute(
-        "SELECT * FROM trips ORDER BY id DESC"
+        f"SELECT * FROM trips {where_clause} ORDER BY id DESC LIMIT ? OFFSET ?",
+        [*params, per_page, (page - 1) * per_page],
     ).fetchall()
     conn.close()
-    return render_template("trips.html", trips=rows)
+    return render_template(
+        "trips.html", trips=rows, search_query=search_query, page=page,
+        total_pages=total_pages, total=total,
+        first_item=(page - 1) * per_page + 1 if total else 0,
+    )
 
 
 @app.route("/edit/<int:trip_id>")
