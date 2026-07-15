@@ -407,7 +407,7 @@ def edit_trip(trip_id):
     return render_template("edit.html", trip=trip)
 
 
-@app.route("/delete/<int:trip_id>")
+@app.route("/delete/<int:trip_id>", methods=["POST"])
 def delete_trip(trip_id):
     conn = get_db()
     conn.execute("DELETE FROM trips WHERE id=?", (trip_id,))
@@ -438,6 +438,34 @@ def trip_from_result_form():
     }
 
 
+def trip_from_edit_form():
+    """Validate edit form data and derive totals on the server."""
+    travelers = max(get_int("travelers"), 1)
+    costs = {
+        "transport_cost": max(get_float("transport_cost"), 0),
+        "food_cost": max(get_float("food_cost"), 0),
+        "room_cost": max(get_float("room_cost"), 0),
+        "toll_charges": max(get_float("toll_charges"), 0),
+        "parking_fee": max(get_float("parking_fee"), 0),
+        "vehicle_rental_cost": max(get_float("vehicle_rental_cost"), 0),
+        "places_fee_total": max(get_float("places_fee_total"), 0),
+    }
+    total_budget = round(sum(costs.values()), 2)
+    return {
+        "destination": request.form.get("destination", "").strip(),
+        "travelers": travelers,
+        "total_distance": max(get_float("total_distance"), 0),
+        "transport_mode": request.form.get("transport_mode", "car"),
+        **{key: round(value, 2) for key, value in costs.items()},
+        "fuel_type": request.form.get("fuel_type", "petrol"),
+        "fuel_price": max(get_float("fuel_price"), 0),
+        "fuel_cost": max(get_float("fuel_cost"), 0),
+        "vehicle_type": request.form.get("vehicle_type", "own"),
+        "total_budget": total_budget,
+        "cost_per_person": round(total_budget / travelers, 2),
+    }
+
+
 @app.route("/save_trips", methods=["POST"])
 def save_trips():
     data = (
@@ -455,7 +483,9 @@ def update_trip():
     if not trip_id:
         return redirect("/trips")
     data = (
-        trip_from_result_form()
+        trip_from_edit_form()
+        if request.form.get("edit_trip")
+        else trip_from_result_form()
         if request.form.get("from_result")
         else trip_from_form()
     )
