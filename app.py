@@ -1,8 +1,10 @@
 import os
 import sqlite3
+from functools import wraps
 
 import requests
-from flask import Flask, Response, jsonify, redirect, render_template, request, url_for
+from flask import Flask, Response, jsonify, redirect, render_template, request, session, url_for
+from werkzeug.security import check_password_hash, generate_password_hash
 
 ORS_API_KEY = os.environ.get("ORS_API_KEY")
 GOOGLE_DIRECTIONS_API_KEY = os.environ.get("GOOGLE_DIRECTIONS_API_KEY")
@@ -35,6 +37,7 @@ def location_cost_estimate(destination):
     return {"food": 550, "room": 1800, "tier": "Standard India estimate"}
 
 app = Flask(__name__)
+app.config["SECRET_KEY"] = os.environ.get("FLASK_SECRET_KEY", "change-this-development-key")
 
 
 def get_db():
@@ -68,11 +71,32 @@ def init_db():
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(trips)")}
+    if "user_id" not in columns:
+        conn.execute("ALTER TABLE trips ADD COLUMN user_id INTEGER")
     conn.commit()
     conn.close()
 
 
 init_db()
+
+
+def login_required(view):
+    @wraps(view)
+    def wrapped_view(*args, **kwargs):
+        if "user_id" not in session:
+            return redirect(url_for("login", next=request.path))
+        return view(*args, **kwargs)
+    return wrapped_view
 
 
 def geocode(place):
@@ -277,7 +301,7 @@ def trip_from_form():
     }
 
 
-def save_trip_data(data):
+def save_trip_data(data, user_id):
     conn = get_db()
     conn.execute(
         """
@@ -285,8 +309,8 @@ def save_trip_data(data):
             destination, travelers, total_distance, transport_mode,
             transport_cost, fuel_type, fuel_price, fuel_cost, food_cost,
             room_cost, toll_charges, parking_fee, vehicle_type,
-            vehicle_rental_cost, places_fee_total, total_budget, cost_per_person
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            vehicle_rental_cost, places_fee_total, total_budget, cost_per_person, user_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             data["destination"],
@@ -306,13 +330,14 @@ def save_trip_data(data):
             data["places_fee_total"],
             data["total_budget"],
             data["cost_per_person"],
+            user_id,
         ),
     )
     conn.commit()
     conn.close()
 
 
-def update_trip_data(trip_id, data):
+def update_trip_data(trip_id, data, user_id):
     conn = get_db()
     conn.execute(
         """
@@ -322,7 +347,7 @@ def update_trip_data(trip_id, data):
             food_cost=?, room_cost=?, toll_charges=?, parking_fee=?,
             vehicle_type=?, vehicle_rental_cost=?, places_fee_total=?,
             total_budget=?, cost_per_person=?
-        WHERE id=?
+        WHERE id=? AND user_id=?
         """,
         (
             data["destination"],
@@ -343,6 +368,7 @@ def update_trip_data(trip_id, data):
             data["total_budget"],
             data["cost_per_person"],
             trip_id,
+            user_id,
         ),
     )
     conn.commit()
@@ -351,10 +377,66 @@ def update_trip_data(trip_id, data):
 
 @app.route("/")
 def landing():
-    return render_template("landing.html")
+    return render_template("landing.html", logged_in="user_id" in session)
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if "user_id" in session:
+        return redirect(url_for("planner"))
+    error = ""
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+        if not name or "@" not in email or len(password) < 8:
+            error = "Enter your name, a valid email, and a password with at least 8 characters."
+        else:
+            conn = get_db()
+            try:
+                cursor = conn.execute(
+                    "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
+                    (name, email, generate_password_hash(password)),
+                )
+                conn.commit()
+                session["user_id"] = cursor.lastrowid
+                session["user_name"] = name
+                return redirect(url_for("planner"))
+            except sqlite3.IntegrityError:
+                error = "An account with that email already exists. Please sign in."
+            finally:
+                conn.close()
+    return render_template("register.html", error=error)
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if "user_id" in session:
+        return redirect(url_for("planner"))
+    error = ""
+    next_page = request.values.get("next", "")
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+        conn = get_db()
+        user = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+        conn.close()
+        if user and check_password_hash(user["password_hash"], password):
+            session["user_id"] = user["id"]
+            session["user_name"] = user["name"]
+            return redirect(next_page if next_page.startswith("/") and not next_page.startswith("//") else url_for("planner"))
+        error = "Email or password is incorrect."
+    return render_template("login.html", error=error, next_page=next_page)
+
+
+@app.route("/logout", methods=["POST"])
+def logout():
+    session.clear()
+    return redirect(url_for("landing"))
 
 
 @app.route("/planner")
+@login_required
 def planner():
     return render_template(
         "index.html",
@@ -364,6 +446,7 @@ def planner():
 
 
 @app.route("/trips")
+@login_required
 def trips():
     search_query = request.args.get("q", "").strip()
     try:
@@ -374,9 +457,12 @@ def trips():
     where_clause = ""
     params = []
     if search_query:
-        where_clause = "WHERE destination LIKE ? OR transport_mode LIKE ?"
+        where_clause = "WHERE user_id = ? AND (destination LIKE ? OR transport_mode LIKE ?)"
         term = f"%{search_query}%"
-        params = [term, term]
+        params = [session["user_id"], term, term]
+    else:
+        where_clause = "WHERE user_id = ?"
+        params = [session["user_id"]]
     conn = get_db()
     total = conn.execute(
         f"SELECT COUNT(*) FROM trips {where_clause}", params
@@ -396,10 +482,11 @@ def trips():
 
 
 @app.route("/edit/<int:trip_id>")
+@login_required
 def edit_trip(trip_id):
     conn = get_db()
     trip = conn.execute(
-        "SELECT * FROM trips WHERE id=?", (trip_id,)
+        "SELECT * FROM trips WHERE id=? AND user_id=?", (trip_id, session["user_id"])
     ).fetchone()
     conn.close()
     if not trip:
@@ -408,9 +495,10 @@ def edit_trip(trip_id):
 
 
 @app.route("/delete/<int:trip_id>", methods=["POST"])
+@login_required
 def delete_trip(trip_id):
     conn = get_db()
-    conn.execute("DELETE FROM trips WHERE id=?", (trip_id,))
+    conn.execute("DELETE FROM trips WHERE id=? AND user_id=?", (trip_id, session["user_id"]))
     conn.commit()
     conn.close()
     return redirect("/trips")
@@ -467,17 +555,19 @@ def trip_from_edit_form():
 
 
 @app.route("/save_trips", methods=["POST"])
+@login_required
 def save_trips():
     data = (
         trip_from_result_form()
         if request.form.get("from_result")
         else trip_from_form()
     )
-    save_trip_data(data)
+    save_trip_data(data, session["user_id"])
     return redirect("/trips")
 
 
 @app.route("/update_trip", methods=["POST"])
+@login_required
 def update_trip():
     trip_id = request.form.get("trip_id")
     if not trip_id:
@@ -489,7 +579,7 @@ def update_trip():
         if request.form.get("from_result")
         else trip_from_form()
     )
-    update_trip_data(int(trip_id), data)
+    update_trip_data(int(trip_id), data, session["user_id"])
     return redirect("/trips")
 
 
