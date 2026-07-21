@@ -25,16 +25,121 @@ INDIAN_CITY_SUGGESTIONS = (
 )
 
 
+ENTRY_FEE_BY_TIER = {"premium": 250, "mid": 150, "standard": 80}
+HOTEL_PRICE_MULTIPLIERS = {0: 0.75, 1: 0.9, 2: 1.0, 3: 1.45, 4: 2.2}
+
+
 def location_cost_estimate(destination):
     """Daily INR budget estimate by destination tier; users can edit it."""
     place = (destination or "").lower()
     premium = ("mumbai", "delhi", "bengaluru", "goa", "manali", "munnar", "shimla")
     mid_range = ("chennai", "hyderabad", "kolkata", "pune", "jaipur", "kochi", "agra", "mysuru")
     if any(city in place for city in premium):
-        return {"food": 900, "room": 3500, "tier": "Popular / premium destination"}
+        return {
+            "food": 900,
+            "room": 3500,
+            "tier": "Popular / premium destination",
+            "tier_key": "premium",
+        }
     if any(city in place for city in mid_range):
-        return {"food": 700, "room": 2500, "tier": "City / tourist destination"}
-    return {"food": 550, "room": 1800, "tier": "Standard India estimate"}
+        return {
+            "food": 700,
+            "room": 2500,
+            "tier": "City / tourist destination",
+            "tier_key": "mid",
+        }
+    return {"food": 550, "room": 1800, "tier": "Standard India estimate", "tier_key": "standard"}
+
+
+def hotel_rate_from_price_level(base_room, price_level):
+    multiplier = HOTEL_PRICE_MULTIPLIERS.get(price_level, 1.0)
+    return round(base_room * multiplier)
+
+
+def attach_photo_urls(places):
+    for place in places:
+        reference = place.pop("photo", "")
+        place["image_url"] = url_for("place_photo", reference=reference) if reference else ""
+    return places
+
+
+def destination_budget_details(destination, trip_days):
+    """Fetch tourist places and hotels at the destination with estimated costs."""
+    estimate = location_cost_estimate(destination)
+    tier_key = estimate["tier_key"]
+    entry_fee = ENTRY_FEE_BY_TIER[tier_key]
+    base_room = estimate["room"]
+
+    attractions = []
+    hotels = []
+    try:
+        coordinates = geocode(destination)
+        if coordinates:
+            attractions = find_attractions(coordinates, radius=12000, limit=5)
+            hotels = find_lodging(coordinates, radius=12000, limit=4)
+    except requests.RequestException:
+        pass
+
+    for place in attractions:
+        place["entry_fee"] = entry_fee
+
+    for hotel in hotels:
+        hotel["price_per_night"] = hotel_rate_from_price_level(
+            base_room, hotel.get("price_level", 2)
+        )
+
+    attach_photo_urls(attractions)
+    attach_photo_urls(hotels)
+
+    if not attractions:
+        place_name = short_location(destination) or "your destination"
+        attractions = [
+            {
+                "name": f"{place_name} — suggested sight {index}",
+                "address": destination,
+                "rating": None,
+                "entry_fee": entry_fee,
+                "image_url": "",
+            }
+            for index in range(1, 4)
+        ]
+
+    places_fee_total = sum(place["entry_fee"] for place in attractions)
+    places_count = len(attractions)
+    per_place_fee = entry_fee
+
+    if hotels:
+        room_per_day = round(sum(hotel["price_per_night"] for hotel in hotels) / len(hotels))
+    else:
+        place_name = short_location(destination) or "your destination"
+        hotels = [
+            {
+                "name": f"{place_name} — budget stay",
+                "address": destination,
+                "rating": None,
+                "price_per_night": hotel_rate_from_price_level(base_room, 1),
+                "image_url": "",
+            },
+            {
+                "name": f"{place_name} — mid-range hotel",
+                "address": destination,
+                "rating": None,
+                "price_per_night": base_room,
+                "image_url": "",
+            },
+        ]
+        room_per_day = round(sum(hotel["price_per_night"] for hotel in hotels) / len(hotels))
+
+    return {
+        "attractions": attractions,
+        "hotels": hotels,
+        "places_count": places_count,
+        "places_fee_total": places_fee_total,
+        "per_place_fee": per_place_fee,
+        "room_per_day": room_per_day,
+        "room_total": room_per_day * max(trip_days, 1),
+        "tier_label": estimate["tier"],
+    }
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("FLASK_SECRET_KEY", "change-this-development-key")
@@ -222,9 +327,25 @@ def trip_from_form():
     else:
         toll_charges = 0
 
+    destination_details = destination_budget_details(destination, trip_days)
+
+    if destination_details["places_count"] > 0:
+        places_to_visit = destination_details["places_count"]
+        per_places_entry_fee = destination_details["per_place_fee"]
+        places_fee_total = destination_details["places_fee_total"]
+        places_from_destination = True
+    else:
+        places_fee_total = places_to_visit * per_places_entry_fee
+        places_from_destination = False
+
+    if destination_details["hotels"]:
+        room_cost_per_day = destination_details["room_per_day"]
+        room_from_destination = True
+    else:
+        room_from_destination = False
+
     food_cost = food_cost_per_person * travelers * trip_days
     room_cost = room_cost_per_day * trip_days
-    places_fee_total = places_to_visit * per_places_entry_fee
     total_budget = (
         transport_cost
         + food_cost
@@ -298,6 +419,13 @@ def trip_from_form():
             "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee"
             "?auto=format&fit=crop&w=1200&q=80"
         ),
+        "destination_attractions": destination_details["attractions"],
+        "destination_hotels": destination_details["hotels"],
+        "destination_tier": destination_details["tier_label"],
+        "places_from_destination": places_from_destination,
+        "room_from_destination": room_from_destination,
+        "places_to_visit": places_to_visit,
+        "per_places_entry_fee": round(per_places_entry_fee, 2),
     }
 
 
@@ -702,7 +830,7 @@ def location_suggestions():
         return jsonify(local_matches)
 
 
-def find_attractions(coordinates, radius=15000):
+def find_attractions(coordinates, radius=15000, limit=6):
     if not GOOGLE_PLACES_API_KEY or not coordinates:
         return []
     try:
@@ -722,9 +850,39 @@ def find_attractions(coordinates, radius=15000):
                 "name": place.get("name", "Nearby attraction"),
                 "address": place.get("vicinity", "India"),
                 "rating": place.get("rating"),
+                "price_level": place.get("price_level", 1),
                 "photo": place.get("photos", [{}])[0].get("photo_reference", ""),
             }
-            for place in response.json().get("results", [])[:6]
+            for place in response.json().get("results", [])[:limit]
+        ]
+    except requests.RequestException:
+        return []
+
+
+def find_lodging(coordinates, radius=12000, limit=4):
+    if not GOOGLE_PLACES_API_KEY or not coordinates:
+        return []
+    try:
+        response = requests.get(
+            "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+            params={
+                "location": f"{coordinates[1]},{coordinates[0]}",
+                "radius": radius,
+                "type": "lodging",
+                "key": GOOGLE_PLACES_API_KEY,
+            },
+            timeout=12,
+        )
+        response.raise_for_status()
+        return [
+            {
+                "name": place.get("name", "Nearby hotel"),
+                "address": place.get("vicinity", "India"),
+                "rating": place.get("rating"),
+                "price_level": place.get("price_level", 2),
+                "photo": place.get("photos", [{}])[0].get("photo_reference", ""),
+            }
+            for place in response.json().get("results", [])[:limit]
         ]
     except requests.RequestException:
         return []
@@ -749,12 +907,12 @@ def nearby_attractions():
         )
         on_the_way = find_attractions(midpoint, radius=25000)
 
-    for group in (destination_places, on_the_way):
-        for place in group:
-            reference = place.pop("photo", "")
-            place["image_url"] = (
-                url_for("place_photo", reference=reference) if reference else ""
-            )
+    estimate = location_cost_estimate(destination)
+    entry_fee = ENTRY_FEE_BY_TIER[estimate["tier_key"]]
+    for place in destination_places:
+        place["entry_fee"] = entry_fee
+    attach_photo_urls(destination_places)
+    attach_photo_urls(on_the_way)
     return jsonify({"destination": destination_places, "on_the_way": on_the_way})
 
 
