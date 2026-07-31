@@ -16,6 +16,68 @@ const fareHints = {
 };
 const speed = { walk: 5, bike: 80, car: 100, bus: 90, train: 110, flight: 800 };
 
+function getSelectedTripMode() {
+    const selected = document.querySelector('input[name="trip_mode"]:checked');
+    return selected ? selected.value : "before";
+}
+
+function updateModeDescription() {
+    const description = document.getElementById("mode_description");
+    if (!description) return;
+    if (getSelectedTripMode() === "before") {
+        description.textContent = "This will estimate your budget before the trip using planned expenses and destination estimates.";
+    } else {
+        description.textContent = "This will calculate actual trip expenses after the trip using the values you enter.";
+    }
+}
+
+function savePlannerState() {
+    const fields = [
+        "trip_mode", "travelers", "transport_mode", "round_trip", "from_location", "destination", "places_to_visit",
+        "per_places_entry_fee", "food_cost_per_person", "room_cost", "trip_days", "vehicle_type", "vehicle_rental_cost",
+        "parking_fee", "mileage", "fuel_type", "bus_type", "train_type", "flight_type"
+    ];
+    const state = {};
+    fields.forEach(name => {
+        if (name === "trip_mode") {
+            state[name] = getSelectedTripMode();
+        } else {
+            const field = document.querySelector(`[name="${name}"]`);
+            if (field) state[name] = field.value;
+        }
+    });
+    state.oneWayRouteMinutes = Number(oneWayRouteMinutes) || 0;
+    localStorage.setItem("travelBudgetPlannerState", JSON.stringify(state));
+}
+
+function loadPlannerState() {
+    const raw = localStorage.getItem("travelBudgetPlannerState");
+    if (!raw) return;
+    try {
+        const state = JSON.parse(raw);
+        Object.entries(state).forEach(([key, value]) => {
+            if (key === "trip_mode") {
+                const option = document.querySelector(`input[name="trip_mode"][value="${value}"]`);
+                if (option) option.checked = true;
+            } else if (key === "oneWayRouteMinutes") {
+                oneWayRouteMinutes = Number(value) || 0;
+            } else {
+                const field = document.querySelector(`[name="${key}"]`);
+                if (field) field.value = value;
+            }
+        });
+        const distanceValue = Number(document.getElementById("distance").value) || 0;
+        if (distanceValue > 0) {
+            const rounded = Math.round(distanceValue * 100) / 100;
+            document.getElementById("distance_card").textContent = `${rounded} km`;
+            document.getElementById("travel_time").value = document.getElementById("travel_time").value || formatDuration(oneWayRouteMinutes || (distanceValue / (speed[document.getElementById("transport_mode").value] || 60)) * 60);
+            document.getElementById("duration_card").textContent = document.getElementById("travel_time").value;
+        }
+    } catch (error) {
+        console.warn("Could not restore saved planner state.", error);
+    }
+}
+
 function changeStep(direction) {
     const next = currentStep + direction;
     if (next < 1 || next > totalSteps || (direction > 0 && !validateStep(currentStep))) return;
@@ -64,15 +126,18 @@ function formatDuration(minutes) {
 }
 
 function updateTravelTime() {
-    const distance = document.getElementById("round_trip").value === "yes" ? oneWayDistance * 2 : oneWayDistance;
+    const rawDistance = Number(document.getElementById("distance").value) || oneWayDistance;
+    oneWayDistance = rawDistance;
+    const roundTrip = document.getElementById("round_trip").value === "yes";
+    const displayedDistance = roundTrip ? oneWayDistance * 2 : oneWayDistance;
     const distanceCard = document.getElementById("distance_card");
     const durationCard = document.getElementById("duration_card");
-    if (distance <= 0) { distanceCard.textContent = "—"; durationCard.textContent = "—"; return; }
+    if (displayedDistance <= 0) { distanceCard.textContent = "—"; durationCard.textContent = "—"; return; }
     document.getElementById("distance").value = oneWayDistance;
-    distanceCard.textContent = `${Math.round(distance * 100) / 100} km`;
+    distanceCard.textContent = `${Math.round(displayedDistance * 100) / 100} km`;
     const durationMinutes = oneWayRouteMinutes
-        ? oneWayRouteMinutes * (document.getElementById("round_trip").value === "yes" ? 2 : 1)
-        : (distance / (speed[document.getElementById("transport_mode").value] || 60)) * 60;
+        ? oneWayRouteMinutes * (roundTrip ? 2 : 1)
+        : (displayedDistance / (speed[document.getElementById("transport_mode").value] || 60)) * 60;
     const duration = formatDuration(durationMinutes);
     durationCard.textContent = duration;
     document.getElementById("travel_time").value = duration;
@@ -138,6 +203,7 @@ async function calculateDistance() {
         oneWayDistance = Number(data.distance);
         oneWayRouteMinutes = Number(data.duration) * 60;
         updateTravelTime();
+        savePlannerState();
         drawRoutePreview(from, destination);
     } catch (error) {
         oneWayDistance = 0;
@@ -156,8 +222,10 @@ async function estimateStayCosts() {
         const response = await fetch(`/estimate_stay_costs?destination=${encodeURIComponent(destination)}`);
         const estimate = await response.json();
         if (!response.ok) return;
-        document.getElementById("food_cost_per_person").value = estimate.food;
-        document.getElementById("room_cost").value = estimate.room;
+        if (getSelectedTripMode() === "before") {
+            document.getElementById("food_cost_per_person").value = estimate.food;
+            document.getElementById("room_cost").value = estimate.room;
+        }
         document.getElementById("stay_estimate").textContent = `${estimate.tier}: suggested ₹${estimate.food}/person/day for food and ₹${estimate.room}/day for a room. You can edit both.`;
     } catch (_) { /* Keep existing values when estimates are unavailable. */ }
 }
@@ -227,11 +295,32 @@ function selectLocation(inputId, boxId, value) {
     document.getElementById(boxId).style.display = "none";
     if (inputId === "destination") estimateStayCosts();
     calculateDistance();
+    savePlannerState();
 }
 function scheduleLocationSearch(inputId, boxId) { clearTimeout(searchTimer); searchTimer = setTimeout(() => searchLocation(inputId, boxId), 350); }
 
-document.getElementById("from_location").addEventListener("change", calculateDistance);
-document.getElementById("destination").addEventListener("change", () => { calculateDistance(); estimateStayCosts(); });
+document.getElementById("from_location").addEventListener("change", () => { calculateDistance(); savePlannerState(); });
+document.getElementById("destination").addEventListener("change", () => { calculateDistance(); estimateStayCosts(); savePlannerState(); });
 document.getElementById("from_location").addEventListener("input", () => { if (!window.google?.maps?.places) scheduleLocationSearch("from_location", "from_suggestions"); });
 document.getElementById("destination").addEventListener("input", () => { if (!window.google?.maps?.places) scheduleLocationSearch("destination", "destination_suggestions"); });
-window.onload = () => { onTransportChange(); toggleRentalCost(); updateStepUI(); };
+
+document.querySelectorAll('input[name="trip_mode"]').forEach(radio => {
+    radio.addEventListener("change", () => {
+        updateModeDescription();
+        savePlannerState();
+    });
+});
+
+document.querySelectorAll("#planner_form input, #planner_form select").forEach(input => {
+    if (input.name !== "trip_mode") {
+        input.addEventListener("change", savePlannerState);
+    }
+});
+
+window.onload = () => {
+    loadPlannerState();
+    onTransportChange();
+    toggleRentalCost();
+    updateModeDescription();
+    updateStepUI();
+};
