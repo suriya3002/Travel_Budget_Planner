@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Members · Admin · TravelBudget</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="{{ url_for('static', filename='trip.css') }}"></head>
+<body>
+<main class="trips-shell">
+  <header class="trips-header">
+    <a href="/" class="brand">TravelBudget</a>
+    <nav>
+      <a href="/">Home</a>
+      <a class="plan-link" href="/planner">Plan a trip</a>
+      <form action="/logout" method="post"><button class="logout-btn" type="submit">Log out</button></form>
+    </nav>
+  </header>
+
+  <section class="trips-hero">
+    <div>
+      <p class="eyebrow">Admin</p>
+      <h1>Members</h1>
+      <p>View and manage registered members.</p>
+    </div>
+    <span class="trip-total">{{ total }}<small>members</small></span>
+  </section>
+
+  <form class="trip-search" method="get" action="/admin/members" role="search">
+    <label for="member_search">Find a member</label>
+    <div>
+      <input id="member_search" type="search" name="q" value="{{ q }}" placeholder="Name or email">
+      <button type="submit">Search</button>
+      {% if q %}<a href="/admin/members">Clear</a>{% endif %}
+    </div>
+  </form>
+
+  {% if users %}
+    <section class="trip-list">
+      <table style="width:100%; border-collapse:collapse;">
+        <thead><tr><th>Name</th><th>Email</th><th>Admin</th><th>Joined</th><th>Actions</th></tr></thead>
+        <tbody>
+        {% for u in users %}
+          <tr style="border-top:1px solid #eee;">
+            <td>{{ u['name'] }} {% if u.get('is_online') %}<small style="color:green; font-weight:600;">(online)</small>{% endif %}</td>
+            <td>{{ u['email'] }}</td>
+            <td>{{ 'Yes' if u['is_admin'] else 'No' }}</td>
+            <td>{{ u['created_at'] }}</td>
+            <td>
+              <a href="{{ url_for('admin_member', user_id=u['id']) }}">View</a>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    {% if total_pages > 1 %}
+      <nav class="pagination" aria-label="Member pages">
+        {% if page > 1 %}<a href="{{ url_for('admin_members', q=q, page=page-1) }}">← Previous</a>{% else %}<span>← Previous</span>{% endif %}
+        <b>Page {{ page }} of {{ total_pages }}</b>
+        {% if page < total_pages %}<a href="{{ url_for('admin_members', q=q, page=page+1) }}">Next →</a>{% else %}<span>Next →</span>{% endif %}
+      </nav>
+    {% endif %}
+  {% else %}
+    <section class="empty-state"><h2>No members found</h2><p>There are no active members matching your search.</p></section>
+  {% endif %}
+</main>
+</body></html>

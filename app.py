@@ -185,14 +185,70 @@ def init_db():
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
     """)
+
+    # Add optional admin, active flags and last_seen to users table if not present
+    user_columns = {row["name"] for row in conn.execute("PRAGMA table_info(users)")}
+    if "is_admin" not in user_columns:
+        conn.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0")
+    if "is_active" not in user_columns:
+        conn.execute("ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 1")
+    if "last_seen" not in user_columns:
+        conn.execute("ALTER TABLE users ADD COLUMN last_seen TEXT")
+
+    # Ensure trips reference users (user_id)
     columns = {row["name"] for row in conn.execute("PRAGMA table_info(trips)")}
     if "user_id" not in columns:
         conn.execute("ALTER TABLE trips ADD COLUMN user_id INTEGER")
+
+    # Audit logs for admin actions (deletions, etc.)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            actor_user_id INTEGER,
+            action TEXT,
+            target_user_id INTEGER,
+            details TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
     conn.commit()
     conn.close()
 
 
 init_db()
+
+
+@app.before_request
+def update_last_seen():
+    # Update a simple last_seen timestamp so admins can see active members.
+    user_id = session.get('user_id')
+    if user_id:
+        try:
+            conn = get_db()
+            conn.execute('UPDATE users SET last_seen = CURRENT_TIMESTAMP WHERE id = ?', (user_id,))
+            conn.commit()
+            conn.close()
+        except Exception:
+            # Non-fatal: best-effort update, do not block requests on this
+            pass
+
+
+@app.context_processor
+def inject_user():
+    """Inject small helpers into templates: whether current user is admin and logged_in flag."""
+    is_admin = False
+    logged_in = 'user_id' in session
+    user_name = session.get('user_name')
+    if logged_in:
+        try:
+            conn = get_db()
+            row = conn.execute('SELECT is_admin FROM users WHERE id=?', (session['user_id'],)).fetchone()
+            conn.close()
+            is_admin = bool(row and row.get('is_admin'))
+        except Exception:
+            is_admin = False
+    return dict(is_admin=is_admin, logged_in=logged_in, user_name=user_name)
 
 
 def login_required(view):
@@ -202,6 +258,23 @@ def login_required(view):
             return redirect(url_for("login", next=request.path))
         return view(*args, **kwargs)
     return wrapped_view
+
+
+def require_admin(view):
+    """Decorator to ensure the current session user is an admin.
+    Uses the users table is_admin column (0/1)."""
+    @wraps(view)
+    def wrapped_admin(*args, **kwargs):
+        if "user_id" not in session:
+            return redirect(url_for("login", next=request.path))
+        conn = get_db()
+        user = conn.execute("SELECT is_admin FROM users WHERE id=?", (session["user_id"],)).fetchone()
+        conn.close()
+        if not user or not user.get("is_admin"):
+            # Non-admins should see 403 Forbidden
+            return Response("Forbidden", status=403)
+        return view(*args, **kwargs)
+    return wrapped_admin
 
 
 def geocode(place):
@@ -527,7 +600,13 @@ def register():
                     (name, email, generate_password_hash(password)),
                 )
                 conn.commit()
-                session["user_id"] = cursor.lastrowid
+                new_id = cursor.lastrowid
+                # If there are no other admins, make the first user an admin (convenience for initial setup)
+                admin_exists = conn.execute("SELECT COUNT(*) FROM users WHERE is_admin=1").fetchone()[0]
+                if not admin_exists:
+                    conn.execute("UPDATE users SET is_admin=1 WHERE id=?", (new_id,))
+                    conn.commit()
+                session["user_id"] = new_id
                 session["user_name"] = name
                 return redirect(url_for("planner"))
             except sqlite3.IntegrityError:
@@ -550,10 +629,15 @@ def login():
         user = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
         conn.close()
         if user and check_password_hash(user["password_hash"], password):
-            session["user_id"] = user["id"]
-            session["user_name"] = user["name"]
-            return redirect(next_page if next_page.startswith("/") and not next_page.startswith("//") else url_for("planner"))
-        error = "Email or password is incorrect."
+            # Prevent login for soft-deleted/inactive users
+            if user.get("is_active") == 0:
+                error = "This account has been deactivated. Please contact an administrator."
+            else:
+                session["user_id"] = user["id"]
+                session["user_name"] = user["name"]
+                return redirect(next_page if next_page.startswith("/") and not next_page.startswith("//") else url_for("planner"))
+        else:
+            error = "Email or password is incorrect."
     return render_template("login.html", error=error, next_page=next_page)
 
 
@@ -630,6 +714,86 @@ def delete_trip(trip_id):
     conn.commit()
     conn.close()
     return redirect("/trips")
+
+
+# -----------------------------
+# Admin dashboard routes
+# -----------------------------
+@app.route('/admin')
+@login_required
+@require_admin
+def admin_index():
+    return redirect(url_for('admin_members'))
+
+
+@app.route('/admin/members')
+@login_required
+@require_admin
+def admin_members():
+    q = request.args.get('q', '').strip()
+    try:
+        page = max(1, int(request.args.get('page', 1)))
+    except (TypeError, ValueError):
+        page = 1
+    per_page = 12
+    params = []
+    where = "WHERE is_active = 1"
+    if q:
+        where += " AND (name LIKE ? OR email LIKE ?)"
+        term = f"%{q}%"
+        params = [term, term]
+    conn = get_db()
+    total = conn.execute(f"SELECT COUNT(*) FROM users {where}", params).fetchone()[0]
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    page = min(page, total_pages)
+    rows = conn.execute(
+        f"SELECT id, name, email, created_at, is_admin, last_seen, CASE WHEN last_seen > datetime('now','-15 minutes') THEN 1 ELSE 0 END as is_online FROM users {where} ORDER BY id DESC LIMIT ? OFFSET ?",
+        [*params, per_page, (page - 1) * per_page],
+    ).fetchall()
+    conn.close()
+    return render_template('admin_members.html', users=rows, q=q, page=page, total_pages=total_pages, total=total)
+
+
+@app.route('/admin/member/<int:user_id>')
+@login_required
+@require_admin
+def admin_member(user_id):
+    try:
+        page = max(1, int(request.args.get('page', 1)))
+    except (TypeError, ValueError):
+        page = 1
+    per_page = 8
+    conn = get_db()
+    user = conn.execute("SELECT id, name, email, created_at, is_admin FROM users WHERE id=?", (user_id,)).fetchone()
+    if not user:
+        conn.close()
+        return redirect(url_for('admin_members'))
+    total = conn.execute("SELECT COUNT(*) FROM trips WHERE user_id=?", (user_id,)).fetchone()[0]
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    page = min(page, total_pages)
+    trips = conn.execute(
+        "SELECT * FROM trips WHERE user_id=? ORDER BY id DESC LIMIT ? OFFSET ?",
+        (user_id, per_page, (page - 1) * per_page),
+    ).fetchall()
+    conn.close()
+    return render_template('admin_member.html', user=user, trips=trips, page=page, total_pages=total_pages, total=total)
+
+
+@app.route('/admin/member/<int:user_id>/delete', methods=['POST'])
+@login_required
+@require_admin
+def admin_delete_member(user_id):
+    actor = session.get('user_id')
+    conn = get_db()
+    # Soft-delete the user by marking them inactive
+    conn.execute('UPDATE users SET is_active=0 WHERE id=?', (user_id,))
+    conn.execute(
+        'INSERT INTO audit_logs (actor_user_id, action, target_user_id, details) VALUES (?, ?, ?, ?)',
+        (actor, 'delete_user', user_id, f'Deleted by admin {actor}'),
+    )
+    conn.commit()
+    conn.close()
+    return redirect(url_for('admin_members'))
 
 
 def trip_from_result_form():
