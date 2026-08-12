@@ -24,7 +24,6 @@
 
 <h1 class="page-title">Plan Your Trip</h1>
 <p class="page-subtitle">Fill in your details step by step</p>
-
 <!-- Progress bar -->
 <div class="progress-wrap">
     <div class="progress-bar" id="progress_bar"></div>
@@ -36,6 +35,14 @@
 </div>
 
 <form action="/calculate" method="POST" id="planner_form">
+  <div class="trip-mode-panel animate-in" style="margin-bottom: 1rem;">
+    <div class="trip-mode-title"><strong>Calculation mode:</strong></div>
+    <div class="trip-mode-options">
+      <label><input type="radio" name="trip_mode" value="before" checked> Trip before calculation</label>
+      <label><input type="radio" name="trip_mode" value="after"> Trip after calculation</label>
+    </div>
+    <p class="mode-description" id="mode_description">We will estimate your budget based on planned costs and destination suggestions. Change prices before calculating.</p>
+  </div>
 
   <!-- STEP 1 -->
   <div class="form-step active" data-step="1">

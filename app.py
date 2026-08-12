@@ -352,6 +352,7 @@ def trip_from_form():
     trip_days = max(get_int("trip_days"), 1)
     round_trip = request.form.get("round_trip", "no")
     total_distance = distance * 2 if round_trip == "yes" else distance
+    trip_mode = request.form.get("trip_mode", "before")
 
     places_to_visit = get_int("places_to_visit")
     per_places_entry_fee = get_float("per_places_entry_fee")
@@ -402,20 +403,22 @@ def trip_from_form():
 
     destination_details = destination_budget_details(destination, trip_days)
 
-    if destination_details["places_count"] > 0:
-        places_to_visit = destination_details["places_count"]
-        per_places_entry_fee = destination_details["per_place_fee"]
-        places_fee_total = destination_details["places_fee_total"]
-        places_from_destination = True
+    places_from_destination = False
+    room_from_destination = False
+    if trip_mode == "before":
+        if destination_details["places_count"] > 0:
+            places_to_visit = destination_details["places_count"]
+            per_places_entry_fee = destination_details["per_place_fee"]
+            places_fee_total = destination_details["places_fee_total"]
+            places_from_destination = True
+        else:
+            places_fee_total = places_to_visit * per_places_entry_fee
+
+        if destination_details["hotels"]:
+            room_cost_per_day = destination_details["room_per_day"]
+            room_from_destination = True
     else:
         places_fee_total = places_to_visit * per_places_entry_fee
-        places_from_destination = False
-
-    if destination_details["hotels"]:
-        room_cost_per_day = destination_details["room_per_day"]
-        room_from_destination = True
-    else:
-        room_from_destination = False
 
     food_cost = food_cost_per_person * travelers * trip_days
     room_cost = room_cost_per_day * trip_days
@@ -499,6 +502,7 @@ def trip_from_form():
         "room_from_destination": room_from_destination,
         "places_to_visit": places_to_visit,
         "per_places_entry_fee": round(per_places_entry_fee, 2),
+        "trip_mode": trip_mode,
     }
 
 
@@ -815,6 +819,7 @@ def trip_from_result_form():
         "places_fee_total": get_float("places_fee_total"),
         "total_budget": get_float("total_budget"),
         "cost_per_person": get_float("cost_per_person"),
+        "trip_mode": request.form.get("trip_mode", "before"),
     }
 
 
