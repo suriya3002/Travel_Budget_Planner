@@ -245,7 +245,12 @@ def inject_user():
             conn = get_db()
             row = conn.execute('SELECT is_admin FROM users WHERE id=?', (session['user_id'],)).fetchone()
             conn.close()
-            is_admin = bool(row and row.get('is_admin'))
+            is_admin = False
+            if row:
+                try:
+                    is_admin = bool(row['is_admin'])
+                except Exception:
+                    is_admin = False
         except Exception:
             is_admin = False
     return dict(is_admin=is_admin, logged_in=logged_in, user_name=user_name)
@@ -270,8 +275,14 @@ def require_admin(view):
         conn = get_db()
         user = conn.execute("SELECT is_admin FROM users WHERE id=?", (session["user_id"],)).fetchone()
         conn.close()
-        if not user or not user.get("is_admin"):
-            # Non-admins should see 403 Forbidden
+        is_admin = False
+        if not user:
+            return Response("Forbidden", status=403)
+        try:
+            is_admin = bool(user['is_admin'])
+        except Exception:
+            is_admin = False
+        if not is_admin:
             return Response("Forbidden", status=403)
         return view(*args, **kwargs)
     return wrapped_admin
@@ -634,7 +645,12 @@ def login():
         conn.close()
         if user and check_password_hash(user["password_hash"], password):
             # Prevent login for soft-deleted/inactive users
-            if user.get("is_active") == 0:
+            is_active = 1
+            try:
+                is_active = int(user['is_active']) if user['is_active'] is not None else 1
+            except Exception:
+                is_active = 1
+            if is_active == 0:
                 error = "This account has been deactivated. Please contact an administrator."
             else:
                 session["user_id"] = user["id"]
@@ -754,8 +770,10 @@ def admin_members():
         f"SELECT id, name, email, created_at, is_admin, last_seen, CASE WHEN last_seen > datetime('now','-15 minutes') THEN 1 ELSE 0 END as is_online FROM users {where} ORDER BY id DESC LIMIT ? OFFSET ?",
         [*params, per_page, (page - 1) * per_page],
     ).fetchall()
+    # Convert sqlite3.Row objects to plain dicts so templates can safely use dict methods like .get
+    users = [dict(r) for r in rows]
     conn.close()
-    return render_template('admin_members.html', users=rows, q=q, page=page, total_pages=total_pages, total=total)
+    return render_template('admin_members.html', users=users, q=q, page=page, total_pages=total_pages, total=total)
 
 
 @app.route('/admin/member/<int:user_id>')
@@ -768,10 +786,12 @@ def admin_member(user_id):
         page = 1
     per_page = 8
     conn = get_db()
-    user = conn.execute("SELECT id, name, email, created_at, is_admin FROM users WHERE id=?", (user_id,)).fetchone()
-    if not user:
+    user_row = conn.execute("SELECT id, name, email, created_at, is_admin FROM users WHERE id=?", (user_id,)).fetchone()
+    if not user_row:
         conn.close()
         return redirect(url_for('admin_members'))
+    # convert to dict for template safety
+    user = dict(user_row)
     total = conn.execute("SELECT COUNT(*) FROM trips WHERE user_id=?", (user_id,)).fetchone()[0]
     total_pages = max(1, (total + per_page - 1) // per_page)
     page = min(page, total_pages)
@@ -779,6 +799,8 @@ def admin_member(user_id):
         "SELECT * FROM trips WHERE user_id=? ORDER BY id DESC LIMIT ? OFFSET ?",
         (user_id, per_page, (page - 1) * per_page),
     ).fetchall()
+    # convert trips rows to dicts too (templates may access keys)
+    trips = [dict(t) for t in trips]
     conn.close()
     return render_template('admin_member.html', user=user, trips=trips, page=page, total_pages=total_pages, total=total)
 

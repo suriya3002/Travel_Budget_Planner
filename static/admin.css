@@ -1,0 +1,41 @@
+/* Admin dashboard styles - simple, clean, mobile-friendly */
+:root{
+  --bg:#ffffff;
+  --muted:#6b7280;
+  --accent:#0f62fe;
+  --surface:#f8fafc;
+  --border:#e6e9ef;
+  --success:#10b981;
+}
+
+body{font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:var(--bg); color:#0f172a;}
+.main-admin{max-width:1100px;margin:28px auto;padding:20px;}
+.admin-hero{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;padding:12px 8px;border-bottom:1px solid var(--border)}
+.admin-hero .eyebrow{color:var(--muted);font-size:12px;margin:0}
+.admin-hero h1{margin:0;font-size:20px}
+
+.table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.table th,.table td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--border);}
+.table thead th{background:linear-gradient(180deg,#fff,#fafafa);font-weight:600;color:#0b1220}
+.table tbody tr:hover{background:#fff}
+
+.search-row{display:flex;gap:8px;align-items:center;margin:12px 0}
+.search-row input[type=search]{flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:6px}
+.search-row button, .btn{background:var(--accent);color:#fff;padding:8px 12px;border-radius:6px;border:none;cursor:pointer}
+.search-row a{margin-left:8px;color:var(--muted);text-decoration:underline}
+
+.actions a{margin-right:8px;color:var(--accent);text-decoration:none}
+
+.online-indicator{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--success);margin-right:8px;vertical-align:middle}
+
+.pagination{display:flex;gap:12px;align-items:center;justify-content:center;margin-top:16px}
+.pagination a{color:var(--accent);text-decoration:none}
+
+.empty-state{padding:24px;background:#fff;border:1px dashed var(--border);text-align:center;border-radius:8px}
+
+/* make tables responsive on small screens */
+@media (max-width:720px){
+  .table thead{display:none}
+  .table tbody td{display:block;padding:10px;border-bottom:1px solid var(--border)}
+  .table tbody td:before{content:attr(data-label);font-weight:600;display:block;color:var(--muted);margin-bottom:6px}
+}
