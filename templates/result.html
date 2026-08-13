@@ -87,8 +87,35 @@
 <script>
 function toggleFeedbackForm(){const form=document.getElementById('feedback-form');if(!form)return;form.style.display=form.style.display==='none'?'block':'none';}
 
-const expenses={Transport:{{ transport_cost }},Food:{{ food_cost }},Stay:{{ room_cost }},Tolls:{{ toll_charges }},Parking:{{ parking_fee }},"Entry fees":{{ places_fee_total }},Rental:{{ vehicle_rental_cost if vehicle_type == 'rental' else 0 }}};const values=Object.entries(expenses).filter(([,v])=>v>0);if(values.length)new Chart(document.getElementById('expenseChart'),{type:'doughnut',data:{labels:values.map(([k])=>k),datasets:[{data:values.map(([,v])=>v),backgroundColor:['#0b766d','#3c82c7','#f0a74d','#e66d65','#865ec1','#2aa9ad','#e890ba'],borderWidth:0}]},options:{plugins:{legend:{position:'bottom'}}}});
-function shareReport(){const text=`Trip budget for {{ destination }}: ₹{{ '%.2f'|format(total_budget) }} total (₹{{ '%.2f'|format(cost_per_person) }} per person).`;navigator.share?navigator.share({title:'Travel budget',text}):navigator.clipboard.writeText(text).then(()=>alert('Budget summary copied.'));}function openRoute(){window.open(`https://www.google.com/maps/search/${encodeURIComponent('{{ destination }}')}`,'_blank');}
-async function loadAttractions(){const section=document.getElementById('attractions');try{const response=await fetch(`/nearby_attractions?from=${encodeURIComponent(section.dataset.origin)}&destination=${encodeURIComponent(section.dataset.destination)}`);const data=await response.json();const makeCards=(places,title)=>places.length?`<div class="attraction-group"><h3>${title}</h3><div class="attraction-grid">${places.map(place=>`<article class="attraction-card">${place.image_url?`<img src="${place.image_url}" alt="${place.name}">`:""}<div><h4>${place.name}</h4><p>${place.address}</p>${place.rating?`<small>★ ${place.rating}</small>`:""}${place.entry_fee?`<span class="price-tag">₹${place.entry_fee} entry</span>`:""}</div></article>`).join("")}</div></div>`:"";const content=makeCards(data.on_the_way,"Worth a stop on the way");section.innerHTML=content||"<p class='attractions-status'>No extra route stops found for this trip.</p>";}catch(_){section.innerHTML="<p class='attractions-status'>Route suggestions are unavailable right now.</p>";}}loadAttractions();
+document.addEventListener('DOMContentLoaded', ()=> {
+  const feedbackForm = document.getElementById('feedback-form');
+  if (feedbackForm) {
+    feedbackForm.addEventListener('submit', async function(e){
+      e.preventDefault();
+      const submitBtn = feedbackForm.querySelector('button[type="submit"]');
+      if (submitBtn) { submitBtn.disabled = true; var originalText = submitBtn.textContent; submitBtn.textContent = 'Sending...'; }
+      try {
+        const res = await fetch(feedbackForm.action, { method: 'POST', body: new FormData(feedbackForm) });
+        if (!res.ok) throw new Error('Network error');
+        feedbackForm.innerHTML = '<div style="display:flex;align-items:center;gap:12px"><div style="background:#0b766d;color:#fff;border-radius:50%;width:42px;height:42px;display:flex;align-items:center;justify-content:center;font-size:20px;">✓</div><div><strong>Thanks!</strong><p style="margin:0">Your feedback was sent.</p></div></div>';
+        const toggleBtn = document.getElementById('feedback-toggle');
+        if (toggleBtn) { toggleBtn.textContent = '✓'; setTimeout(()=>{ toggleBtn.textContent = '✉️'; }, 3000); }
+      } catch (err) {
+        alert('Could not send feedback. Please try again.');
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalText; }
+      }
+    });
+  }
+
+  const expenses={Transport:{{ transport_cost }},Food:{{ food_cost }},Stay:{{ room_cost }},Tolls:{{ toll_charges }},Parking:{{ parking_fee }},"Entry fees":{{ places_fee_total }},Rental:{{ vehicle_rental_cost if vehicle_type == 'rental' else 0 }}};
+  const values=Object.entries(expenses).filter(([,v])=>v>0);
+  if(values.length)new Chart(document.getElementById('expenseChart'),{type:'doughnut',data:{labels:values.map(([k])=>k),datasets:[{data:values.map(([,v])=>v),backgroundColor:['#0b766d','#3c82c7','#f0a74d','#e66d65','#865ec1','#2aa9ad','#e890ba'],borderWidth:0}]},options:{plugins:{legend:{position:'bottom'}}}});
+
+  window.shareReport = function(){const text=`Trip budget for {{ destination }}: ₹{{ '%.2f'|format(total_budget) }} total (₹{{ '%.2f'|format(cost_per_person) }} per person).`;navigator.share?navigator.share({title:'Travel budget',text}):navigator.clipboard.writeText(text).then(()=>alert('Budget summary copied.'));};
+  window.openRoute = function(){window.open(`https://www.google.com/maps/search/${encodeURIComponent('{{ destination }}')}`,'_blank');};
+
+  async function loadAttractions(){const section=document.getElementById('attractions');try{const response=await fetch(`/nearby_attractions?from=${encodeURIComponent(section.dataset.origin)}&destination=${encodeURIComponent(section.dataset.destination)}`);const data=await response.json();const makeCards=(places,title)=>places.length?`<div class="attraction-group"><h3>${title}</h3><div class="attraction-grid">${places.map(place=>`<article class="attraction-card">${place.image_url?`<img src="${place.image_url}" alt="${place.name}">`:""}<div><h4>${place.name}</h4><p>${place.address}</p>${place.rating?`<small>★ ${place.rating}</small>`:""}${place.entry_fee?`<span class=\"price-tag\">₹${place.entry_fee} entry</span>`:""}</div></article>`).join("")}</div></div>`:"";const content=makeCards(data.on_the_way,"Worth a stop on the way");section.innerHTML=content||"<p class='attractions-status'>No extra route stops found for this trip.</p>";}catch(_){section.innerHTML="<p class='attractions-status'>Route suggestions are unavailable right now.</p>";}}
+  loadAttractions();
+});
 </script>
 </body></html>
