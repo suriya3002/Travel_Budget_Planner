@@ -754,12 +754,20 @@ def admin_login():
         conn = get_db()
         try:
             row = conn.execute('SELECT is_admin FROM users WHERE id=?', (session['user_id'],)).fetchone()
-            if row and row.get('is_admin'):
-                conn.close()
+            is_admin = False
+            if row is not None:
+                try:
+                    is_admin = bool(row['is_admin'])
+                except Exception:
+                    is_admin = False
+            conn.close()
+            if is_admin:
                 return redirect(url_for('admin_members'))
         except Exception:
-            pass
-        conn.close()
+            try:
+                conn.close()
+            except Exception:
+                pass
         session.clear()
 
     error = ''
