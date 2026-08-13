@@ -746,6 +746,54 @@ def admin_index():
     return redirect(url_for('admin_members'))
 
 
+@app.route('/admin/login', methods=['GET','POST'])
+def admin_login():
+    # Admin-specific login: only allows users who have is_admin=1 and is_active=1
+    if 'user_id' in session:
+        # If already logged in and an admin, go to admin. If logged-in non-admin, log out first.
+        conn = get_db()
+        try:
+            row = conn.execute('SELECT is_admin FROM users WHERE id=?', (session['user_id'],)).fetchone()
+            if row and row.get('is_admin'):
+                conn.close()
+                return redirect(url_for('admin_members'))
+        except Exception:
+            pass
+        conn.close()
+        session.clear()
+
+    error = ''
+    next_page = request.values.get('next', '')
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+        conn = get_db()
+        user = conn.execute('SELECT * FROM users WHERE email=?', (email,)).fetchone()
+        conn.close()
+        if user and check_password_hash(user['password_hash'], password):
+            # require admin and active
+            is_active = 1
+            try:
+                is_active = int(user['is_active']) if user['is_active'] is not None else 1
+            except Exception:
+                is_active = 1
+            try:
+                is_admin = bool(user['is_admin'])
+            except Exception:
+                is_admin = False
+            if is_active == 0:
+                error = 'This account has been deactivated. Contact an administrator.'
+            elif not is_admin:
+                error = 'Admin access required. This account is not an administrator.'
+            else:
+                session['user_id'] = user['id']
+                session['user_name'] = user['name']
+                return redirect(url_for('admin_members'))
+        else:
+            error = 'Email or password is incorrect.'
+    return render_template('admin_login.html', error=error, next_page=next_page)
+
+
 @app.route('/admin/members')
 @login_required
 @require_admin
