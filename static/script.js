@@ -17,34 +17,27 @@ const fareHints = {
 const speed = { walk: 5, bike: 80, car: 100, bus: 90, train: 110, flight: 800 };
 
 function getSelectedTripMode() {
-    const selected = document.querySelector('input[name="trip_mode"]:checked');
-    return selected ? selected.value : "before";
+    // Calculation mode removed — planner always uses the "before" (planned estimate) behavior.
+    return "before";
 }
 
 function updateModeDescription() {
     const description = document.getElementById("mode_description");
     if (!description) return;
-    if (getSelectedTripMode() === "before") {
-        description.textContent = "This will estimate your budget before the trip using planned expenses and destination estimates.";
-    } else {
-        description.textContent = "This will calculate actual trip expenses after the trip using the values you enter.";
-    }
+    // Single-mode description (planned estimate).
+    description.textContent = "This will estimate your budget before the trip using planned expenses and destination estimates.";
 }
 
 function savePlannerState() {
     const fields = [
-        "trip_mode", "travelers", "transport_mode", "round_trip", "from_location", "destination", "places_to_visit",
+        "travelers", "transport_mode", "round_trip", "from_location", "destination", "places_to_visit",
         "per_places_entry_fee", "food_cost_per_person", "room_cost", "trip_days", "vehicle_type", "vehicle_rental_cost",
         "parking_fee", "mileage", "fuel_type", "bus_type", "train_type", "flight_type"
     ];
     const state = {};
     fields.forEach(name => {
-        if (name === "trip_mode") {
-            state[name] = getSelectedTripMode();
-        } else {
-            const field = document.querySelector(`[name="${name}"]`);
-            if (field) state[name] = field.value;
-        }
+        const field = document.querySelector(`[name="${name}"]`);
+        if (field) state[name] = field.value;
     });
     state.oneWayRouteMinutes = Number(oneWayRouteMinutes) || 0;
     localStorage.setItem("travelBudgetPlannerState", JSON.stringify(state));
@@ -56,10 +49,7 @@ function loadPlannerState() {
     try {
         const state = JSON.parse(raw);
         Object.entries(state).forEach(([key, value]) => {
-            if (key === "trip_mode") {
-                const option = document.querySelector(`input[name="trip_mode"][value="${value}"]`);
-                if (option) option.checked = true;
-            } else if (key === "oneWayRouteMinutes") {
+            if (key === "oneWayRouteMinutes") {
                 oneWayRouteMinutes = Number(value) || 0;
             } else {
                 const field = document.querySelector(`[name="${key}"]`);
@@ -222,10 +212,9 @@ async function estimateStayCosts() {
         const response = await fetch(`/estimate_stay_costs?destination=${encodeURIComponent(destination)}`);
         const estimate = await response.json();
         if (!response.ok) return;
-        if (getSelectedTripMode() === "before") {
-            document.getElementById("food_cost_per_person").value = estimate.food;
-            document.getElementById("room_cost").value = estimate.room;
-        }
+        // Apply recommended stay estimates (planner uses planned-estimate mode by default).
+        document.getElementById("food_cost_per_person").value = estimate.food;
+        document.getElementById("room_cost").value = estimate.room;
         document.getElementById("stay_estimate").textContent = `${estimate.tier}: suggested ₹${estimate.food}/person/day for food and ₹${estimate.room}/day for a room. You can edit both.`;
     } catch (_) { /* Keep existing values when estimates are unavailable. */ }
 }
@@ -304,17 +293,8 @@ document.getElementById("destination").addEventListener("change", () => { calcul
 document.getElementById("from_location").addEventListener("input", () => { if (!window.google?.maps?.places) scheduleLocationSearch("from_location", "from_suggestions"); });
 document.getElementById("destination").addEventListener("input", () => { if (!window.google?.maps?.places) scheduleLocationSearch("destination", "destination_suggestions"); });
 
-document.querySelectorAll('input[name="trip_mode"]').forEach(radio => {
-    radio.addEventListener("change", () => {
-        updateModeDescription();
-        savePlannerState();
-    });
-});
-
 document.querySelectorAll("#planner_form input, #planner_form select").forEach(input => {
-    if (input.name !== "trip_mode") {
-        input.addEventListener("change", savePlannerState);
-    }
+    input.addEventListener("change", savePlannerState);
 });
 
 window.onload = () => {
