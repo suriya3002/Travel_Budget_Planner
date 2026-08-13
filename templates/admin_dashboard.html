@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Admin dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+</head>
+<body>
+  <div class="container admin-top">
+    <div class="top-bar"><a href="/" class="logo-link">🌍 TravelBudget</a> <a href="/admin/members">Members</a> <a href="/admin/dashboard">Dashboard</a> <a href="/logout" onclick="event.preventDefault();document.getElementById('logout-form').submit();">Logout</a></div>
+    <form id="logout-form" action="/logout" method="post" style="display:none"></form>
+  </div>
+
+  <main class="container admin-dashboard">
+    <header class="admin-hero">
+      <h1>Admin dashboard</h1>
+      <p>Overview of users, recent admin actions and feedback</p>
+    </header>
+
+    <div class="dashboard-stats">
+      <div class="stat-card"><h3>Total users</h3><p class="stat-value">{{ total_users }}</p></div>
+      <div class="stat-card"><h3>Active users</h3><p class="stat-value">{{ active_users }}</p></div>
+      <div class="stat-card"><h3>Online (15m)</h3><p class="stat-value">{{ online_users }}</p></div>
+      <div class="stat-card"><h3>Feedback messages</h3><p class="stat-value">{{ feedback_count }}</p></div>
+    </div>
+
+    <div class="dashboard-grids">
+      <div class="panel">
+        <h2>Recent admin actions</h2>
+        {% if recent_audits %}
+        <ul class="audit-list">
+          {% for a in recent_audits %}
+          <li><small>{{ a.created_at }}</small> <strong>{{ a.action }}</strong> by <em>{{ a.actor_user_id }}</em> target <em>{{ a.target_user_id }}</em> — {{ a.details }}</li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p>No recent admin activity.</p>
+        {% endif %}
+      </div>
+
+      <div class="panel">
+        <h2>Recent feedback</h2>
+        {% if recent_feedback %}
+        <ul class="feedback-list">
+          {% for f in recent_feedback %}
+          <li>
+            <small>{{ f.created_at }}</small>
+            <div class="feedback-head"><strong>{{ f.subject }}</strong> <span class="from">from {{ f.name or f.email }}</span></div>
+            <p class="feedback-message">{{ f.message }}</p>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p>No feedback yet.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <p class="admin-actions"><a href="{{ url_for('admin_members') }}">Manage members</a></p>
+  </main>
+
+</body>
+</html>

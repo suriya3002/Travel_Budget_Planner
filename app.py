@@ -739,7 +739,42 @@ def delete_trip(trip_id):
 @login_required
 @require_admin
 def admin_index():
-    return redirect(url_for('admin_members'))
+    return redirect(url_for('admin_dashboard'))
+
+
+@app.route('/admin/dashboard')
+@login_required
+@require_admin
+def admin_dashboard():
+    conn = get_db()
+    try:
+        total_users = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+        active_users = conn.execute("SELECT COUNT(*) FROM users WHERE is_active=1").fetchone()[0]
+        online_users = conn.execute("SELECT COUNT(*) FROM users WHERE last_seen > datetime('now','-15 minutes')").fetchone()[0]
+    except Exception:
+        total_users = active_users = online_users = 0
+
+    # Recent audit logs
+    recent_audits = []
+    try:
+        rows = conn.execute("SELECT id, actor_user_id, action, target_user_id, details, created_at FROM audit_logs ORDER BY created_at DESC LIMIT 8").fetchall()
+        recent_audits = [dict(r) for r in rows]
+    except Exception:
+        recent_audits = []
+
+    # Feedback / inbox entries (optional table)
+    feedback_count = 0
+    recent_feedback = []
+    try:
+        feedback_count = conn.execute("SELECT COUNT(*) FROM inbox_entries").fetchone()[0]
+        fb_rows = conn.execute("SELECT id, name, email, subject, message, created_at FROM inbox_entries ORDER BY created_at DESC LIMIT 8").fetchall()
+        recent_feedback = [dict(r) for r in fb_rows]
+    except Exception:
+        feedback_count = 0
+        recent_feedback = []
+
+    conn.close()
+    return render_template('admin_dashboard.html', total_users=total_users, active_users=active_users, online_users=online_users, recent_audits=recent_audits, feedback_count=feedback_count, recent_feedback=recent_feedback)
 
 
 @app.route('/admin/login', methods=['GET','POST'])
@@ -758,7 +793,7 @@ def admin_login():
                     is_admin = False
             conn.close()
             if is_admin:
-                return redirect(url_for('admin_members'))
+                return redirect(url_for('admin_dashboard'))
         except Exception:
             try:
                 conn.close()
@@ -792,7 +827,7 @@ def admin_login():
             else:
                 session['user_id'] = user['id']
                 session['user_name'] = user['name']
-                return redirect(url_for('admin_members'))
+                return redirect(url_for('admin_dashboard'))
         else:
             error = 'Email or password is incorrect.'
     return render_template('admin_login.html', error=error, next_page=next_page)
@@ -871,7 +906,43 @@ def admin_delete_member(user_id):
     )
     conn.commit()
     conn.close()
-    return redirect(url_for('admin_members'))
+    return redirect(url_for('admin_dashboard'))
+
+
+@app.route('/feedback', methods=['POST'])
+def feedback():
+    """Receive feedback from users and store in inbox_entries table.
+    If inbox_entries does not exist, create it (simple dev-friendly behavior).
+    """
+    name = request.form.get('name') or session.get('user_name') or ''
+    email = request.form.get('email') or ''
+    subject = request.form.get('subject') or f'Feedback about {request.form.get("destination","")}'
+    message = request.form.get('message') or ''
+    user_id = session.get('user_id')
+    conn = get_db()
+    try:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS inbox_entries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                name TEXT,
+                email TEXT,
+                subject TEXT,
+                message TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        conn.execute('INSERT INTO inbox_entries (user_id, name, email, subject, message) VALUES (?, ?, ?, ?, ?)',
+                     (user_id, name, email, subject, message))
+        conn.commit()
+    except Exception:
+        # Non-fatal — ignore insertion errors to avoid breaking the user flow
+        pass
+    finally:
+        conn.close()
+    # Redirect back to the referring page if present
+    ref = request.headers.get('Referer') or url_for('planner')
+    return redirect(ref)
 
 
 def trip_from_result_form():
