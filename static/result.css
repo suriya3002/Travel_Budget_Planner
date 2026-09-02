@@ -38,3 +38,73 @@ body { font-family: 'Manrope', 'Segoe UI', sans-serif; background: #f3f7fb; colo
 @media (max-width: 650px) { body { padding-bottom: env(safe-area-inset-bottom); } .container { padding: 0; } #report { border-radius: 0; } .report-hero { min-height: 240px; padding: 24px 18px; } .hero-meta { gap: 8px 12px; font-size: .8rem; } .result-card { padding: 24px 16px; } .section-title { display: block; margin-bottom: 14px; } .section-title p { margin-top: 5px; } .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; } .summary-item { min-height: 88px; padding: 13px; } .summary-item strong { font-size: .96rem; word-break: break-word; } .insights { grid-template-columns: 1fr; gap: 20px; } .total-box { padding: 24px; } .total-box h1 { font-size: 2.1rem; } .chart-container { max-width: 275px; } .button-group { display: grid; grid-template-columns: 1fr; gap: 9px; padding: 18px 16px 10px; } .button-group button, .back-btn { min-height: 48px; } .action-center { padding: 0 16px; } .save-trip-container button { min-height: 52px; } .back-btn { display: block; margin: 14px 16px 24px; text-align: center; } }
 @media (max-width: 500px) { .route-summary { grid-column: span 1; } }
 @media (max-width: 500px) { .recommendations { grid-template-columns: 1fr; } }
+
+.chosen-badge-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+    background: #ecfdf5;
+    border: 1px solid #10b981;
+    color: #065f46;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+.map-action-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #0284c7;
+    color: #ffffff !important;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    text-decoration: none;
+    font-weight: 700;
+    transition: all 0.2s ease;
+}
+.map-action-pill:hover {
+    background: #0369a1;
+    transform: translateY(-1px);
+}
+.chip-map-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #f0f9ff;
+    color: #0284c7 !important;
+    border: 1px solid #bae6fd;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+.chip-map-btn:hover {
+    background: #0284c7;
+    color: #ffffff !important;
+}
+.google-link-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #f8fafc;
+    color: #475569 !important;
+    border: 1px solid #cbd5e1;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+.google-link-btn:hover {
+    background: #475569;
+    color: #ffffff !important;
+}
+

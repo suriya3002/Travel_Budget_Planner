@@ -50,39 +50,128 @@
       <hr class="report-divider"><div class="section-title"><h2>Destination suggestions & expenses</h2><p>Nearby tourist spots, hotel/room options, and food & dining estimates for {{ destination_short }}</p></div>
       <div class="destination-budget-note"><span>{{ destination_tier }}</span>{% if places_from_destination or room_from_destination %}<small>Automated estimates applied where user inputs were empty.</small>{% else %}<small>Showing tailored suggestions matching your itinerary.</small>{% endif %}</div>
       <div class="destination-budget-grid">
+        <!-- Tourist Spots -->
         <div class="destination-budget-card">
           <div class="destination-budget-head"><h3>Tourist spots</h3><strong>₹{{ '%.2f'|format(places_fee_total) }}</strong></div>
           <p class="destination-budget-meta">{{ places_to_visit }} place{{ '' if places_to_visit == 1 else 's' }} planned · ₹{{ '%.2f'|format(per_places_entry_fee) }} avg entry</p>
+
+          {% if selected_places and selected_places|length > 0 %}
+          <div class="chosen-badge-banner">
+            <span>✓ Chosen in your plan ({{ selected_places|length }})</span>
+            {% if all_places_maps %}<a href="{{ all_places_maps }}" target="_blank" rel="noopener" class="map-action-pill">🗺️ All on Map</a>{% endif %}
+          </div>
+          <div class="attraction-grid">
+            {% for place in selected_places %}
+            <article class="attraction-card">
+              {% if place.image_url %}<img src="{{ place.image_url }}" alt="{{ place.name }}">{% endif %}
+              <div>
+                <h4>{{ place.name }}</h4>
+                <p>{{ place.address or destination }}</p>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                  <span class="price-tag">₹{{ place.entry_fee }} entry</span>
+                  <a href="{{ place.maps_url }}" target="_blank" rel="noopener" class="chip-map-btn">📍 Google Map</a>
+                </div>
+              </div>
+            </article>
+            {% endfor %}
+          </div>
+          {% else %}
           <div class="attraction-grid">
             {% for place in destination_attractions %}
             <article class="attraction-card">
               {% if place.image_url %}<img src="{{ place.image_url }}" alt="{{ place.name }}">{% endif %}
-              <div><h4>{{ place.name }}</h4><p>{{ place.address }}</p>{% if place.rating %}<small>★ {{ place.rating }}</small>{% endif %}<span class="price-tag">₹{{ place.entry_fee }} entry</span></div>
+              <div>
+                <h4>{{ place.name }}</h4>
+                <p>{{ place.address }}</p>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                  {% if place.rating %}<small>★ {{ place.rating }}</small>{% else %}<span></span>{% endif %}
+                  <span class="price-tag">₹{{ place.entry_fee }} entry</span>
+                  <a href="{{ place.maps_url }}" target="_blank" rel="noopener" class="chip-map-btn">📍 Map</a>
+                </div>
+              </div>
             </article>
             {% endfor %}
           </div>
+          {% endif %}
         </div>
+
+        <!-- Hotels & Stays -->
         <div class="destination-budget-card">
           <div class="destination-budget-head"><h3>Hotels & stays</h3><strong>₹{{ '%.2f'|format(room_cost) }}</strong></div>
           <p class="destination-budget-meta">{{ trip_days }} day{{ '' if trip_days == 1 else 's' }} · ₹{{ '%.2f'|format(room_cost / trip_days if trip_days else 0) }}/night avg</p>
+
+          {% if selected_hotel %}
+          <div class="chosen-badge-banner">
+            <span>✓ Chosen Stay Tier: {{ selected_hotel.name }}</span>
+            {% if all_hotels_maps %}<a href="{{ all_hotels_maps }}" target="_blank" rel="noopener" class="map-action-pill">📍 Hotels on Map</a>{% endif %}
+          </div>
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px; margin-bottom:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px;">
+              <h4 style="margin:0; font-size:0.95rem; font-weight:700; color:#0f172a;">{{ selected_hotel.icon }} {{ selected_hotel.name }}</h4>
+              <strong style="color:#059669; font-size:1rem;">₹{{ selected_hotel.cost }}/night</strong>
+            </div>
+            <p style="margin:0 0 8px; font-size:0.75rem; color:#64748b;">{{ selected_hotel.desc }}</p>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              {% if selected_hotel.maps_link %}<a href="{{ selected_hotel.maps_link }}" target="_blank" rel="noopener" class="chip-map-btn">📍 Google Maps</a>{% endif %}
+              {% if selected_hotel.google_link %}<a href="{{ selected_hotel.google_link }}" target="_blank" rel="noopener" class="chip-map-btn">🔍 Google Hotels</a>{% endif %}
+            </div>
+          </div>
+          {% endif %}
+
           <div class="attraction-grid">
             {% for hotel in destination_hotels %}
             <article class="attraction-card hotel-card">
               {% if hotel.image_url %}<img src="{{ hotel.image_url }}" alt="{{ hotel.name }}">{% endif %}
-              <div><h4>{{ hotel.name }}</h4><p>{{ hotel.address }}</p>{% if hotel.rating %}<small>★ {{ hotel.rating }}</small>{% endif %}<span class="price-tag">₹{{ hotel.price_per_night }}/night</span></div>
+              <div>
+                <h4>{{ hotel.name }}</h4>
+                <p>{{ hotel.address }}</p>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                  {% if hotel.rating %}<small>★ {{ hotel.rating }}</small>{% else %}<span></span>{% endif %}
+                  <span class="price-tag">₹{{ hotel.price_per_night }}/night</span>
+                  <a href="{{ hotel.maps_url }}" target="_blank" rel="noopener" class="chip-map-btn">📍 Map</a>
+                </div>
+              </div>
             </article>
             {% endfor %}
           </div>
+
           <!-- OYO and booking links -->
           <div class="hotel-booking-links" style="margin-top:14px; padding-top:12px; border-top:1px dashed #e2e8f0; display:flex; gap:8px; flex-wrap:wrap;">
-            <a href="https://www.oyorooms.com/search?location={{ destination|urlencode }}" target="_blank" rel="noopener" style="font-size:0.75rem; font-weight:700; color:#e11d48; background:#fff1f2; padding:5px 10px; border-radius:6px; text-decoration:none;">🏨 OYO Rooms</a>
-            <a href="https://www.makemytrip.com/hotels/{{ destination_short|lower|urlencode }}-hotels.html" target="_blank" rel="noopener" style="font-size:0.75rem; font-weight:700; color:#0284c7; background:#f0f9ff; padding:5px 10px; border-radius:6px; text-decoration:none;">✈️ MakeMyTrip</a>
-            <a href="https://www.google.com/travel/hotels/{{ destination|urlencode }}" target="_blank" rel="noopener" style="font-size:0.75rem; font-weight:700; color:#0d9488; background:#f0fdfa; padding:5px 10px; border-radius:6px; text-decoration:none;">🔍 Google Hotels</a>
+            <a href="{{ oyo_link }}" target="_blank" rel="noopener" style="font-size:0.75rem; font-weight:700; color:#e11d48; background:#fff1f2; padding:5px 10px; border-radius:6px; text-decoration:none;">🏨 OYO Rooms</a>
+            <a href="{{ mmt_link }}" target="_blank" rel="noopener" style="font-size:0.75rem; font-weight:700; color:#0284c7; background:#f0f9ff; padding:5px 10px; border-radius:6px; text-decoration:none;">✈️ MakeMyTrip</a>
+            <a href="{{ all_hotels_google }}" target="_blank" rel="noopener" style="font-size:0.75rem; font-weight:700; color:#0d9488; background:#f0fdfa; padding:5px 10px; border-radius:6px; text-decoration:none;">🔍 Google Hotels</a>
+            <a href="{{ all_hotels_maps }}" target="_blank" rel="noopener" style="font-size:0.75rem; font-weight:700; color:#2563eb; background:#eff6ff; padding:5px 10px; border-radius:6px; text-decoration:none;">📍 Hotels on Map</a>
           </div>
         </div>
+
+        <!-- Food & Dining -->
         <div class="destination-budget-card">
           <div class="destination-budget-head"><h3>Food & dining</h3><strong>₹{{ '%.2f'|format(food_cost) }}</strong></div>
           <p class="destination-budget-meta">{{ travelers }} traveler{{ '' if travelers == 1 else 's' }} · {{ trip_days }} day{{ '' if trip_days == 1 else 's' }} · ₹{{ '%.2f'|format(food_cost / (travelers * trip_days) if (travelers and trip_days) else 0) }}/day avg</p>
+
+          {% if selected_meals and selected_meals|length > 0 %}
+          <div class="chosen-badge-banner">
+            <span>✓ Planned Meals Chosen ({{ selected_meals|length }})</span>
+            {% if all_food_maps %}<a href="{{ all_food_maps }}" target="_blank" rel="noopener" class="map-action-pill">🍽️ Restaurants on Map</a>{% endif %}
+          </div>
+          <div class="attraction-grid">
+            {% for meal in selected_meals %}
+            <article class="attraction-card dining-card">
+              <div>
+                <h4>{{ meal.icon }} {{ meal.name }}</h4>
+                <p style="margin:4px 0; font-size:0.76rem; color:#475569;"><strong>{{ meal.time }}</strong><br>{{ meal.desc }}</p>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; flex-wrap:wrap; gap:6px;">
+                  <span class="price-tag dining-tag">₹{{ meal.cost }} / person</span>
+                  <div style="display:flex; gap:6px;">
+                    <a href="{{ meal.maps_url }}" target="_blank" rel="noopener" class="chip-map-btn">📍 Map</a>
+                    <a href="{{ meal.google_url }}" target="_blank" rel="noopener" class="google-link-btn">🔍 Google</a>
+                  </div>
+                </div>
+              </div>
+            </article>
+            {% endfor %}
+          </div>
+          {% else %}
           <div class="attraction-grid">
             {% for food in destination_dining %}
             <article class="attraction-card dining-card">
@@ -90,12 +179,19 @@
               <div>
                 <h4>{{ food.name }}</h4>
                 <p>{{ food.address }}{% if food.cuisine %}<br><small style="color:#64748b;font-weight:500;">{{ food.cuisine }}</small>{% endif %}</p>
-                {% if food.rating %}<small>★ {{ food.rating }}</small>{% endif %}
-                <span class="price-tag dining-tag">₹{{ food.estimated_cost }} avg / person</span>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; flex-wrap:wrap; gap:6px;">
+                  {% if food.rating %}<small>★ {{ food.rating }}</small>{% else %}<span></span>{% endif %}
+                  <span class="price-tag dining-tag">₹{{ food.estimated_cost }} avg / person</span>
+                  <div style="display:flex; gap:6px;">
+                    <a href="{{ food.maps_url }}" target="_blank" rel="noopener" class="chip-map-btn">📍 Map</a>
+                    <a href="{{ food.google_url }}" target="_blank" rel="noopener" class="google-link-btn">🔍 Google</a>
+                  </div>
+                </div>
               </div>
             </article>
             {% endfor %}
           </div>
+          {% endif %}
         </div>
       </div>
       <hr class="report-divider"><div class="section-title"><h2>More on the route</h2><p>Popular waypoints, highway rest stops & scenic pauses along your journey</p></div><section id="attractions" class="attractions" data-origin="{{ from_location|e }}" data-destination="{{ destination|e }}"><p class="attractions-status">Finding route stops…</p></section>

@@ -8,6 +8,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 </head>
 
 <body class="planner-page">
@@ -110,11 +112,101 @@
   <!-- STEP 2 -->
   <div class="form-step" data-step="2">
     <div class="step-header">
-      <h2>📍 Route</h2>
-      <p>Enter locations — distance & travel time update automatically</p>
+      <h2>📍 Route & Directions</h2>
+      <p>Search locations, reverse route, or pick popular destinations with Google Maps features</p>
     </div>
 
-    <div class="travel-card animate-in" style="--delay:0.1s">
+    <!-- Google Maps Travel Mode Selector Tabs -->
+    <div class="gmap-mode-tabs animate-in" style="--delay:0.05s">
+      <button type="button" class="gmap-mode-tab active" data-mode="car" onclick="selectGmapMode('car')">
+        🚗 Driving
+      </button>
+      <button type="button" class="gmap-mode-tab" data-mode="bike" onclick="selectGmapMode('bike')">
+        🏍️ Two-Wheeler
+      </button>
+      <button type="button" class="gmap-mode-tab" data-mode="bus" onclick="selectGmapMode('bus')">
+        🚌 Transit / Bus
+      </button>
+      <button type="button" class="gmap-mode-tab" data-mode="train" onclick="selectGmapMode('train')">
+        🚆 Train
+      </button>
+      <button type="button" class="gmap-mode-tab" data-mode="walk" onclick="selectGmapMode('walk')">
+        🚶 Walking
+      </button>
+    </div>
+
+    <!-- Google Maps Waypoints Card -->
+    <div class="gmap-directions-card animate-in" style="--delay:0.1s">
+      <!-- Left Track Column with start dot, connector, destination pin -->
+      <div class="gmap-track-col">
+        <div class="gmap-marker-start" title="Starting Point">
+          <span class="gmap-circle-dot"></span>
+        </div>
+        <div class="gmap-track-line"></div>
+        <div class="gmap-marker-dest" title="Destination">
+          <span class="gmap-pin-icon">📍</span>
+        </div>
+      </div>
+
+      <!-- Inputs Column -->
+      <div class="gmap-inputs-col">
+        <!-- From Location -->
+        <div class="gmap-input-group">
+          <div class="gmap-input-box">
+            <input type="text" id="from_location" name="from_location"
+                   placeholder=" " autocomplete="off" required
+                   class="gmap-text-input" oninput="onLocationInputChange('from_location')">
+            <label for="from_location" class="gmap-input-label">Starting Point (From)</label>
+            <button type="button" class="gmap-clear-btn" id="from_clear_btn" onclick="clearLocationInput('from_location')" title="Clear starting point" style="display:none;">✕</button>
+          </div>
+          <button type="button" class="gmap-gps-action-btn" onclick="useCurrentLocation()" title="Use Current GPS Location">
+            <span class="gmap-gps-icon">🎯</span>
+            <span class="gmap-gps-label">My Location</span>
+          </button>
+          <div id="from_suggestions" class="suggestions gmap-suggestions-box"></div>
+        </div>
+
+        <div class="gmap-inputs-divider"></div>
+
+        <!-- Destination Location -->
+        <div class="gmap-input-group">
+          <div class="gmap-input-box">
+            <input type="text" id="destination" name="destination"
+                   placeholder=" " autocomplete="off" required
+                   class="gmap-text-input" oninput="onLocationInputChange('destination')">
+            <label for="destination" class="gmap-input-label">Destination (To)</label>
+            <button type="button" class="gmap-clear-btn" id="dest_clear_btn" onclick="clearLocationInput('destination')" title="Clear destination" style="display:none;">✕</button>
+          </div>
+          <div id="destination_suggestions" class="suggestions gmap-suggestions-box"></div>
+        </div>
+      </div>
+
+      <!-- Right Swap Button Column -->
+      <div class="gmap-swap-col">
+        <button type="button" class="gmap-swap-btn" id="gmap_swap_btn" onclick="swapLocations()" title="Reverse / Swap starting point and destination">
+          <svg class="gmap-swap-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M7 16V4m0 0L3 8m4-4l4 4m6 4v12m0 0l4-4m-4 4l-4-4"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Quick Destination Pills -->
+    <div class="gmap-quick-destinations animate-in" style="--delay:0.15s">
+      <span class="quick-dest-title">Popular Destinations:</span>
+      <div class="quick-dest-pills">
+        <button type="button" class="quick-dest-pill" onclick="selectQuickDestination('Goa, India')">🏖️ Goa</button>
+        <button type="button" class="quick-dest-pill" onclick="selectQuickDestination('Munnar, Kerala, India')">🌲 Munnar</button>
+        <button type="button" class="quick-dest-pill" onclick="selectQuickDestination('Jaipur, Rajasthan, India')">🏰 Jaipur</button>
+        <button type="button" class="quick-dest-pill" onclick="selectQuickDestination('Bengaluru, Karnataka, India')">🌆 Bengaluru</button>
+        <button type="button" class="quick-dest-pill" onclick="selectQuickDestination('Kochi, Kerala, India')">🌴 Kochi</button>
+        <button type="button" class="quick-dest-pill" onclick="selectQuickDestination('Delhi, India')">🏛️ Delhi</button>
+        <button type="button" class="quick-dest-pill" onclick="selectQuickDestination('Shimla, Himachal Pradesh, India')">⛰️ Shimla</button>
+      </div>
+    </div>
+
+    <!-- Distance & Travel Time Cards -->
+    <div class="travel-card animate-in" style="--delay:0.2s">
       <div class="travel-box distance-box">
         <span class="travel-icon">🛣️</span>
         <p class="travel-label">Distance</p>
@@ -122,36 +214,21 @@
       </div>
       <div class="travel-box duration-box">
         <span class="travel-icon">⏱️</span>
-        <p class="travel-label">Travel Time</p>
+        <p class="travel-label">Est. Travel Time</p>
         <h2 id="duration_card">—</h2>
       </div>
     </div>
 
-    {% if google_maps_js_api_key %}<div id="route_map" class="route-map" aria-label="Route map preview"></div>{% endif %}
-
-    <div class="field-group animate-in" style="--delay:0.2s">
-      <div class="location-row">
-        <input type="text" id="from_location" name="from_location"
-               placeholder=" " autocomplete="off" required>
-        <label for="from_location">From Location</label>
-        <button type="button" class="gps-btn" onclick="useCurrentLocation()">📍 GPS</button>
-      </div>
-      <div id="from_suggestions" class="suggestions"></div>
+    <!-- Live Google Maps Directions Action Link -->
+    <div id="gmaps_external_row" class="gmaps-external-row" style="display:none; margin-bottom:14px;">
+      <a id="open_in_gmaps_btn" href="#" target="_blank" rel="noopener" class="gmap-live-action-btn">
+        <span class="gmap-logo-badge">🗺️ Google Maps</span>
+        <span class="gmap-link-text">Open Route & Live Traffic in Google Maps ↗</span>
+      </a>
     </div>
 
-    <!-- Swap locations button -->
-    <div class="swap-locations-wrap">
-      <button type="button" class="swap-locations-btn" onclick="swapLocations()" title="Reverse / Swap From and Destination locations">
-        <span class="swap-icon">⇅</span> Swap From & Destination
-      </button>
-    </div>
-
-    <div class="field-group animate-in" style="--delay:0.3s">
-      <input type="text" id="destination" name="destination"
-             placeholder=" " autocomplete="off" required>
-      <label for="destination">Destination</label>
-      <div id="destination_suggestions" class="suggestions"></div>
-    </div>
+    <!-- Interactive Route Map Preview (Leaflet / Google Maps) -->
+    <div id="route_map" class="route-map" aria-label="Route map preview" style="display:none;"></div>
 
     <input type="hidden" name="distance" id="distance" value="">
     <input type="hidden" name="travel_time" id="travel_time" value="">
@@ -166,11 +243,12 @@
 
     <!-- 1. Tourist Places Selection Box -->
     <div id="places_suggestions_section" class="section-card slide-down" style="display:none; margin-bottom:18px;">
-      <div class="suggestion-header-row">
+      <div class="suggestion-header-row" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
         <div>
           <h3>🏛️ Suggested Tourist Places to Visit</h3>
           <p class="suggestion-sub">Click to select sights; count and entry fees calculate automatically</p>
         </div>
+        <a id="all_places_map_link" href="#" target="_blank" rel="noopener" class="section-map-btn" style="display:none;">🗺️ All Sights on Google Maps</a>
       </div>
       <div id="places_chips_container" class="places-chips-grid"></div>
       <div id="places_summary_pill" class="suggestion-summary-pill" style="display:none;"></div>
@@ -178,11 +256,12 @@
 
     <!-- 2. Food & Meal Timing Suggestions Box -->
     <div id="food_suggestions_section" class="section-card slide-down" style="display:none; margin-bottom:18px;">
-      <div class="suggestion-header-row">
+      <div class="suggestion-header-row" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
         <div>
           <h3>🍽️ Suggested Meals & Suitable Timings</h3>
           <p class="suggestion-sub">Select daily meals to calculate your food budget per person</p>
         </div>
+        <a id="all_food_google_link" href="#" target="_blank" rel="noopener" class="section-map-btn" style="display:none;">🍽️ Food & Restaurants on Google</a>
       </div>
       <div id="food_meals_container" class="food-meals-grid"></div>
       <div id="food_summary_pill" class="suggestion-summary-pill" style="display:none;"></div>
@@ -190,15 +269,20 @@
 
     <!-- 3. Hotels & Room Stays with OYO Links Box -->
     <div id="hotels_suggestions_section" class="section-card slide-down" style="display:none; margin-bottom:18px;">
-      <div class="suggestion-header-row">
+      <div class="suggestion-header-row" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
         <div>
           <h3>🏨 Hotel Stays & Real-Time Booking</h3>
-          <p class="suggestion-sub">Choose stay tier to set room rate, or explore hotels on OYO & MakeMyTrip</p>
+          <p class="suggestion-sub">Choose stay tier to set room rate, or explore hotels on OYO, MakeMyTrip & Google</p>
         </div>
+        <a id="all_hotels_map_link" href="#" target="_blank" rel="noopener" class="section-map-btn" style="display:none;">📍 Hotels on Google Maps</a>
       </div>
       <div id="hotels_tiers_container" class="hotel-tiers-grid"></div>
       <div id="hotels_booking_links" class="booking-links-bar"></div>
     </div>
+
+    <input type="hidden" name="selected_places_json" id="selected_places_json" value="">
+    <input type="hidden" name="selected_meals_json" id="selected_meals_json" value="">
+    <input type="hidden" name="selected_hotel_json" id="selected_hotel_json" value="">
 
     <!-- Summary Input Grid -->
     <div class="field-grid">

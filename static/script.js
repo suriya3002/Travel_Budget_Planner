@@ -346,13 +346,15 @@ async function calculateDistance() {
         updateTravelTime();
         updateAutoTolls();
         savePlannerState();
-        drawRoutePreview(from, destination);
+        drawRoutePreview(from, destination, data);
     } catch (error) {
         oneWayDistance = 0;
         oneWayRouteMinutes = 0;
         document.getElementById("distance").value = "";
         document.getElementById("distance_card").textContent = "—";
         document.getElementById("duration_card").textContent = "—";
+        const gmapsRow = document.getElementById("gmaps_external_row");
+        if (gmapsRow) gmapsRow.style.display = "none";
         alert(error.message || "Could not calculate distance. Check your connection.");
     } finally { setLoadingState(false); }
 }
@@ -372,10 +374,10 @@ async function fetchDestinationOptions(destination) {
         }
 
         // 2. Render Tourist Places Suggestions
-        renderPlacesSuggestions(data.places || []);
+        renderPlacesSuggestions(data.places || [], data.links || {});
 
         // 3. Render Food Meal Timings Suggestions
-        renderFoodMealsSuggestions(data.food_meals || []);
+        renderFoodMealsSuggestions(data.food_meals || [], data.links || {});
 
         // 4. Render Hotels Tiers and OYO / MMT Booking Links
         renderHotelTiers(data.hotels || [], data.links || {});
@@ -391,14 +393,20 @@ async function fetchDestinationOptions(destination) {
     }
 }
 
-function renderPlacesSuggestions(places) {
+function renderPlacesSuggestions(places, links = {}) {
     const section = document.getElementById("places_suggestions_section");
     const container = document.getElementById("places_chips_container");
+    const allMapLink = document.getElementById("all_places_map_link");
     if (!section || !container) return;
 
     if (!places.length) {
         section.style.display = "none";
         return;
+    }
+
+    if (allMapLink && links.all_places_maps) {
+        allMapLink.href = links.all_places_maps;
+        allMapLink.style.display = "inline-flex";
     }
 
     container.replaceChildren();
@@ -409,7 +417,10 @@ function renderPlacesSuggestions(places) {
             <div class="place-chip-title">${place.name}</div>
             <div class="place-chip-footer">
                 <span class="place-chip-fee">₹${place.entry_fee} entry</span>
-                ${place.rating ? `<span class="place-chip-rating">★ ${place.rating}</span>` : ""}
+                <div style="display:flex; align-items:center; gap:6px;">
+                    ${place.rating ? `<span class="place-chip-rating">★ ${place.rating}</span>` : ""}
+                    <a href="${place.maps_url}" target="_blank" rel="noopener" class="chip-map-btn" onclick="event.stopPropagation()" title="View on Google Maps">📍 Map</a>
+                </div>
             </div>
         `;
         chip.addEventListener("click", () => togglePlaceSelection(index, place, chip));
@@ -432,14 +443,21 @@ function togglePlaceSelection(index, place, chip) {
     const places = destinationOptionsCache?.places || [];
     const count = selectedTouristPlaces.size;
     let totalFee = 0;
+    const selectedList = [];
     selectedTouristPlaces.forEach(idx => {
-        if (places[idx]) totalFee += Number(places[idx].entry_fee) || 0;
+        if (places[idx]) {
+            totalFee += Number(places[idx].entry_fee) || 0;
+            selectedList.push(places[idx]);
+        }
     });
 
     const placesInput = document.getElementById("places_to_visit");
     const feeInput = document.getElementById("per_places_entry_fee");
+    const hiddenJsonInput = document.getElementById("selected_places_json");
+
     if (placesInput) placesInput.value = count;
     if (feeInput) feeInput.value = count > 0 ? Math.round((totalFee / count) * 100) / 100 : 0;
+    if (hiddenJsonInput) hiddenJsonInput.value = JSON.stringify(selectedList);
 
     updatePlacesSummary();
     savePlannerState();
@@ -462,14 +480,20 @@ function updatePlacesSummary() {
     }
 }
 
-function renderFoodMealsSuggestions(meals) {
+function renderFoodMealsSuggestions(meals, links = {}) {
     const section = document.getElementById("food_suggestions_section");
     const container = document.getElementById("food_meals_container");
+    const allFoodLink = document.getElementById("all_food_google_link");
     if (!section || !container) return;
 
     if (!meals.length) {
         section.style.display = "none";
         return;
+    }
+
+    if (allFoodLink && links.all_food_google) {
+        allFoodLink.href = links.all_food_google;
+        allFoodLink.style.display = "inline-flex";
     }
 
     container.replaceChildren();
@@ -483,6 +507,10 @@ function renderFoodMealsSuggestions(meals) {
             </div>
             <div class="meal-card-time">${meal.time}</div>
             <div class="meal-card-desc">${meal.desc}</div>
+            <div class="chip-links-row">
+                <a href="${meal.maps_url}" target="_blank" rel="noopener" class="chip-map-btn" onclick="event.stopPropagation()">📍 Restaurants on Map</a>
+                <a href="${meal.google_url}" target="_blank" rel="noopener" class="chip-map-btn" onclick="event.stopPropagation()">🔍 Google Search</a>
+            </div>
         `;
         card.addEventListener("click", () => toggleMealSelection(idx, meal, card));
         container.appendChild(card);
@@ -503,14 +531,21 @@ function toggleMealSelection(idx, meal, card) {
 
     const meals = destinationOptionsCache?.food_meals || [];
     let totalMealCost = 0;
+    const selectedList = [];
     selectedFoodMeals.forEach(i => {
-        if (meals[i]) totalMealCost += Number(meals[i].cost) || 0;
+        if (meals[i]) {
+            totalMealCost += Number(meals[i].cost) || 0;
+            selectedList.push(meals[i]);
+        }
     });
 
     const foodInput = document.getElementById("food_cost_per_person");
+    const hiddenMealsInput = document.getElementById("selected_meals_json");
+
     if (foodInput) {
         foodInput.value = totalMealCost > 0 ? totalMealCost : (destinationOptionsCache?.base_food || 600);
     }
+    if (hiddenMealsInput) hiddenMealsInput.value = JSON.stringify(selectedList);
 
     updateFoodSummary();
     savePlannerState();
@@ -533,15 +568,21 @@ function updateFoodSummary() {
     }
 }
 
-function renderHotelTiers(hotels, links) {
+function renderHotelTiers(hotels, links = {}) {
     const section = document.getElementById("hotels_suggestions_section");
     const container = document.getElementById("hotels_tiers_container");
     const linksBar = document.getElementById("hotels_booking_links");
+    const allHotelsMap = document.getElementById("all_hotels_map_link");
     if (!section || !container) return;
 
     if (!hotels.length) {
         section.style.display = "none";
         return;
+    }
+
+    if (allHotelsMap && links.all_hotels_maps) {
+        allHotelsMap.href = links.all_hotels_maps;
+        allHotelsMap.style.display = "inline-flex";
     }
 
     container.replaceChildren();
@@ -554,6 +595,10 @@ function renderHotelTiers(hotels, links) {
                 <span class="hotel-tier-price">₹${hotel.cost}/night</span>
             </div>
             <div class="hotel-tier-desc">${hotel.desc}</div>
+            <div class="chip-links-row" style="margin-top:8px;">
+                <a href="${hotel.maps_link || links.all_hotels_maps}" target="_blank" rel="noopener" class="chip-map-btn" onclick="event.stopPropagation()">📍 On Google Maps</a>
+                <a href="${hotel.google_link || links.google}" target="_blank" rel="noopener" class="chip-map-btn" onclick="event.stopPropagation()">🔍 Google Hotels</a>
+            </div>
         `;
         card.addEventListener("click", () => selectHotelTier(idx, hotel));
         container.appendChild(card);
@@ -588,6 +633,17 @@ function renderHotelTiers(hotels, links) {
             gBtn.innerHTML = "🔍 Google Hotels";
             linksBar.appendChild(gBtn);
         }
+        if (links.all_hotels_maps) {
+            const gMapsBtn = document.createElement("a");
+            gMapsBtn.className = "booking-link-btn";
+            gMapsBtn.style.background = "#2563eb";
+            gMapsBtn.style.color = "#ffffff";
+            gMapsBtn.href = links.all_hotels_maps;
+            gMapsBtn.target = "_blank";
+            gMapsBtn.rel = "noopener";
+            gMapsBtn.innerHTML = "📍 Google Maps Hotels";
+            linksBar.appendChild(gMapsBtn);
+        }
     }
 
     section.style.display = "block";
@@ -602,42 +658,157 @@ function selectHotelTier(idx, hotel) {
     if (roomInput) {
         roomInput.value = hotel.cost;
     }
+    const hiddenHotelInput = document.getElementById("selected_hotel_json");
+    if (hiddenHotelInput) {
+        hiddenHotelInput.value = JSON.stringify(hotel);
+    }
     savePlannerState();
 }
 
-function drawRoutePreview(origin, destination) {
-    if (!window.google?.maps?.DirectionsService) return;
+let leafletMap = null;
+let leafletRouteLayer = null;
+
+function drawRoutePreview(origin, destination, routeData = null) {
     const mapElement = document.getElementById("route_map");
     if (!mapElement) return;
-    if (!routeMap) {
-        routeMap = new google.maps.Map(mapElement, { center: { lat: 20.5937, lng: 78.9629 }, zoom: 5, mapTypeControl: false, streetViewControl: false });
-        directionsService = new google.maps.DirectionsService();
-        directionsRenderer = new google.maps.DirectionsRenderer({ map: routeMap, suppressMarkers: false });
+
+    // Show external Google Maps live route button
+    const gmapsRow = document.getElementById("gmaps_external_row");
+    const gmapsBtn = document.getElementById("open_in_gmaps_btn");
+    if (gmapsRow && gmapsBtn) {
+        const gUrl = routeData?.gmaps_url || `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`;
+        gmapsBtn.href = gUrl;
+        gmapsRow.style.display = "block";
     }
-    directionsService.route({ origin, destination, travelMode: google.maps.TravelMode.DRIVING }, (result, status) => {
-        if (status === "OK") { directionsRenderer.setDirections(result); mapElement.style.display = "block"; }
-        else { mapElement.style.display = "none"; }
-    });
+
+    // 1. If Google Maps JS API is available, use Google Maps
+    if (window.google?.maps?.DirectionsService) {
+        if (!routeMap) {
+            routeMap = new google.maps.Map(mapElement, {
+                center: { lat: 20.5937, lng: 78.9629 },
+                zoom: 5,
+                mapTypeControl: false,
+                streetViewControl: false
+            });
+            directionsService = new google.maps.DirectionsService();
+            directionsRenderer = new google.maps.DirectionsRenderer({
+                map: routeMap,
+                suppressMarkers: false
+            });
+        }
+        directionsService.route({ origin, destination, travelMode: google.maps.TravelMode.DRIVING }, (result, status) => {
+            if (status === "OK") {
+                directionsRenderer.setDirections(result);
+                mapElement.style.display = "block";
+            } else {
+                mapElement.style.display = "none";
+            }
+        });
+        return;
+    }
+
+    // 2. Otherwise use Leaflet (free OpenStreetMap, zero API key needed!)
+    if (typeof L !== "undefined") {
+        mapElement.style.display = "block";
+        if (!leafletMap) {
+            leafletMap = L.map(mapElement, {
+                center: [20.5937, 78.9629],
+                zoom: 5,
+                zoomControl: true
+            });
+            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                attribution: "© OpenStreetMap contributors",
+                maxZoom: 19
+            }).addTo(leafletMap);
+            leafletRouteLayer = L.featureGroup().addTo(leafletMap);
+        }
+
+        leafletRouteLayer.clearLayers();
+
+        const coords = routeData?.route_geometry || [];
+        const start = routeData?.start_coords;
+        const end = routeData?.end_coords;
+
+        if (coords.length > 0) {
+            const polyline = L.polyline(coords, {
+                color: "#0284c7",
+                weight: 5,
+                opacity: 0.85,
+                lineJoin: "round"
+            }).addTo(leafletRouteLayer);
+
+            // Add start marker (Green)
+            const startPoint = coords[0];
+            const startMarker = L.circleMarker(startPoint, {
+                radius: 8,
+                fillColor: "#10b981",
+                color: "#ffffff",
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.95
+            }).bindPopup(`<b>Start:</b> ${origin}`);
+            leafletRouteLayer.addLayer(startMarker);
+
+            // Add destination marker (Red)
+            const endPoint = coords[coords.length - 1];
+            const endMarker = L.circleMarker(endPoint, {
+                radius: 9,
+                fillColor: "#ef4444",
+                color: "#ffffff",
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.95
+            }).bindPopup(`<b>Destination:</b> ${destination}`);
+            leafletRouteLayer.addLayer(endMarker);
+
+            leafletMap.fitBounds(polyline.getBounds(), { padding: [35, 35] });
+            setTimeout(() => leafletMap.invalidateSize(), 200);
+        } else if (start && end) {
+            const polyline = L.polyline([start, end], {
+                color: "#0284c7",
+                weight: 4,
+                dashArray: "6, 8",
+                opacity: 0.8
+            }).addTo(leafletRouteLayer);
+            leafletMap.fitBounds(polyline.getBounds(), { padding: [35, 35] });
+            setTimeout(() => leafletMap.invalidateSize(), 200);
+        }
+    }
 }
 
 async function searchLocation(inputId, boxId) {
     const query = document.getElementById(inputId)?.value?.trim();
     const box = document.getElementById(boxId);
     if (!box) return;
-    if (!query || !query.length) { box.replaceChildren(); box.style.display = "none"; return; }
-    activeSearch?.abort(); activeSearch = new AbortController();
+    if (!query || !query.length) {
+        box.replaceChildren();
+        box.style.display = "none";
+        return;
+    }
+    activeSearch?.abort();
+    activeSearch = new AbortController();
     try {
         const response = await fetch(`/location_suggestions?q=${encodeURIComponent(query)}`, { signal: activeSearch.signal });
         const places = await response.json();
         box.replaceChildren();
         places.forEach(place => {
             const item = document.createElement("button");
-            item.type = "button"; item.className = "suggestion-item"; item.textContent = place.label;
+            item.type = "button";
+            item.className = "gmap-sugg-row";
+            item.innerHTML = `
+                <span class="gmap-sugg-pin">📍</span>
+                <div class="gmap-sugg-text">
+                    <span class="gmap-sugg-main">${place.main_text || place.label}</span>
+                    ${place.secondary_text ? `<span class="gmap-sugg-sec">${place.secondary_text}</span>` : ""}
+                </div>
+            `;
             item.addEventListener("click", () => selectLocation(inputId, boxId, place.label));
             box.appendChild(item);
         });
         box.style.display = places.length ? "block" : "none";
-    } catch (error) { if (error.name !== "AbortError") box.style.display = "none"; }
+    } catch (error) {
+        if (error.name !== "AbortError") box.style.display = "none";
+    }
 }
 
 function selectLocation(inputId, boxId, value) {
@@ -645,6 +816,7 @@ function selectLocation(inputId, boxId, value) {
     if (input) input.value = value;
     const box = document.getElementById(boxId);
     if (box) box.style.display = "none";
+    updateClearButtonsVisibility();
     if (inputId === "destination") {
         fetchDestinationOptions(value);
     }
@@ -657,24 +829,122 @@ function scheduleLocationSearch(inputId, boxId) {
     searchTimer = setTimeout(() => searchLocation(inputId, boxId), 350);
 }
 
+function onLocationInputChange(inputId) {
+    updateClearButtonsVisibility();
+    if (inputId === "from_location") {
+        if (!window.google?.maps?.places) scheduleLocationSearch("from_location", "from_suggestions");
+    } else if (inputId === "destination") {
+        if (!window.google?.maps?.places) scheduleLocationSearch("destination", "destination_suggestions");
+    }
+}
+
+function updateClearButtonsVisibility() {
+    const fromVal = document.getElementById("from_location")?.value?.trim();
+    const destVal = document.getElementById("destination")?.value?.trim();
+    const fromClear = document.getElementById("from_clear_btn");
+    const destClear = document.getElementById("dest_clear_btn");
+
+    if (fromClear) fromClear.style.display = fromVal ? "inline-flex" : "none";
+    if (destClear) destClear.style.display = destVal ? "inline-flex" : "none";
+}
+
+function clearLocationInput(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    input.value = "";
+    updateClearButtonsVisibility();
+
+    if (inputId === "from_location") {
+        const box = document.getElementById("from_suggestions");
+        if (box) box.style.display = "none";
+    } else if (inputId === "destination") {
+        const box = document.getElementById("destination_suggestions");
+        if (box) box.style.display = "none";
+    }
+
+    // Reset distance card & travel time if either is cleared
+    document.getElementById("distance_card").textContent = "—";
+    document.getElementById("duration_card").textContent = "—";
+    const distInput = document.getElementById("distance");
+    if (distInput) distInput.value = "";
+    const durInput = document.getElementById("travel_time");
+    if (durInput) durInput.value = "";
+    const gmapsRow = document.getElementById("gmaps_external_row");
+    if (gmapsRow) gmapsRow.style.display = "none";
+
+    savePlannerState();
+}
+
+function selectQuickDestination(destName) {
+    const destInput = document.getElementById("destination");
+    if (!destInput) return;
+    destInput.value = destName;
+    updateClearButtonsVisibility();
+    const box = document.getElementById("destination_suggestions");
+    if (box) box.style.display = "none";
+    fetchDestinationOptions(destName);
+    calculateDistance();
+    savePlannerState();
+}
+
+function selectGmapMode(mode) {
+    const select = document.getElementById("transport_mode");
+    if (select) {
+        select.value = mode;
+    }
+    syncGmapModeTabs();
+    onTransportChange();
+    savePlannerState();
+}
+
+function syncGmapModeTabs() {
+    const currentMode = document.getElementById("transport_mode")?.value || "car";
+    document.querySelectorAll(".gmap-mode-tab").forEach(tab => {
+        tab.classList.toggle("active", tab.getAttribute("data-mode") === currentMode);
+    });
+}
+
+function swapLocations() {
+    const fromInput = document.getElementById("from_location");
+    const destInput = document.getElementById("destination");
+    const swapBtn = document.getElementById("gmap_swap_btn");
+
+    if (!fromInput || !destInput) return;
+
+    if (swapBtn) {
+        swapBtn.classList.add("rotating");
+        setTimeout(() => swapBtn.classList.remove("rotating"), 350);
+    }
+
+    const temp = fromInput.value;
+    fromInput.value = destInput.value;
+    destInput.value = temp;
+
+    updateClearButtonsVisibility();
+
+    const newDest = destInput.value.trim();
+    if (newDest) {
+        fetchDestinationOptions(newDest);
+    }
+
+    if (fromInput.value.trim() && newDest) {
+        calculateDistance();
+    }
+    savePlannerState();
+}
+
 document.getElementById("from_location")?.addEventListener("change", () => {
+    updateClearButtonsVisibility();
     calculateDistance();
     savePlannerState();
 });
 
 document.getElementById("destination")?.addEventListener("change", () => {
+    updateClearButtonsVisibility();
     const dest = document.getElementById("destination")?.value?.trim();
     if (dest) fetchDestinationOptions(dest);
     calculateDistance();
     savePlannerState();
-});
-
-document.getElementById("from_location")?.addEventListener("input", () => {
-    if (!window.google?.maps?.places) scheduleLocationSearch("from_location", "from_suggestions");
-});
-
-document.getElementById("destination")?.addEventListener("input", () => {
-    if (!window.google?.maps?.places) scheduleLocationSearch("destination", "destination_suggestions");
 });
 
 document.getElementById("round_trip")?.addEventListener("change", () => {
@@ -684,6 +954,7 @@ document.getElementById("round_trip")?.addEventListener("change", () => {
 });
 
 document.getElementById("transport_mode")?.addEventListener("change", () => {
+    syncGmapModeTabs();
     onTransportChange();
     savePlannerState();
 });
@@ -694,6 +965,8 @@ document.querySelectorAll("#planner_form input, #planner_form select").forEach(i
 
 window.onload = () => {
     loadPlannerState();
+    updateClearButtonsVisibility();
+    syncGmapModeTabs();
     onTransportChange();
     toggleRentalCost();
     updateModeDescription();

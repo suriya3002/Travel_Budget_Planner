@@ -540,34 +540,367 @@
     transform: translateY(-1px);
 }
 
-/* ===== Swap Locations Button ===== */
-.swap-locations-wrap {
+/* ===== Google Maps Travel Mode Selector Tabs ===== */
+.gmap-mode-tabs {
     display: flex;
-    justify-content: center;
-    margin: -6px 0 12px;
+    gap: 8px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
 }
-.swap-locations-btn {
+.gmap-mode-tabs::-webkit-scrollbar {
+    display: none;
+}
+.gmap-mode-tab {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    background: rgba(255, 255, 255, 0.12);
-    color: #ffffff;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    padding: 6px 16px;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    padding: 8px 14px;
     border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+.gmap-mode-tab:hover {
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.35);
+}
+.gmap-mode-tab.active {
+    background: #0284c7;
+    color: #ffffff;
+    border-color: #38bdf8;
+    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
+}
+
+/* ===== Google Maps Directions Card ===== */
+.gmap-directions-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 16px 14px;
+    margin-bottom: 16px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+}
+
+/* Left Track Column */
+.gmap-track-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    width: 26px;
+    height: 104px;
+    padding: 10px 0;
+    flex-shrink: 0;
+}
+.gmap-marker-start {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 3px solid #38bdf8;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+}
+.gmap-circle-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #38bdf8;
+}
+.gmap-track-line {
+    width: 2px;
+    flex-grow: 1;
+    margin: 4px 0;
+    border-left: 2px dashed rgba(255, 255, 255, 0.45);
+}
+.gmap-marker-dest {
+    font-size: 18px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+}
+
+/* Middle Inputs Column */
+.gmap-inputs-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+.gmap-input-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.gmap-input-box {
+    position: relative;
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+.gmap-text-input {
+    width: 100%;
+    min-height: 48px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 12px;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 16px 36px 6px 14px;
+    outline: none;
+    transition: all 0.2s ease;
+}
+.gmap-text-input:focus {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: #38bdf8;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25);
+}
+.gmap-input-label {
+    position: absolute;
+    left: 14px;
+    top: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #38bdf8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    pointer-events: none;
+    transition: all 0.2s ease;
+}
+.gmap-clear-btn {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    border: none;
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.gmap-clear-btn:hover {
+    background: rgba(239, 68, 68, 0.8);
+    transform: translateY(-50%) scale(1.1);
+}
+
+.gmap-gps-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(56, 189, 248, 0.18);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    padding: 0 12px;
+    min-height: 48px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+.gmap-gps-action-btn:hover {
+    background: #0284c7;
+    color: #ffffff;
+    border-color: #38bdf8;
+    transform: translateY(-1px);
+}
+.gmap-gps-icon {
+    font-size: 14px;
+}
+
+.gmap-inputs-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 2px 0;
+}
+
+/* Right Swap Button Column */
+.gmap-swap-col {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.gmap-swap-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.gmap-swap-btn:hover {
+    background: #0284c7;
+    border-color: #38bdf8;
+    color: #ffffff;
+    transform: scale(1.1) rotate(180deg);
+    box-shadow: 0 0 18px rgba(56, 189, 248, 0.5);
+}
+.gmap-swap-btn.rotating {
+    transform: rotate(180deg);
+}
+
+/* Google Maps Suggestions Box */
+.gmap-suggestions-box {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    z-index: 50;
+    background: #0f172a;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 14px;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    max-height: 260px;
+    overflow-y: auto;
+}
+.gmap-sugg-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 14px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+.gmap-sugg-row:last-child {
+    border-bottom: none;
+}
+.gmap-sugg-row:hover {
+    background: rgba(56, 189, 248, 0.15);
+}
+.gmap-sugg-pin {
+    font-size: 16px;
+    flex-shrink: 0;
+    color: #ef4444;
+}
+.gmap-sugg-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.gmap-sugg-main {
     font-size: 13px;
+    font-weight: 600;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.gmap-sugg-sec {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.65);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Quick Destination Pills */
+.gmap-quick-destinations {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+.quick-dest-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+}
+.quick-dest-pills {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.quick-dest-pill {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
 }
-.swap-locations-btn:hover {
-    background: rgba(255, 255, 255, 0.22);
-    border-color: rgba(255, 255, 255, 0.5);
-    transform: scale(1.04);
+.quick-dest-pill:hover {
+    background: rgba(56, 189, 248, 0.25);
+    border-color: #38bdf8;
+    color: #ffffff;
+    transform: translateY(-1px);
 }
-.swap-icon {
-    font-size: 16px;
-    color: #38bdf8;
+
+/* Live Google Maps Action Row */
+.gmaps-external-row {
+    margin-top: 4px;
+}
+.gmap-live-action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: linear-gradient(135deg, #1e3a8a, #0284c7);
+    color: #ffffff !important;
+    padding: 10px 16px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 4px 16px rgba(2, 132, 199, 0.28);
+    transition: all 0.2s ease;
+}
+.gmap-live-action-btn:hover {
+    background: linear-gradient(135deg, #1d4ed8, #0369a1);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(2, 132, 199, 0.4);
+}
+.gmap-logo-badge {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
 }
 
 /* ===== Suggestion Section Components ===== */
@@ -803,6 +1136,54 @@
     padding: 6px 10px;
     border-radius: 6px;
     border-left: 3px solid #38bdf8;
+}
+
+.section-map-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.12);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+.section-map-btn:hover {
+    background: rgba(56, 189, 248, 0.25);
+    color: #ffffff;
+    border-color: #38bdf8;
+    transform: translateY(-1px);
+}
+
+.chip-map-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(14, 165, 233, 0.2);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    padding: 2px 7px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+.chip-map-btn:hover {
+    background: #0284c7;
+    color: #ffffff;
+}
+
+.chip-links-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+    flex-wrap: wrap;
 }
 
 

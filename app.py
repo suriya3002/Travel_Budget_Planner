@@ -1,3 +1,4 @@
+import json
 import os
 import sqlite3
 from functools import wraps
@@ -265,6 +266,27 @@ def destination_budget_details(destination, trip_days):
                 "image_url": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80",
             },
         ]
+
+    dest_encoded = requests.utils.quote(destination)
+    for place in attractions:
+        place["maps_url"] = f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote(place['name'] + ' ' + destination)}"
+
+    for hotel in hotels:
+        hotel["price_per_night"] = hotel_rate_from_price_level(
+            base_room, hotel.get("price_level", 2)
+        )
+        hotel["maps_url"] = f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote(hotel['name'] + ' ' + destination)}"
+        hotel["google_url"] = f"https://www.google.com/travel/hotels/{dest_encoded}"
+        hotel["oyo_url"] = f"https://www.oyorooms.com/search?location={dest_encoded}"
+        hotel["mmt_url"] = f"https://www.makemytrip.com/hotels/{requests.utils.quote(short_location(destination).lower())}-hotels.html"
+
+    for item in dining:
+        level = item.get("price_level", 2)
+        multiplier = {0: 0.35, 1: 0.45, 2: 0.70, 3: 1.10, 4: 1.75}.get(level, 0.70)
+        item["estimated_cost"] = round(base_food * multiplier)
+        item["cuisine"] = "Local & Indian Specialties"
+        item["maps_url"] = f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote(item['name'] + ' ' + destination)}"
+        item["google_url"] = f"https://www.google.com/search?q={requests.utils.quote(item['name'] + ' in ' + destination)}"
 
     return {
         "attractions": attractions,
@@ -679,6 +701,48 @@ def trip_from_form():
     best_choice = next((m for m in mode_impacts if m["mode"] == best_mode), economy_choice)
     best_choice = {**best_choice, "reason": best_reason}
 
+    # Parse user-selected tourist sights, meals, and hotel tier from Step 3
+    raw_places_json = request.form.get("selected_places_json", "").strip()
+    selected_places = []
+    if raw_places_json:
+        try:
+            selected_places = json.loads(raw_places_json)
+            for p in selected_places:
+                if "maps_url" not in p or not p["maps_url"]:
+                    p["maps_url"] = f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote(p.get('name', '') + ' ' + destination)}"
+        except Exception:
+            selected_places = []
+
+    raw_meals_json = request.form.get("selected_meals_json", "").strip()
+    selected_meals = []
+    if raw_meals_json:
+        try:
+            selected_meals = json.loads(raw_meals_json)
+            for m in selected_meals:
+                if "maps_url" not in m or not m["maps_url"]:
+                    m["maps_url"] = f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote(m.get('name', '') + ' restaurants in ' + destination)}"
+                if "google_url" not in m or not m["google_url"]:
+                    m["google_url"] = f"https://www.google.com/search?q={requests.utils.quote('best ' + m.get('name', '') + ' in ' + destination)}"
+        except Exception:
+            selected_meals = []
+
+    raw_hotel_json = request.form.get("selected_hotel_json", "").strip()
+    selected_hotel = None
+    if raw_hotel_json:
+        try:
+            selected_hotel = json.loads(raw_hotel_json)
+            if selected_hotel:
+                if "maps_link" not in selected_hotel or not selected_hotel["maps_link"]:
+                    selected_hotel["maps_link"] = f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote(selected_hotel.get('name', 'hotels') + ' in ' + destination)}"
+                if "google_link" not in selected_hotel or not selected_hotel["google_link"]:
+                    selected_hotel["google_link"] = f"https://www.google.com/travel/hotels/{requests.utils.quote(destination)}"
+        except Exception:
+            selected_hotel = None
+
+    dest_encoded = requests.utils.quote(destination)
+    short_dest = short_location(destination)
+    short_encoded = requests.utils.quote(short_dest.lower())
+
     return {
         "from_location": from_location,
         "from_short": short_location(from_location),
@@ -723,6 +787,16 @@ def trip_from_form():
         "room_from_destination": room_from_destination,
         "places_to_visit": places_to_visit,
         "per_places_entry_fee": round(per_places_entry_fee, 2),
+        "selected_places": selected_places,
+        "selected_meals": selected_meals,
+        "selected_hotel": selected_hotel,
+        "all_places_maps": f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote('tourist places in ' + destination)}",
+        "all_food_maps": f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote('restaurants in ' + destination)}",
+        "all_food_google": f"https://www.google.com/search?q={requests.utils.quote('famous local food in ' + destination)}",
+        "all_hotels_maps": f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote('hotels in ' + destination)}",
+        "all_hotels_google": f"https://www.google.com/travel/hotels/{dest_encoded}",
+        "oyo_link": f"https://www.oyorooms.com/search?location={dest_encoded}",
+        "mmt_link": f"https://www.makemytrip.com/hotels/{short_encoded}-hotels.html",
     }
 
 
@@ -1307,6 +1381,8 @@ def get_distance():
     destination = request.args.get("destination", "").strip()
     # The Google Directions API gives the most accurate road result when the
     # deployment has a restricted server key. Keep OSRM as a no-key fallback.
+    gmaps_directions_url = f"https://www.google.com/maps/dir/?api=1&origin={requests.utils.quote(from_place)}&destination={requests.utils.quote(destination)}"
+
     if GOOGLE_DIRECTIONS_API_KEY:
         try:
             response = requests.get(
@@ -1327,6 +1403,9 @@ def get_distance():
             return jsonify({
                 "distance": round(leg["distance"]["value"] / 1000, 2),
                 "duration": round(leg["duration"]["value"] / 3600, 2),
+                "start_coords": [leg["start_location"]["lat"], leg["start_location"]["lng"]],
+                "end_coords": [leg["end_location"]["lat"], leg["end_location"]["lng"]],
+                "gmaps_url": gmaps_directions_url,
             })
         except (requests.RequestException, KeyError, IndexError, TypeError, ValueError):
             # Continue to the public fallback if the Google key is restricted,
@@ -1344,9 +1423,12 @@ def get_distance():
     if end is None:
         return jsonify({"error": "Invalid Destination"})
 
-    # OSRM provides a dependable keyless route estimate.  ORS remains optional
-    # for deployments that set ORS_API_KEY.
+    start_lat_lon = [start[1], start[0]]
+    end_lat_lon = [end[1], end[0]]
+
+    # OSRM provides a dependable keyless route estimate with full geometry.
     try:
+        route_coords = [start_lat_lon, end_lat_lon]
         if ORS_API_KEY:
             response = requests.post(
                 "https://api.openrouteservice.org/v2/directions/driving-car",
@@ -1356,11 +1438,13 @@ def get_distance():
             )
             response.raise_for_status()
             summary = response.json()["routes"][0]["summary"]
+            distance_km = round(summary["distance"] / 1000, 2)
+            duration_hr = round(summary["duration"] / 3600, 2)
         else:
             coordinates = f"{start[0]},{start[1]};{end[0]},{end[1]}"
             response = requests.get(
                 f"https://router.project-osrm.org/route/v1/driving/{coordinates}",
-                params={"overview": "false"},
+                params={"overview": "simplified", "geometries": "geojson"},
                 headers={"User-Agent": "TravelBudgetPlanner/1.0"},
                 timeout=15,
             )
@@ -1368,10 +1452,19 @@ def get_distance():
             route = response.json().get("routes", [None])[0]
             if not route:
                 raise ValueError("No route found")
-            summary = route
+            distance_km = round(route["distance"] / 1000, 2)
+            duration_hr = round(route["duration"] / 3600, 2)
+            raw_geojson_coords = route.get("geometry", {}).get("coordinates", [])
+            if raw_geojson_coords:
+                route_coords = [[c[1], c[0]] for c in raw_geojson_coords]
+
         return jsonify({
-            "distance": round(summary["distance"] / 1000, 2),
-            "duration": round(summary["duration"] / 3600, 2),
+            "distance": distance_km,
+            "duration": duration_hr,
+            "start_coords": start_lat_lon,
+            "end_coords": end_lat_lon,
+            "route_geometry": route_coords,
+            "gmaps_url": gmaps_directions_url,
         })
     except (requests.RequestException, KeyError, IndexError, TypeError, ValueError):
         return jsonify({"error": "We couldn't find a drivable route between those locations."}), 422
@@ -1382,11 +1475,21 @@ def location_suggestions():
     query = request.args.get("q", "").strip()
     if not query:
         return jsonify([])
-    local_matches = [
-        {"label": city}
-        for city in INDIAN_CITY_SUGGESTIONS
-        if city.lower().startswith(query.lower())
-    ][:5]
+
+    local_matches = []
+    q_lower = query.lower()
+    for city in INDIAN_CITY_SUGGESTIONS:
+        if q_lower in city.lower():
+            parts = [p.strip() for p in city.split(",")]
+            main_text = parts[0] if parts else city
+            secondary_text = ", ".join(parts[1:]) if len(parts) > 1 else ""
+            local_matches.append({
+                "label": city,
+                "main_text": main_text,
+                "secondary_text": secondary_text,
+            })
+    local_matches = local_matches[:5]
+
     if GOOGLE_PLACES_API_KEY:
         try:
             response = requests.get(
@@ -1398,11 +1501,16 @@ def location_suggestions():
             predictions = response.json().get("predictions", [])
             if predictions:
                 return jsonify([
-                    {"label": prediction["description"]}
-                    for prediction in predictions[:5]
+                    {
+                        "label": pred["description"],
+                        "main_text": pred.get("structured_formatting", {}).get("main_text", pred["description"].split(",")[0]),
+                        "secondary_text": pred.get("structured_formatting", {}).get("secondary_text", ""),
+                    }
+                    for pred in predictions[:5]
                 ])
         except requests.RequestException:
             pass
+
     try:
         response = requests.get(
             "https://nominatim.openstreetmap.org/search",
@@ -1411,10 +1519,19 @@ def location_suggestions():
             timeout=10,
         )
         response.raise_for_status()
-        results = [
-            {"label": place["display_name"], "lat": place["lat"], "lon": place["lon"]}
-            for place in response.json()
-        ]
+        results = []
+        for place in response.json():
+            display = place.get("display_name", "")
+            parts = [p.strip() for p in display.split(",")]
+            main_text = parts[0] if parts else display
+            secondary_text = ", ".join(parts[1:4]) if len(parts) > 1 else ""
+            results.append({
+                "label": display,
+                "main_text": main_text,
+                "secondary_text": secondary_text,
+                "lat": place.get("lat"),
+                "lon": place.get("lon"),
+            })
         return jsonify((local_matches + results)[:5])
     except requests.RequestException:
         return jsonify(local_matches)
@@ -1588,7 +1705,9 @@ def destination_options():
             "time": "Morning (8:00 AM – 10:30 AM)",
             "cost": round(base_food * 0.22),
             "desc": "Fresh Breakfast, Parathas / South Indian & Hot Chai / Coffee",
-            "icon": "🌅"
+            "icon": "🌅",
+            "maps_url": f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote('breakfast restaurants in ' + destination)}",
+            "google_url": f"https://www.google.com/search?q={requests.utils.quote('best breakfast in ' + destination)}"
         },
         {
             "id": "lunch",
@@ -1596,7 +1715,9 @@ def destination_options():
             "time": "Afternoon (12:30 PM – 3:30 PM)",
             "cost": round(base_food * 0.38),
             "desc": "Regional Specialty Thali / Multi-Cuisine Meal",
-            "icon": "☀️"
+            "icon": "☀️",
+            "maps_url": f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote('lunch restaurants thali in ' + destination)}",
+            "google_url": f"https://www.google.com/search?q={requests.utils.quote('best thali lunch in ' + destination)}"
         },
         {
             "id": "snacks",
@@ -1604,7 +1725,9 @@ def destination_options():
             "time": "Evening (5:00 PM – 7:00 PM)",
             "cost": round(base_food * 0.15),
             "desc": "Local Street Bites, Chaat & Evening Refreshments",
-            "icon": "☕"
+            "icon": "☕",
+            "maps_url": f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote('street food chaat snacks in ' + destination)}",
+            "google_url": f"https://www.google.com/search?q={requests.utils.quote('famous street food in ' + destination)}"
         },
         {
             "id": "dinner",
@@ -1612,7 +1735,9 @@ def destination_options():
             "time": "Night (7:30 PM – 10:30 PM)",
             "cost": round(base_food * 0.42),
             "desc": "Specialty Dinner, Signature Curries & Breads",
-            "icon": "🌙"
+            "icon": "🌙",
+            "maps_url": f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote('dinner restaurants in ' + destination)}",
+            "google_url": f"https://www.google.com/search?q={requests.utils.quote('best dinner restaurants in ' + destination)}"
         }
     ]
 
@@ -1624,7 +1749,9 @@ def destination_options():
             "cost": round(base_room * 0.65),
             "desc": "Clean AC Room, Free Wi-Fi & Essential Amenities",
             "icon": "🏷️",
-            "link": f"https://www.oyorooms.com/search?location={dest_encoded}"
+            "link": f"https://www.oyorooms.com/search?location={dest_encoded}",
+            "google_link": f"https://www.google.com/travel/hotels/{dest_encoded}",
+            "maps_link": f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote('budget hotels in ' + destination)}"
         },
         {
             "id": "standard",
@@ -1633,7 +1760,9 @@ def destination_options():
             "cost": base_room,
             "desc": "Spacious Room, Restaurant, Parking & Daily Housekeeping",
             "icon": "🛎️",
-            "link": f"https://www.makemytrip.com/hotels/{short_encoded}-hotels.html"
+            "link": f"https://www.makemytrip.com/hotels/{short_encoded}-hotels.html",
+            "google_link": f"https://www.google.com/travel/hotels/{dest_encoded}",
+            "maps_link": f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote('hotels in ' + destination)}"
         },
         {
             "id": "premium",
@@ -1642,7 +1771,9 @@ def destination_options():
             "cost": round(base_room * 1.6),
             "desc": "Scenic Views, Pool, Breakfast Included & Luxury Stays",
             "icon": "🌟",
-            "link": f"https://www.google.com/travel/hotels/{dest_encoded}"
+            "link": f"https://www.google.com/travel/hotels/{dest_encoded}",
+            "google_link": f"https://www.google.com/travel/hotels/{dest_encoded}",
+            "maps_link": f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote('luxury resorts in ' + destination)}"
         }
     ]
 
@@ -1652,7 +1783,8 @@ def destination_options():
             "address": p.get("address", destination),
             "entry_fee": p.get("entry_fee", 50),
             "rating": p.get("rating", 4.5),
-            "image_url": p.get("image_url", "")
+            "image_url": p.get("image_url", ""),
+            "maps_url": p.get("maps_url", f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote(p['name'] + ' ' + destination)}")
         }
         for p in details.get("attractions", [])
     ]
@@ -1660,7 +1792,11 @@ def destination_options():
     links = {
         "oyo": f"https://www.oyorooms.com/search?location={dest_encoded}",
         "makemytrip": f"https://www.makemytrip.com/hotels/{short_encoded}-hotels.html",
-        "google": f"https://www.google.com/travel/hotels/{dest_encoded}"
+        "google": f"https://www.google.com/travel/hotels/{dest_encoded}",
+        "all_places_maps": f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote('tourist places in ' + destination)}",
+        "all_food_maps": f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote('restaurants in ' + destination)}",
+        "all_food_google": f"https://www.google.com/search?q={requests.utils.quote('famous local food in ' + destination)}",
+        "all_hotels_maps": f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote('hotels in ' + destination)}",
     }
 
     return jsonify({
