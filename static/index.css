@@ -684,6 +684,8 @@
 }
 
 .gmap-stop-actions {
+    position: relative;
+    z-index: 20;
     display: flex;
     align-items: center;
     justify-content: flex-start;
@@ -717,6 +719,8 @@
 
 /* ===== Route Avoidances ===== */
 .gmap-route-avoidances {
+    position: relative;
+    z-index: 15;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -930,6 +934,7 @@
 /* ===== Google Maps Directions Card ===== */
 .gmap-directions-card {
     position: relative;
+    z-index: 100;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -941,6 +946,9 @@
     margin-bottom: 16px;
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
 }
+.gmap-directions-card:focus-within {
+    z-index: 250;
+}
 
 /* Left Track Column */
 .gmap-track-col {
@@ -949,7 +957,7 @@
     align-items: center;
     justify-content: space-between;
     width: 26px;
-    height: 104px;
+    height: 116px;
     padding: 10px 0;
     flex-shrink: 0;
 }
@@ -998,24 +1006,36 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    z-index: 5;
+}
+.gmap-input-group:focus-within {
+    z-index: 300;
 }
 .gmap-input-box {
     position: relative;
     flex: 1;
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    z-index: 5;
+}
+.gmap-input-box:focus-within {
+    z-index: 350;
 }
 .gmap-text-input {
     width: 100%;
-    min-height: 48px;
+    height: 56px;
+    min-height: 56px;
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.18);
     border-radius: 12px;
     color: #ffffff;
     font-size: 14px;
     font-weight: 500;
-    padding: 16px 36px 6px 14px;
+    padding: 24px 38px 6px 14px;
+    line-height: 1.2;
     outline: none;
+    box-sizing: border-box;
     transition: all 0.2s ease;
 }
 .gmap-text-input:focus {
@@ -1026,22 +1046,24 @@
 .gmap-input-label {
     position: absolute;
     left: 14px;
-    top: 6px;
+    top: 7px;
     font-size: 10px;
-    font-weight: 600;
+    line-height: 12px;
+    font-weight: 700;
     color: #38bdf8;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.6px;
     pointer-events: none;
+    z-index: 2;
     transition: all 0.2s ease;
 }
 .gmap-clear-btn {
     position: absolute;
-    right: 10px;
+    right: 12px;
     top: 50%;
     transform: translateY(-50%);
-    width: 22px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.2);
     color: #ffffff;
@@ -1052,22 +1074,24 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    z-index: 3;
     transition: all 0.2s ease;
 }
 .gmap-clear-btn:hover {
-    background: rgba(239, 68, 68, 0.8);
+    background: rgba(239, 68, 68, 0.85);
     transform: translateY(-50%) scale(1.1);
 }
 
 .gmap-gps-action-btn {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
     background: rgba(56, 189, 248, 0.18);
     color: #38bdf8;
     border: 1px solid rgba(56, 189, 248, 0.35);
-    padding: 0 12px;
-    min-height: 48px;
+    padding: 0 14px;
+    height: 56px;
+    min-height: 56px;
     border-radius: 12px;
     font-size: 12px;
     font-weight: 700;
@@ -1100,63 +1124,76 @@
     flex-shrink: 0;
 }
 .gmap-swap-btn {
-    width: 44px;
-    height: 44px;
+    width: 46px;
+    height: 46px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.12);
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    color: #ffffff;
+    background: rgba(30, 41, 59, 0.9) !important;
+    border: 1.5px solid rgba(56, 189, 248, 0.4) !important;
+    color: #38bdf8 !important;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+.gmap-swap-icon {
+    width: 22px;
+    height: 22px;
+    stroke: #38bdf8 !important;
+    display: block !important;
+    pointer-events: none;
+    transition: stroke 0.2s ease;
+}
 .gmap-swap-btn:hover {
-    background: #0284c7;
-    border-color: #38bdf8;
-    color: #ffffff;
+    background: #0284c7 !important;
+    border-color: #38bdf8 !important;
+    color: #ffffff !important;
     transform: scale(1.1) rotate(180deg);
-    box-shadow: 0 0 18px rgba(56, 189, 248, 0.5);
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.6);
+}
+.gmap-swap-btn:hover .gmap-swap-icon {
+    stroke: #ffffff !important;
 }
 .gmap-swap-btn.rotating {
     transform: rotate(180deg);
 }
 
-/* Google Maps Suggestions Box */
+/* Google Maps Suggestions Box (100% Solid & Elevated) */
 .gmap-suggestions-box {
-    position: absolute;
-    top: calc(100% + 6px);
-    left: 0;
-    right: 0;
-    z-index: 50;
-    background: #0f172a;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 14px;
-    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
-    overflow: hidden;
-    max-height: 260px;
-    overflow-y: auto;
+    position: absolute !important;
+    top: calc(100% + 4px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 99999 !important;
+    background: #0f172a !important;
+    border: 1.5px solid rgba(56, 189, 248, 0.5) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+    overflow: hidden !important;
+    max-height: 260px !important;
+    overflow-y: auto !important;
+    margin-top: 0 !important;
 }
 .gmap-sugg-row {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     width: 100%;
-    padding: 10px 14px;
-    background: transparent;
-    border: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    color: #ffffff;
+    padding: 12px 14px;
+    background: #0f172a !important;
+    border: none !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    color: #ffffff !important;
     text-align: left;
     cursor: pointer;
     transition: background 0.15s ease;
 }
 .gmap-sugg-row:last-child {
-    border-bottom: none;
+    border-bottom: none !important;
 }
 .gmap-sugg-row:hover {
-    background: rgba(56, 189, 248, 0.15);
+    background: rgba(56, 189, 248, 0.2) !important;
 }
 .gmap-sugg-pin {
     font-size: 16px;
@@ -1166,10 +1203,11 @@
 .gmap-sugg-text {
     display: flex;
     flex-direction: column;
+    gap: 2px;
     min-width: 0;
 }
 .gmap-sugg-main {
-    font-size: 13px;
+    font-size: 13.5px;
     font-weight: 600;
     color: #ffffff;
     white-space: nowrap;
@@ -1186,6 +1224,8 @@
 
 /* Quick Destination Pills */
 .gmap-quick-destinations {
+    position: relative;
+    z-index: 10;
     display: flex;
     align-items: center;
     gap: 10px;
