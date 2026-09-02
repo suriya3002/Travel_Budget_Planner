@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Member · Admin · TravelBudget</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="{{ url_for('static', filename='trip.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+</head>
+<body>
+<main class="trips-shell">
+  <header class="trips-header">
+    <a href="/" class="brand">TravelBudget</a>
+    <nav>
+      <a href="/">Home</a>
+      <a class="plan-link" href="/planner">Plan a trip</a>
+      <form action="/logout" method="post"><button class="logout-btn" type="submit">Log out</button></form>
+    </nav>
+  </header>
+
+  <section class="trips-hero">
+    <div>
+      <p class="eyebrow">Admin</p>
+      <h1>{{ user['name'] }}</h1>
+      <p>{{ user['email'] }}</p>
+    </div>
+    <div style="text-align:right;">
+      <form action="{{ url_for('admin_delete_member', user_id=user['id']) }}" method="post" onsubmit="return confirm('Delete this member?')">
+        <button type="submit">Delete member</button>
+      </form>
+    </div>
+  </section>
+
+  <section style="padding:1rem 0;">
+    <h2>Trip history ({{ total }})</h2>
+    {% if trips %}
+      <ul style="list-style:none; padding:0;">
+        {% for trip in trips %}
+          <li style="padding:0.75rem 0; border-top:1px solid #eee;">
+            <div><strong>{{ trip['destination'] }}</strong> — saved {{ trip['created_at'] }}</div>
+            <div>{{ trip['travelers'] }} travelers · {{ trip['total_distance'] or 0 }} km · ₹{{ '%.2f'|format(trip['total_budget'] or 0) }}</div>
+            <div style="margin-top:0.5rem"><a href="/edit/{{ trip['id'] }}">Open</a></div>
+          </li>
+        {% endfor %}
+      </ul>
+
+      {% if total_pages > 1 %}
+        <nav class="pagination" aria-label="Trip pages">
+          {% if page > 1 %}<a href="{{ url_for('admin_member', user_id=user['id'], page=page-1) }}">← Previous</a>{% else %}<span>← Previous</span>{% endif %}
+          <b>Page {{ page }} of {{ total_pages }}</b>
+          {% if page < total_pages %}<a href="{{ url_for('admin_member', user_id=user['id'], page=page+1) }}">Next →</a>{% else %}<span>Next →</span>{% endif %}
+        </nav>
+      {% endif %}
+    {% else %}
+      <p>No trips yet for this member.</p>
+    {% endif %}
+  </section>
+
+  <p><a href="{{ url_for('admin_members') }}">← Back to members</a></p>
+</main>
+</body></html>

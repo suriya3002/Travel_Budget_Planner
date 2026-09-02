@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Admin Dashboard · TravelBudget</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+</head>
+<body>
+  <div class="admin-shell">
+    <!-- Navbar -->
+    <header class="admin-navbar">
+      <div class="brand-wrap">
+        <a href="/" class="brand-link">🌍 TravelBudget</a>
+        <span class="admin-badge-pill">Admin Console</span>
+      </div>
+      <nav class="nav-links">
+        <a href="/admin/dashboard" class="nav-link active">Dashboard</a>
+        <a href="/admin/members" class="nav-link">Members</a>
+        <a href="/planner" class="nav-link">Trip Planner</a>
+        <form id="logout-form" action="/logout" method="post" style="display:inline; margin:0;">
+          <button type="submit" class="logout-btn-nav">Log Out</button>
+        </form>
+      </nav>
+    </header>
+
+    <!-- Header / Hero -->
+    <section class="admin-header">
+      <div>
+        <h1>Admin Operations Overview</h1>
+        <p>Real-time telemetry, transport breakdown, message inbox, and security audit logs.</p>
+      </div>
+      <div class="status-pill">
+        <span class="status-dot"></span>
+        <span>System Operational</span>
+      </div>
+    </section>
+
+    <!-- KPI Metric Cards -->
+    <section class="dashboard-section">
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <p class="kpi-label">Active Users</p>
+            <div class="kpi-icon" style="background:#ecfdf5; color:#10b981;">👥</div>
+          </div>
+          <div class="kpi-value">{{ active_users }}</div>
+          <p class="kpi-meta"><strong>{{ total_users }}</strong> registered · <strong>{{ online_users }}</strong> online (15m)</p>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <p class="kpi-label">Total Trips</p>
+            <div class="kpi-icon" style="background:#eff6ff; color:#3b82f6;">🗺️</div>
+          </div>
+          <div class="kpi-value">{{ total_trips }}</div>
+          <p class="kpi-meta">Saved itineraries across all users</p>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <p class="kpi-label">Total Spend</p>
+            <div class="kpi-icon" style="background:#fef3c7; color:#d97706;">💰</div>
+          </div>
+          <div class="kpi-value">₹{{ '%.2f'|format(total_spend) }}</div>
+          <p class="kpi-meta">Cumulative budget calculated across all trips</p>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <p class="kpi-label">Inbox Inquiries</p>
+            <div class="kpi-icon" style="background:#f5f3ff; color:#8b5cf6;">📬</div>
+          </div>
+          <div class="kpi-value">{{ feedback_count }}</div>
+          <p class="kpi-meta">Messages & feedback received</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Transport Mode Breakdown -->
+    <section class="dashboard-section">
+      <div class="section-head">
+        <div>
+          <h2>Transport Mode Breakdown</h2>
+          <p>Distribution of travel modes and associated budgets</p>
+        </div>
+      </div>
+
+      {% if transport_breakdown %}
+      <div class="transport-grid">
+        {% for item in transport_breakdown %}
+        <div class="transport-card">
+          <div class="transport-head">
+            <span class="transport-icon">{{ item.icon }}</span>
+            <span class="transport-title">{{ item.label }}</span>
+          </div>
+          <div class="transport-stats">
+            <span class="transport-count">{{ item.count }} <small style="font-size:0.75rem; color:var(--text-muted); font-weight:500;">trips</small></span>
+            <span class="transport-spend">₹{{ '%.2f'|format(item.spend) }}</span>
+          </div>
+          <div class="transport-bar-bg">
+            <div class="transport-bar-fill" style="width: {{ item.percentage }}%;"></div>
+          </div>
+          <div class="transport-pct">{{ item.percentage }}% of total trips</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="table-card">
+        <div class="empty-state">
+          <div class="empty-state-icon">🚗</div>
+          <p>No trip records found to generate transport breakdown.</p>
+        </div>
+      </div>
+      {% endif %}
+    </section>
+
+    <!-- Tables Grid: Inbox & Audit Logs -->
+    <div class="tables-grid">
+      <!-- Inbox Messages Table (inbox_entries) -->
+      <section class="dashboard-section" style="margin-bottom:0;">
+        <div class="table-card">
+          <div class="table-card-head">
+            <h3><span>📬</span> Inbox Messages</h3>
+            <span class="count-pill">{{ inbox_entries|length }} entries</span>
+          </div>
+          {% if inbox_entries %}
+          <div class="table-responsive">
+            <table class="modern-table">
+              <thead>
+                <tr>
+                  <th style="width: 60px;">ID</th>
+                  <th style="width: 150px;">Date</th>
+                  <th style="width: 180px;">Sender</th>
+                  <th style="width: 200px;">Subject</th>
+                  <th>Message</th>
+                  <th style="width: 90px;">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for entry in inbox_entries %}
+                <tr>
+                  <td>#{{ entry.id }}</td>
+                  <td class="date-text">{{ entry.created_at }}</td>
+                  <td>
+                    <strong>{{ entry.name or 'Anonymous User' }}</strong>
+                    {% if entry.email %}<br><small style="color:var(--text-muted);">{{ entry.email }}</small>{% endif %}
+                  </td>
+                  <td><strong>{{ entry.subject or 'Trip Feedback' }}</strong></td>
+                  <td><div class="message-preview" title="{{ entry.message }}">{{ entry.message }}</div></td>
+                  <td><span class="badge badge-success">Received</span></td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <div class="empty-state">
+            <div class="empty-state-icon">📭</div>
+            <p>Your inbox is empty. No user feedback messages received yet.</p>
+          </div>
+          {% endif %}
+        </div>
+      </section>
+
+      <!-- Audit Activity Logs (audit_logs) -->
+      <section class="dashboard-section" style="margin-bottom:0;">
+        <div class="table-card">
+          <div class="table-card-head">
+            <h3><span>🛡️</span> Security & Audit Activity Logs</h3>
+            <span class="count-pill">{{ recent_audits|length }} entries</span>
+          </div>
+          {% if recent_audits %}
+          <div class="table-responsive">
+            <table class="modern-table">
+              <thead>
+                <tr>
+                  <th style="width: 60px;">Log ID</th>
+                  <th style="width: 160px;">Timestamp</th>
+                  <th style="width: 140px;">Action</th>
+                  <th style="width: 100px;">Actor</th>
+                  <th style="width: 100px;">Target</th>
+                  <th>Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for log in recent_audits %}
+                <tr>
+                  <td>#{{ log.id }}</td>
+                  <td class="date-text">{{ log.created_at }}</td>
+                  <td>
+                    {% if 'delete' in (log.action|lower) %}
+                    <span class="badge badge-danger">{{ log.action }}</span>
+                    {% elif 'create' in (log.action|lower) %}
+                    <span class="badge badge-success">{{ log.action }}</span>
+                    {% else %}
+                    <span class="badge badge-info">{{ log.action }}</span>
+                    {% endif %}
+                  </td>
+                  <td>User #{{ log.actor_user_id }}</td>
+                  <td>{% if log.target_user_id %}User #{{ log.target_user_id }}{% else %}—{% endif %}</td>
+                  <td>{{ log.details }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <div class="empty-state">
+            <div class="empty-state-icon">📋</div>
+            <p>No recent administrative audit activity recorded.</p>
+          </div>
+          {% endif %}
+        </div>
+      </section>
+    </div>
+
+    <!-- Actions Card -->
+    <section class="actions-card">
+      <div>
+        <strong>Member Access Control</strong>
+        <p>Inspect user profiles, manage accounts, or review individual travel histories.</p>
+      </div>
+      <a href="{{ url_for('admin_members') }}" class="btn-admin">
+        <span>Manage Members</span>
+        <span>→</span>
+      </a>
+    </section>
+  </div>
+</body>
+</html>

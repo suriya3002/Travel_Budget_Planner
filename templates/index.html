@@ -8,6 +8,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 </head>
 
 <body class="planner-page">
@@ -18,12 +20,15 @@
 
 <div class="top-bar">
     <a href="/" class="logo-link">🌍 TravelBudget</a>
-    <a href="/trips" class="saved-trips-btn">📋 Saved Trips</a>
+    <div class="top-bar-actions" style="display:flex; gap:10px; align-items:center;">
+        <button type="button" class="clear-btn" onclick="clearPlannerForm()" title="Reset all fields and plan a fresh trip">↺ Start Fresh</button>
+        <a href="/trips" class="saved-trips-btn">📋 Saved Trips</a>
+        {% if is_admin %}<a href="/admin" class="admin-link">⚙️ Admin</a>{% endif %}
+    </div>
 </div>
 
 <h1 class="page-title">Plan Your Trip</h1>
 <p class="page-subtitle">Fill in your details step by step</p>
-
 <!-- Progress bar -->
 <div class="progress-wrap">
     <div class="progress-bar" id="progress_bar"></div>
@@ -44,7 +49,7 @@
     </div>
 
     <div class="field-group animate-in" style="--delay:0.1s">
-      <input type="number" name="travelers" id="travelers" min="1" required placeholder=" ">
+      <input type="number" name="travelers" id="travelers" min="1" value="1" required placeholder=" ">
       <label for="travelers">Number of Travelers</label>
     </div>
 
@@ -107,11 +112,155 @@
   <!-- STEP 2 -->
   <div class="form-step" data-step="2">
     <div class="step-header">
-      <h2>📍 Route</h2>
-      <p>Enter locations — distance & travel time update automatically</p>
+      <h2>📍 Route & Directions</h2>
+      <p>Search locations, add stops, avoid tolls/highways, and save frequent places</p>
     </div>
 
-    <div class="travel-card animate-in" style="--delay:0.1s">
+    <!-- Google Maps Travel Mode Selector Tabs -->
+    <div class="gmap-mode-tabs animate-in" style="--delay:0.05s">
+      <button type="button" class="gmap-mode-tab active" data-mode="car" onclick="selectGmapMode('car')">
+        🚗 Driving
+      </button>
+      <button type="button" class="gmap-mode-tab" data-mode="bike" onclick="selectGmapMode('bike')">
+        🏍️ Two-Wheeler
+      </button>
+      <button type="button" class="gmap-mode-tab" data-mode="bus" onclick="selectGmapMode('bus')">
+        🚌 Transit / Bus
+      </button>
+      <button type="button" class="gmap-mode-tab" data-mode="train" onclick="selectGmapMode('train')">
+        🚆 Train
+      </button>
+      <button type="button" class="gmap-mode-tab" data-mode="walk" onclick="selectGmapMode('walk')">
+        🚶 Walking
+      </button>
+    </div>
+
+    <!-- Saved Places Quick Bar (Home, Work, Favorite) -->
+    <div class="gmap-saved-bar animate-in" style="--delay:0.08s">
+      <span class="saved-bar-label">Saved Places:</span>
+      <div class="saved-bar-pills">
+        <button type="button" class="saved-bar-pill" id="home_pill" onclick="handleSavedPlaceClick('home', event)">
+          <span class="pill-icon">🏠</span>
+          <span class="pill-title" id="home_pill_title">Home</span>
+        </button>
+        <button type="button" class="saved-bar-pill" id="work_pill" onclick="handleSavedPlaceClick('work', event)">
+          <span class="pill-icon">🏢</span>
+          <span class="pill-title" id="work_pill_title">Work</span>
+        </button>
+        <button type="button" class="saved-bar-pill" id="fav_pill" onclick="handleSavedPlaceClick('favorite', event)">
+          <span class="pill-icon">⭐</span>
+          <span class="pill-title" id="fav_pill_title">Favorite</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Google Maps Waypoints Card -->
+    <div class="gmap-directions-card animate-in" style="--delay:0.1s">
+      <!-- Left Track Column with start dot, connector, destination pin -->
+      <div class="gmap-track-col" id="gmap_track_col">
+        <div class="gmap-marker-start" title="Starting Point">
+          <span class="gmap-circle-dot"></span>
+        </div>
+        <div class="gmap-track-line" id="gmap_track_line"></div>
+        <div class="gmap-marker-dest" title="Destination">
+          <span class="gmap-pin-icon">📍</span>
+        </div>
+      </div>
+
+      <!-- Inputs Column -->
+      <div class="gmap-inputs-col">
+        <!-- From Location -->
+        <div class="gmap-input-group">
+          <div class="gmap-input-box">
+            <input type="text" id="from_location" name="from_location"
+                   placeholder=" " autocomplete="off" required
+                   class="gmap-text-input" oninput="onLocationInputChange('from_location')">
+            <label for="from_location" class="gmap-input-label">Starting Point (From)</label>
+            <button type="button" class="gmap-clear-btn" id="from_clear_btn" onclick="clearLocationInput('from_location')" title="Clear starting point" style="display:none;">✕</button>
+            <div id="from_suggestions" class="suggestions gmap-suggestions-box"></div>
+          </div>
+          <button type="button" class="gmap-gps-action-btn" onclick="useCurrentLocation()" title="Use Current GPS Location">
+            <span class="gmap-gps-icon">🎯</span>
+            <span class="gmap-gps-label">My Location</span>
+          </button>
+        </div>
+
+        <!-- Intermediate Stops (Waypoints) Container -->
+        <div id="stops_container" class="gmap-stops-container"></div>
+
+        <div class="gmap-inputs-divider"></div>
+
+        <!-- Destination Location -->
+        <div class="gmap-input-group">
+          <div class="gmap-input-box">
+            <input type="text" id="destination" name="destination"
+                   placeholder=" " autocomplete="off" required
+                   class="gmap-text-input" oninput="onLocationInputChange('destination')">
+            <label for="destination" class="gmap-input-label">Destination (To)</label>
+            <button type="button" class="gmap-clear-btn" id="dest_clear_btn" onclick="clearLocationInput('destination')" title="Clear destination" style="display:none;">✕</button>
+            <div id="destination_suggestions" class="suggestions gmap-suggestions-box"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Swap Button Column -->
+      <div class="gmap-swap-col">
+        <button type="button" class="gmap-swap-btn" id="gmap_swap_btn" onclick="swapLocations()" title="Reverse / Swap starting point and destination">
+          <svg class="gmap-swap-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M7 16V4m0 0L3 8m4-4l4 4m6 4v12m0 0l4-4m-4 4l-4-4"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Add Stop Action Row -->
+    <div class="gmap-stop-actions animate-in" style="--delay:0.12s">
+      <button type="button" class="gmap-add-stop-btn" onclick="addRouteStop()" title="Add an intermediate stop (waypoint)">
+        <span class="add-stop-plus">＋</span> Add Stop / Waypoint
+      </button>
+    </div>
+
+    <!-- Route Avoidances (Avoid Tolls, Avoid Highways, Avoid Ferries) -->
+    <div class="gmap-route-avoidances animate-in" style="--delay:0.14s">
+      <span class="route-avoid-title">Route Options:</span>
+      <div class="route-avoid-pills">
+        <label class="route-avoid-pill" id="avoid_tolls_label">
+          <input type="checkbox" id="avoid_tolls" name="avoid_tolls" value="1" onchange="onAvoidOptionChanged()">
+          <span class="avoid-pill-box">
+            <span class="avoid-pill-icon">🚫</span> Avoid Tolls
+          </span>
+        </label>
+        <label class="route-avoid-pill" id="avoid_highways_label">
+          <input type="checkbox" id="avoid_highways" name="avoid_highways" value="1" onchange="onAvoidOptionChanged()">
+          <span class="avoid-pill-box">
+            <span class="avoid-pill-icon">🛣️</span> Avoid Highways
+          </span>
+        </label>
+        <label class="route-avoid-pill" id="avoid_ferries_label">
+          <input type="checkbox" id="avoid_ferries" name="avoid_ferries" value="1" onchange="onAvoidOptionChanged()">
+          <span class="avoid-pill-box">
+            <span class="avoid-pill-icon">⛴️</span> Avoid Ferries
+          </span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Quick Destination Pills -->
+    <div class="gmap-quick-destinations animate-in" style="--delay:0.16s">
+      <span class="quick-dest-title">Popular Destinations:</span>
+      <div class="quick-dest-pills">
+        <button type="button" class="quick-dest-pill" onclick="selectQuickDestination('Goa, India')">🏖️ Goa</button>
+        <button type="button" class="quick-dest-pill" onclick="selectQuickDestination('Munnar, Kerala, India')">🌲 Munnar</button>
+        <button type="button" class="quick-dest-pill" onclick="selectQuickDestination('Jaipur, Rajasthan, India')">🏰 Jaipur</button>
+        <button type="button" class="quick-dest-pill" onclick="selectQuickDestination('Bengaluru, Karnataka, India')">🌆 Bengaluru</button>
+        <button type="button" class="quick-dest-pill" onclick="selectQuickDestination('Kochi, Kerala, India')">🌴 Kochi</button>
+        <button type="button" class="quick-dest-pill" onclick="selectQuickDestination('Delhi, India')">🏛️ Delhi</button>
+        <button type="button" class="quick-dest-pill" onclick="selectQuickDestination('Shimla, Himachal Pradesh, India')">⛰️ Shimla</button>
+      </div>
+    </div>
+
+    <!-- Distance & Travel Time Cards -->
+    <div class="travel-card animate-in" style="--delay:0.2s">
       <div class="travel-box distance-box">
         <span class="travel-icon">🛣️</span>
         <p class="travel-label">Distance</p>
@@ -119,30 +268,23 @@
       </div>
       <div class="travel-box duration-box">
         <span class="travel-icon">⏱️</span>
-        <p class="travel-label">Travel Time</p>
+        <p class="travel-label">Est. Travel Time</p>
         <h2 id="duration_card">—</h2>
       </div>
     </div>
 
-    {% if google_maps_js_api_key %}<div id="route_map" class="route-map" aria-label="Route map preview"></div>{% endif %}
-
-    <div class="field-group animate-in" style="--delay:0.2s">
-      <div class="location-row">
-        <input type="text" id="from_location" name="from_location"
-               placeholder=" " autocomplete="off" required>
-        <label for="from_location">From Location</label>
-        <button type="button" class="gps-btn" onclick="useCurrentLocation()">📍 GPS</button>
-      </div>
-      <div id="from_suggestions" class="suggestions"></div>
+    <!-- Live Google Maps Directions Action Link -->
+    <div id="gmaps_external_row" class="gmaps-external-row" style="display:none; margin-bottom:14px;">
+      <a id="open_in_gmaps_btn" href="#" target="_blank" rel="noopener" class="gmap-live-action-btn">
+        <span class="gmap-logo-badge">🗺️ Google Maps</span>
+        <span class="gmap-link-text">Open Route & Live Traffic in Google Maps ↗</span>
+      </a>
     </div>
 
-    <div class="field-group animate-in" style="--delay:0.3s">
-      <input type="text" id="destination" name="destination"
-             placeholder=" " autocomplete="off" required>
-      <label for="destination">Destination</label>
-      <div id="destination_suggestions" class="suggestions"></div>
-    </div>
+    <!-- Interactive Route Map Preview (Leaflet / Google Maps) -->
+    <div id="route_map" class="route-map" aria-label="Route map preview" style="display:none;"></div>
 
+    <input type="hidden" name="stops_json" id="stops_json" value="[]">
     <input type="hidden" name="distance" id="distance" value="">
     <input type="hidden" name="travel_time" id="travel_time" value="">
   </div>
@@ -150,33 +292,77 @@
   <!-- STEP 3 -->
   <div class="form-step" data-step="3">
     <div class="step-header">
-      <h2>💰 Expenses</h2>
-      <p>Add your trip costs for an accurate budget</p>
+      <h2>💰 Expenses & Suggestions</h2>
+      <p>Select tailored tourist spots, meal timings, and hotel stays</p>
     </div>
 
+    <!-- 1. Tourist Places Selection Box -->
+    <div id="places_suggestions_section" class="section-card slide-down" style="display:none; margin-bottom:18px;">
+      <div class="suggestion-header-row" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <div>
+          <h3>🏛️ Suggested Tourist Places to Visit</h3>
+          <p class="suggestion-sub">Click to select sights; count and entry fees calculate automatically</p>
+        </div>
+        <a id="all_places_map_link" href="#" target="_blank" rel="noopener" class="section-map-btn" style="display:none;">🗺️ All Sights on Google Maps</a>
+      </div>
+      <div id="places_chips_container" class="places-chips-grid"></div>
+      <div id="places_summary_pill" class="suggestion-summary-pill" style="display:none;"></div>
+    </div>
+
+    <!-- 2. Food & Meal Timing Suggestions Box -->
+    <div id="food_suggestions_section" class="section-card slide-down" style="display:none; margin-bottom:18px;">
+      <div class="suggestion-header-row" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <div>
+          <h3>🍽️ Suggested Meals & Suitable Timings</h3>
+          <p class="suggestion-sub">Select daily meals to calculate your food budget per person</p>
+        </div>
+        <a id="all_food_google_link" href="#" target="_blank" rel="noopener" class="section-map-btn" style="display:none;">🍽️ Food & Restaurants on Google</a>
+      </div>
+      <div id="food_meals_container" class="food-meals-grid"></div>
+      <div id="food_summary_pill" class="suggestion-summary-pill" style="display:none;"></div>
+    </div>
+
+    <!-- 3. Hotels & Room Stays with OYO Links Box -->
+    <div id="hotels_suggestions_section" class="section-card slide-down" style="display:none; margin-bottom:18px;">
+      <div class="suggestion-header-row" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <div>
+          <h3>🏨 Hotel Stays & Real-Time Booking</h3>
+          <p class="suggestion-sub">Choose stay tier to set room rate, or explore hotels on OYO, MakeMyTrip & Google</p>
+        </div>
+        <a id="all_hotels_map_link" href="#" target="_blank" rel="noopener" class="section-map-btn" style="display:none;">📍 Hotels on Google Maps</a>
+      </div>
+      <div id="hotels_tiers_container" class="hotel-tiers-grid"></div>
+      <div id="hotels_booking_links" class="booking-links-bar"></div>
+    </div>
+
+    <input type="hidden" name="selected_places_json" id="selected_places_json" value="">
+    <input type="hidden" name="selected_meals_json" id="selected_meals_json" value="">
+    <input type="hidden" name="selected_hotel_json" id="selected_hotel_json" value="">
+
+    <!-- Summary Input Grid -->
     <div class="field-grid">
       <div class="field-group animate-in" style="--delay:0.1s">
-        <input type="number" name="places_to_visit" value="0" min="0" placeholder=" ">
-        <label>Places to Visit</label>
+        <input type="number" name="places_to_visit" id="places_to_visit" value="" min="0" placeholder=" ">
+        <label for="places_to_visit">Places to Visit</label>
       </div>
       <div class="field-group animate-in" style="--delay:0.15s">
-        <input type="number" step="0.01" name="per_places_entry_fee" value="0" min="0" placeholder=" ">
-        <label>Entry Fee / Place (₹)</label>
+        <input type="number" step="0.01" name="per_places_entry_fee" id="per_places_entry_fee" value="" min="0" placeholder=" ">
+        <label for="per_places_entry_fee">Entry Fee / Place (₹)</label>
       </div>
       <div class="field-group animate-in" style="--delay:0.2s">
-        <input type="number" step="0.01" name="food_cost_per_person" id="food_cost_per_person" value="0" min="0" placeholder=" ">
-        <label>Food / Person / Day (₹)</label>
+        <input type="number" step="0.01" name="food_cost_per_person" id="food_cost_per_person" value="" min="0" placeholder=" ">
+        <label for="food_cost_per_person">Food / Person / Day (₹)</label>
       </div>
       <div class="field-group animate-in" style="--delay:0.25s">
-        <input type="number" step="0.01" name="room_cost" id="room_cost" value="0" min="0" placeholder=" ">
-        <label>Room / Day (₹)</label>
+        <input type="number" step="0.01" name="room_cost" id="room_cost" value="" min="0" placeholder=" ">
+        <label for="room_cost">Room / Day (₹)</label>
       </div>
       <div class="field-group animate-in" style="--delay:0.3s">
         <input type="number" name="trip_days" id="trip_days" value="1" min="1" placeholder=" ">
-        <label>Trip Days</label>
+        <label for="trip_days">Trip Days</label>
       </div>
     </div>
-    <p class="stay-estimate" id="stay_estimate">Choose a destination to get a daily India budget estimate.</p>
+    <p class="stay-estimate" id="stay_estimate">Choose a destination to get daily budget estimates.</p>
 
     <div id="vehicle_section" class="section-card animate-in" style="--delay:0.3s">
       <h3>🚗 Vehicle Details</h3>
@@ -190,11 +376,11 @@
         </div>
         <div class="field-group" id="rental_cost_div" style="display:none">
           <input type="number" step="0.01" name="vehicle_rental_cost"
-                 id="vehicle_rental_cost" value="0" min="0" placeholder=" ">
+                           id="vehicle_rental_cost" value="" min="0" placeholder=" ">
           <label>Rental Cost (₹)</label>
         </div>
         <div class="field-group">
-          <input type="number" step="0.01" name="parking_fee" id="parking_fee" value="0" min="0" placeholder=" ">
+          <input type="number" step="0.01" name="parking_fee" id="parking_fee" value="" min="0" placeholder=" ">
           <label>Parking Fee (₹)</label>
         </div>
         <div class="field-group" id="fuel_section">
@@ -212,8 +398,9 @@
     </div>
 
     <div id="toll_section" class="field-group animate-in" style="--delay:0.35s">
-      <input type="number" step="0.01" name="toll_charges" id="toll_charges" value="0" min="0" placeholder=" ">
-      <label>Toll Charges (₹)</label>
+      <input type="number" step="0.01" name="toll_charges" id="toll_charges" value="" min="0" placeholder=" ">
+      <label for="toll_charges">Toll Charges (₹)</label>
+      <div id="toll_auto_hint" class="toll-calc-hint" style="display:none;"></div>
     </div>
   </div>
 
@@ -231,6 +418,44 @@
     <button type="submit" class="btn-submit" id="btn_submit" style="display:none">
       ✈️ Calculate Budget
     </button>
+  </div>
+
+  <!-- Saved Place Edit/Add Modal Dialog -->
+  <div id="saved_place_modal" class="gmap-modal-overlay" style="display:none;">
+    <div class="gmap-modal-box">
+      <div class="gmap-modal-header">
+        <h3 id="saved_modal_title">🏠 Save Home Address</h3>
+        <button type="button" class="gmap-modal-close" onclick="closeSavedPlaceModal()">✕</button>
+      </div>
+      <div class="gmap-modal-body">
+        <label for="saved_place_input" class="modal-field-label">Address / Landmark / City</label>
+        <div style="position:relative;">
+          <input type="text" id="saved_place_input" class="gmap-text-input modal-input"
+                 placeholder="e.g. Indiranagar, Bengaluru or 123 Main St" autocomplete="off"
+                 oninput="onSavedPlaceInput()">
+          <div id="saved_place_suggestions" class="suggestions gmap-suggestions-box"></div>
+        </div>
+      </div>
+      <div class="gmap-modal-actions">
+        <button type="button" class="modal-btn-cancel" onclick="closeSavedPlaceModal()">Cancel</button>
+        <button type="button" class="modal-btn-save" onclick="savePlaceFromModal()">Save Location</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Saved Place Action Menu Popover -->
+  <div id="saved_place_popover" class="gmap-popover" style="display:none;">
+    <div class="popover-header">
+      <strong id="popover_title">🏠 Home</strong>
+      <span id="popover_address" class="popover-addr">Not set</span>
+    </div>
+    <div class="popover-actions">
+      <button type="button" class="popover-btn" onclick="applySavedPlace('from')">🟢 Set as Starting Point</button>
+      <button type="button" class="popover-btn" onclick="applySavedPlace('to')">🔴 Set as Destination</button>
+      <button type="button" class="popover-btn" onclick="applySavedPlace('stop')">🟠 Add as Stop</button>
+      <button type="button" class="popover-btn popover-edit" onclick="editSavedPlace()">✏️ Edit Address</button>
+      <button type="button" class="popover-btn popover-delete" onclick="deleteSavedPlace()">🗑️ Clear</button>
+    </div>
   </div>
 
 </form>

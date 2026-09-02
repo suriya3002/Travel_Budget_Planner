@@ -1,3 +1,4 @@
+import json
 import os
 import sqlite3
 from functools import wraps
@@ -63,20 +64,95 @@ def attach_photo_urls(places):
     return places
 
 
+def find_dining(coordinates, radius=12000, limit=4):
+    if not GOOGLE_PLACES_API_KEY or not coordinates:
+        return []
+    try:
+        response = requests.get(
+            "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+            params={
+                "location": f"{coordinates[1]},{coordinates[0]}",
+                "radius": radius,
+                "type": "restaurant",
+                "key": GOOGLE_PLACES_API_KEY,
+            },
+            timeout=12,
+        )
+        response.raise_for_status()
+        return [
+            {
+                "name": place.get("name", "Local Restaurant"),
+                "address": place.get("vicinity", "India"),
+                "rating": place.get("rating"),
+                "price_level": place.get("price_level", 2),
+                "photo": place.get("photos", [{}])[0].get("photo_reference", "") if place.get("photos") else "",
+            }
+            for place in response.json().get("results", [])[:limit]
+        ]
+    except requests.RequestException:
+        return []
+
+
+POPULAR_DESTINATION_ATTRACTIONS = {
+    "goa": [
+        {"name": "Baga & Calangute Beach", "entry_fee": 0, "rating": 4.7, "image_url": "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Aguada Fort & Lighthouse", "entry_fee": 50, "rating": 4.6, "image_url": "https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Dudhsagar Waterfalls Trail", "entry_fee": 100, "rating": 4.8, "image_url": "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Basilica of Bom Jesus", "entry_fee": 0, "rating": 4.6, "image_url": "https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Chapora Fort Viewpoint", "entry_fee": 20, "rating": 4.5, "image_url": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80"}
+    ],
+    "jaipur": [
+        {"name": "Amber Palace & Fort", "entry_fee": 200, "rating": 4.7, "image_url": "https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Hawa Mahal (Palace of Winds)", "entry_fee": 50, "rating": 4.6, "image_url": "https://images.unsplash.com/photo-1603228254119-e6aef2999238?auto=format&fit=crop&w=600&q=80"},
+        {"name": "City Palace & Museum", "entry_fee": 300, "rating": 4.6, "image_url": "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Jantar Mantar Observatory", "entry_fee": 50, "rating": 4.5, "image_url": "https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Nahargarh Fort Sunset Point", "entry_fee": 50, "rating": 4.7, "image_url": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80"}
+    ],
+    "agra": [
+        {"name": "Taj Mahal", "entry_fee": 250, "rating": 4.9, "image_url": "https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Agra Fort", "entry_fee": 50, "rating": 4.7, "image_url": "https://images.unsplash.com/photo-1585136917192-e4277b02c89f?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Fatehpur Sikri Royal Complex", "entry_fee": 50, "rating": 4.6, "image_url": "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Mehtab Bagh Sunset Garden", "entry_fee": 25, "rating": 4.5, "image_url": "https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=600&q=80"}
+    ],
+    "delhi": [
+        {"name": "Red Fort & Museum", "entry_fee": 80, "rating": 4.6, "image_url": "https://images.unsplash.com/photo-1585136917192-e4277b02c89f?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Qutub Minar Complex", "entry_fee": 40, "rating": 4.7, "image_url": "https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Humayun's Tomb", "entry_fee": 40, "rating": 4.6, "image_url": "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=600&q=80"},
+        {"name": "India Gate & War Memorial", "entry_fee": 0, "rating": 4.8, "image_url": "https://images.unsplash.com/photo-1587474260584-136574528ed5?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Akshardham Exhibition", "entry_fee": 250, "rating": 4.8, "image_url": "https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=600&q=80"}
+    ],
+    "mumbai": [
+        {"name": "Gateway of India & Promenade", "entry_fee": 0, "rating": 4.7, "image_url": "https://images.unsplash.com/photo-1570168007204-dfb528c6958f?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Elephanta Caves & Ferry", "entry_fee": 260, "rating": 4.5, "image_url": "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Chhatrapati Shivaji Maharaj Museum", "entry_fee": 150, "rating": 4.7, "image_url": "https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Marine Drive Sunset Walk", "entry_fee": 0, "rating": 4.8, "image_url": "https://images.unsplash.com/photo-1567157577867-05ccb1388e66?auto=format&fit=crop&w=600&q=80"}
+    ],
+    "ooty": [
+        {"name": "Ooty Government Botanical Garden", "entry_fee": 50, "rating": 4.6, "image_url": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Doddabetta Peak Viewpoint", "entry_fee": 30, "rating": 4.6, "image_url": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Pykara Lake & Boating", "entry_fee": 60, "rating": 4.6, "image_url": "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Nilgiri Mountain Toy Train", "entry_fee": 200, "rating": 4.8, "image_url": "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=600&q=80"}
+    ]
+}
+
+
 def destination_budget_details(destination, trip_days):
-    """Fetch tourist places and hotels at the destination with estimated costs."""
+    """Fetch tourist places, hotels, and food/dining at the destination with estimated costs."""
     estimate = location_cost_estimate(destination)
     tier_key = estimate["tier_key"]
     entry_fee = ENTRY_FEE_BY_TIER[tier_key]
     base_room = estimate["room"]
+    base_food = estimate["food"]
 
     attractions = []
     hotels = []
+    dining = []
     try:
         coordinates = geocode(destination)
         if coordinates:
             attractions = find_attractions(coordinates, radius=12000, limit=5)
             hotels = find_lodging(coordinates, radius=12000, limit=4)
+            dining = find_dining(coordinates, radius=12000, limit=4)
     except requests.RequestException:
         pass
 
@@ -88,21 +164,53 @@ def destination_budget_details(destination, trip_days):
             base_room, hotel.get("price_level", 2)
         )
 
+    for item in dining:
+        level = item.get("price_level", 2)
+        multiplier = {0: 0.35, 1: 0.45, 2: 0.70, 3: 1.10, 4: 1.75}.get(level, 0.70)
+        item["estimated_cost"] = round(base_food * multiplier)
+        item["cuisine"] = "Local & Indian Specialties"
+
     attach_photo_urls(attractions)
     attach_photo_urls(hotels)
+    attach_photo_urls(dining)
 
     if not attractions:
         place_name = short_location(destination) or "your destination"
-        attractions = [
-            {
-                "name": f"{place_name} — suggested sight {index}",
-                "address": destination,
-                "rating": None,
-                "entry_fee": entry_fee,
-                "image_url": "",
-            }
-            for index in range(1, 4)
-        ]
+        lower_dest = (destination or "").lower()
+        matched_popular = next((v for k, v in POPULAR_DESTINATION_ATTRACTIONS.items() if k in lower_dest), None)
+        if matched_popular:
+            attractions = [dict(item) for item in matched_popular]
+        else:
+            attractions = [
+                {
+                    "name": f"{place_name} — Heritage Fort & Palace",
+                    "address": f"Historic Quarter, {destination}",
+                    "rating": 4.6,
+                    "entry_fee": entry_fee,
+                    "image_url": "https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=600&q=80",
+                },
+                {
+                    "name": f"{place_name} — Scenic Viewpoint & Lake",
+                    "address": f"Promenade, {destination}",
+                    "rating": 4.7,
+                    "entry_fee": max(round(entry_fee * 0.5), 20),
+                    "image_url": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80",
+                },
+                {
+                    "name": f"{place_name} — Central Botanical Park",
+                    "address": f"City Center, {destination}",
+                    "rating": 4.5,
+                    "entry_fee": max(round(entry_fee * 0.3), 30),
+                    "image_url": "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=600&q=80",
+                },
+                {
+                    "name": f"{place_name} — Cultural Museum & Art Gallery",
+                    "address": f"Civic Center, {destination}",
+                    "rating": 4.6,
+                    "entry_fee": entry_fee,
+                    "image_url": "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=600&q=80",
+                },
+            ]
 
     places_fee_total = sum(place["entry_fee"] for place in attractions)
     places_count = len(attractions)
@@ -130,9 +238,60 @@ def destination_budget_details(destination, trip_days):
         ]
         room_per_day = round(sum(hotel["price_per_night"] for hotel in hotels) / len(hotels))
 
+    if not dining:
+        place_name = short_location(destination) or "your destination"
+        dining = [
+            {
+                "name": f"{place_name} — Heritage Thali & Local Flavors",
+                "address": f"City Center, {destination}",
+                "rating": 4.6,
+                "cuisine": "Authentic Thali & Traditional Cuisine",
+                "estimated_cost": round(base_food * 0.65),
+                "image_url": "https://images.unsplash.com/photo-1585937421612-70a008356fbe?auto=format&fit=crop&w=600&q=80",
+            },
+            {
+                "name": f"{place_name} — Street Food & Regional Delights",
+                "address": f"Old Town Market, {destination}",
+                "rating": 4.5,
+                "cuisine": "Popular Street Food & Snacks",
+                "estimated_cost": round(base_food * 0.35),
+                "image_url": "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=600&q=80",
+            },
+            {
+                "name": f"{place_name} — Garden Cafe & Bistro",
+                "address": f"Promenade Road, {destination}",
+                "rating": 4.7,
+                "cuisine": "Cafe, Beverages & Continental",
+                "estimated_cost": round(base_food * 0.95),
+                "image_url": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80",
+            },
+        ]
+
+    dest_encoded = requests.utils.quote(destination)
+    for place in attractions:
+        place["maps_url"] = f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote(place['name'] + ' ' + destination)}"
+
+    for hotel in hotels:
+        hotel["price_per_night"] = hotel_rate_from_price_level(
+            base_room, hotel.get("price_level", 2)
+        )
+        hotel["maps_url"] = f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote(hotel['name'] + ' ' + destination)}"
+        hotel["google_url"] = f"https://www.google.com/travel/hotels/{dest_encoded}"
+        hotel["oyo_url"] = f"https://www.oyorooms.com/search?location={dest_encoded}"
+        hotel["mmt_url"] = f"https://www.makemytrip.com/hotels/{requests.utils.quote(short_location(destination).lower())}-hotels.html"
+
+    for item in dining:
+        level = item.get("price_level", 2)
+        multiplier = {0: 0.35, 1: 0.45, 2: 0.70, 3: 1.10, 4: 1.75}.get(level, 0.70)
+        item["estimated_cost"] = round(base_food * multiplier)
+        item["cuisine"] = "Local & Indian Specialties"
+        item["maps_url"] = f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote(item['name'] + ' ' + destination)}"
+        item["google_url"] = f"https://www.google.com/search?q={requests.utils.quote(item['name'] + ' in ' + destination)}"
+
     return {
         "attractions": attractions,
         "hotels": hotels,
+        "dining": dining,
         "places_count": places_count,
         "places_fee_total": places_fee_total,
         "per_place_fee": per_place_fee,
@@ -185,14 +344,164 @@ def init_db():
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
     """)
+
+    # Add optional admin, active flags and last_seen to users table if not present
+    user_columns = {row["name"] for row in conn.execute("PRAGMA table_info(users)")}
+    if "is_admin" not in user_columns:
+        conn.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0")
+    if "is_active" not in user_columns:
+        conn.execute("ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 1")
+    if "last_seen" not in user_columns:
+        conn.execute("ALTER TABLE users ADD COLUMN last_seen TEXT")
+
+    # Ensure trips reference users (user_id)
     columns = {row["name"] for row in conn.execute("PRAGMA table_info(trips)")}
     if "user_id" not in columns:
         conn.execute("ALTER TABLE trips ADD COLUMN user_id INTEGER")
+
+    # Audit logs for admin actions (deletions, etc.)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            actor_user_id INTEGER,
+            action TEXT,
+            target_user_id INTEGER,
+            details TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Inbox entries for feedback and user messages
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS inbox_entries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            name TEXT,
+            email TEXT,
+            subject TEXT,
+            message TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Saved places (Home, Work, Favorites)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS saved_places (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            place_type TEXT,
+            label TEXT,
+            address TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
     conn.commit()
     conn.close()
 
 
 init_db()
+
+
+@app.route("/api/saved_places", methods=["GET", "POST"])
+def api_saved_places():
+    user_id = session.get("user_id")
+    conn = get_db()
+    if request.method == "POST":
+        data = request.get_json(silent=True) or request.form
+        place_type = data.get("place_type", "favorite").strip().lower()
+        label = data.get("label", "").strip() or place_type.capitalize()
+        address = data.get("address", "").strip()
+        if not address:
+            conn.close()
+            return jsonify({"error": "Address is required"}), 400
+
+        if user_id:
+            if place_type in ("home", "work"):
+                existing = conn.execute(
+                    "SELECT id FROM saved_places WHERE user_id = ? AND place_type = ?",
+                    (user_id, place_type),
+                ).fetchone()
+                if existing:
+                    conn.execute(
+                        "UPDATE saved_places SET address = ?, label = ? WHERE id = ?",
+                        (address, label, existing["id"]),
+                    )
+                else:
+                    conn.execute(
+                        "INSERT INTO saved_places (user_id, place_type, label, address) VALUES (?, ?, ?, ?)",
+                        (user_id, place_type, label, address),
+                    )
+            else:
+                conn.execute(
+                    "INSERT INTO saved_places (user_id, place_type, label, address) VALUES (?, ?, ?, ?)",
+                    (user_id, place_type, label, address),
+                )
+            conn.commit()
+        conn.close()
+        return jsonify({"success": True, "place_type": place_type, "label": label, "address": address})
+
+    # GET
+    places = []
+    if user_id:
+        rows = conn.execute(
+            "SELECT id, place_type, label, address FROM saved_places WHERE user_id = ? ORDER BY id ASC",
+            (user_id,),
+        ).fetchall()
+        places = [dict(r) for r in rows]
+    conn.close()
+    return jsonify({"places": places})
+
+
+@app.route("/api/saved_places/<place_type>", methods=["DELETE"])
+def api_delete_saved_place(place_type):
+    user_id = session.get("user_id")
+    if user_id:
+        conn = get_db()
+        conn.execute(
+            "DELETE FROM saved_places WHERE user_id = ? AND place_type = ?",
+            (user_id, place_type),
+        )
+        conn.commit()
+        conn.close()
+    return jsonify({"success": True})
+
+
+@app.before_request
+def update_last_seen():
+    # Update a simple last_seen timestamp so admins can see active members.
+    user_id = session.get('user_id')
+    if user_id:
+        try:
+            conn = get_db()
+            conn.execute('UPDATE users SET last_seen = CURRENT_TIMESTAMP WHERE id = ?', (user_id,))
+            conn.commit()
+            conn.close()
+        except Exception:
+            # Non-fatal: best-effort update, do not block requests on this
+            pass
+
+
+@app.context_processor
+def inject_user():
+    """Inject small helpers into templates: whether current user is admin and logged_in flag."""
+    is_admin = False
+    logged_in = 'user_id' in session
+    user_name = session.get('user_name')
+    if logged_in:
+        try:
+            conn = get_db()
+            row = conn.execute('SELECT is_admin FROM users WHERE id=?', (session['user_id'],)).fetchone()
+            conn.close()
+            is_admin = False
+            if row:
+                try:
+                    is_admin = bool(row['is_admin'])
+                except Exception:
+                    is_admin = False
+        except Exception:
+            is_admin = False
+    return dict(is_admin=is_admin, logged_in=logged_in, user_name=user_name)
 
 
 def login_required(view):
@@ -202,6 +511,29 @@ def login_required(view):
             return redirect(url_for("login", next=request.path))
         return view(*args, **kwargs)
     return wrapped_view
+
+
+def require_admin(view):
+    """Decorator to ensure the current session user is an admin.
+    Uses the users table is_admin column (0/1)."""
+    @wraps(view)
+    def wrapped_admin(*args, **kwargs):
+        if "user_id" not in session:
+            return redirect(url_for("login", next=request.path))
+        conn = get_db()
+        user = conn.execute("SELECT is_admin FROM users WHERE id=?", (session["user_id"],)).fetchone()
+        conn.close()
+        is_admin = False
+        if not user:
+            return Response("Forbidden", status=403)
+        try:
+            is_admin = bool(user['is_admin'])
+        except Exception:
+            is_admin = False
+        if not is_admin:
+            return Response("Forbidden", status=403)
+        return view(*args, **kwargs)
+    return wrapped_admin
 
 
 def geocode(place):
@@ -280,8 +612,12 @@ def trip_from_form():
     round_trip = request.form.get("round_trip", "no")
     total_distance = distance * 2 if round_trip == "yes" else distance
 
-    places_to_visit = get_int("places_to_visit")
-    per_places_entry_fee = get_float("per_places_entry_fee")
+    # Check whether user explicitly submitted values (including "0")
+    raw_places = request.form.get("places_to_visit", "").strip()
+    raw_entry_fee = request.form.get("per_places_entry_fee", "").strip()
+    raw_room_cost = request.form.get("room_cost", "").strip()
+    raw_toll = request.form.get("toll_charges", "").strip()
+
     vehicle_type = request.form.get("vehicle_type", "own")
     vehicle_rental_cost = get_float("vehicle_rental_cost")
     vehicle_cost = vehicle_rental_cost if vehicle_type == "rental" else 0
@@ -294,9 +630,9 @@ def trip_from_form():
     fuel_cost = 0.0
 
     if transport_mode == "walk":
-        transport_cost = 0
-    elif transport_mode in ("bike", "car") and mileage > 0:
-        fuel_cost = (total_distance / mileage) * fuel_price
+        transport_cost = 0.0
+    elif transport_mode in ("bike", "car"):
+        fuel_cost = (total_distance / mileage * fuel_price) if mileage > 0 else 0.0
         transport_cost = fuel_cost
     elif transport_mode == "bus":
         rate = get_float("bus_type") or 0.835
@@ -313,36 +649,72 @@ def trip_from_form():
     flight_cost = total_distance * 4.75 * travelers
 
     food_cost_per_person = get_float("food_cost_per_person")
-    room_cost_per_day = get_float("room_cost")
 
-    if transport_mode == "car":
+    avoid_tolls = request.form.get("avoid_tolls") in ("1", "true", "yes", "on")
+    avoid_highways = request.form.get("avoid_highways") in ("1", "true", "yes", "on")
+    avoid_ferries = request.form.get("avoid_ferries") in ("1", "true", "yes", "on")
+
+    raw_stops_json = request.form.get("stops_json", "").strip()
+    stops = []
+    if raw_stops_json:
+        try:
+            parsed_stops = json.loads(raw_stops_json)
+            if isinstance(parsed_stops, list):
+                stops = [str(s).strip() for s in parsed_stops if str(s).strip()]
+        except Exception:
+            stops = [s.strip() for s in raw_stops_json.split("|") if s.strip()]
+
+    # Round-trip tolls: calculate return journey highway tolls properly when round_trip == 'yes'
+    if avoid_tolls:
+        one_way_toll = 0.0
+        toll_charges = 0.0
+    elif raw_toll != "":
+        one_way_toll = get_float("toll_charges")
+        toll_charges = one_way_toll * 2 if round_trip == "yes" else one_way_toll
+    elif transport_mode == "car":
         if distance <= 100:
-            toll_charges = 0
+            one_way_toll = 0.0
         elif distance <= 300:
-            toll_charges = 150
+            one_way_toll = 150.0
         elif distance <= 600:
-            toll_charges = 400
+            one_way_toll = 400.0
         else:
-            toll_charges = 700
+            one_way_toll = 700.0
+        toll_charges = one_way_toll * 2 if round_trip == "yes" else one_way_toll
     else:
-        toll_charges = 0
+        one_way_toll = 0.0
+        toll_charges = 0.0
 
     destination_details = destination_budget_details(destination, trip_days)
 
-    if destination_details["places_count"] > 0:
+    # Keep user input: stop overwriting user-entered values with automated defaults when user explicitly submits 0
+    places_from_destination = False
+    room_from_destination = False
+
+    if raw_places != "":
+        places_to_visit = get_int("places_to_visit")
+    elif destination_details.get("places_count", 0) > 0:
         places_to_visit = destination_details["places_count"]
-        per_places_entry_fee = destination_details["per_place_fee"]
-        places_fee_total = destination_details["places_fee_total"]
         places_from_destination = True
     else:
-        places_fee_total = places_to_visit * per_places_entry_fee
-        places_from_destination = False
+        places_to_visit = 0
 
-    if destination_details["hotels"]:
+    if raw_entry_fee != "":
+        per_places_entry_fee = get_float("per_places_entry_fee")
+    elif places_from_destination:
+        per_places_entry_fee = destination_details.get("per_place_fee", 0.0)
+    else:
+        per_places_entry_fee = 0.0
+
+    places_fee_total = places_to_visit * per_places_entry_fee
+
+    if raw_room_cost != "":
+        room_cost_per_day = get_float("room_cost")
+    elif destination_details.get("hotels"):
         room_cost_per_day = destination_details["room_per_day"]
         room_from_destination = True
     else:
-        room_from_destination = False
+        room_cost_per_day = 0.0
 
     food_cost = food_cost_per_person * travelers * trip_days
     room_cost = room_cost_per_day * trip_days
@@ -355,7 +727,7 @@ def trip_from_form():
         + vehicle_cost
         + places_fee_total
     )
-    cost_per_person = total_budget / travelers if travelers > 0 else 0
+    cost_per_person = (total_budget / travelers) if travelers > 0 else total_budget
     # Reuse the exact Travel Time shown in the planner. This prevents the
     # result page from showing a differently rounded/recalculated value.
     travel_time = request.form.get("travel_time", "").strip()
@@ -366,8 +738,8 @@ def trip_from_form():
     pollution_percent = min(round(emissions_kg, 1), 100)
     comparison_costs = {
         "walk": 0,
-        "bike": round((total_distance / (mileage or 45)) * fuel_price, 2),
-        "car": round((total_distance / (mileage or 15)) * fuel_price, 2),
+        "bike": round((total_distance / (mileage if mileage > 0 else 45)) * fuel_price, 2),
+        "car": round((total_distance / (mileage if mileage > 0 else 15)) * fuel_price, 2),
         "bus": round(bus_cost, 2),
         "train": round(train_cost, 2),
         "flight": round(flight_cost, 2),
@@ -381,8 +753,86 @@ def trip_from_form():
         }
         for mode in ("walk", "bike", "car", "bus", "train", "flight")
     ]
-    eco_choice = min(mode_impacts, key=lambda item: item["emissions"])
-    economy_choice = min(mode_impacts, key=lambda item: item["cost"])
+
+    # Filter viable practical transport modes by travel distance:
+    if total_distance <= 15:
+        viable_modes = [m for m in mode_impacts if m["mode"] in ("walk", "bike", "car", "bus")]
+    elif total_distance <= 100:
+        viable_modes = [m for m in mode_impacts if m["mode"] in ("bike", "car", "bus", "train")]
+    elif total_distance <= 400:
+        viable_modes = [m for m in mode_impacts if m["mode"] in ("car", "bus", "train")]
+    elif total_distance <= 900:
+        viable_modes = [m for m in mode_impacts if m["mode"] in ("train", "car", "bus", "flight")]
+    else:
+        viable_modes = [m for m in mode_impacts if m["mode"] in ("flight", "train", "car")]
+
+    if not viable_modes:
+        viable_modes = mode_impacts
+
+    eco_choice = min(viable_modes, key=lambda item: item["emissions"])
+    economy_choice = min(viable_modes, key=lambda item: item["cost"])
+
+    # Smart "Best to Go" recommendation automatically determined by distance to travel:
+    if total_distance <= 5:
+        best_mode = "walk" if total_distance <= 2 else "bike"
+        best_reason = f"Ideal for short {total_distance} km trip with zero fuel and minimal emissions."
+    elif total_distance <= 40:
+        best_mode = "bike" if travelers == 1 else "car"
+        best_reason = f"Fastest & most convenient door-to-door transit for {total_distance} km."
+    elif total_distance <= 300:
+        best_mode = "car" if travelers >= 2 else "bus"
+        best_reason = f"Optimal comfort, flexible halts, and great value for {total_distance} km road trip."
+    elif total_distance <= 900:
+        best_mode = "train"
+        best_reason = f"Top-rated eco-friendly and relaxed choice for {total_distance} km intercity travel."
+    else:
+        best_mode = "flight" if total_distance > 1200 else "train"
+        best_reason = f"Fastest journey and maximum convenience for long-distance {total_distance} km travel."
+
+    best_choice = next((m for m in mode_impacts if m["mode"] == best_mode), economy_choice)
+    best_choice = {**best_choice, "reason": best_reason}
+
+    # Parse user-selected tourist sights, meals, and hotel tier from Step 3
+    raw_places_json = request.form.get("selected_places_json", "").strip()
+    selected_places = []
+    if raw_places_json:
+        try:
+            selected_places = json.loads(raw_places_json)
+            for p in selected_places:
+                if "maps_url" not in p or not p["maps_url"]:
+                    p["maps_url"] = f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote(p.get('name', '') + ' ' + destination)}"
+        except Exception:
+            selected_places = []
+
+    raw_meals_json = request.form.get("selected_meals_json", "").strip()
+    selected_meals = []
+    if raw_meals_json:
+        try:
+            selected_meals = json.loads(raw_meals_json)
+            for m in selected_meals:
+                if "maps_url" not in m or not m["maps_url"]:
+                    m["maps_url"] = f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote(m.get('name', '') + ' restaurants in ' + destination)}"
+                if "google_url" not in m or not m["google_url"]:
+                    m["google_url"] = f"https://www.google.com/search?q={requests.utils.quote('best ' + m.get('name', '') + ' in ' + destination)}"
+        except Exception:
+            selected_meals = []
+
+    raw_hotel_json = request.form.get("selected_hotel_json", "").strip()
+    selected_hotel = None
+    if raw_hotel_json:
+        try:
+            selected_hotel = json.loads(raw_hotel_json)
+            if selected_hotel:
+                if "maps_link" not in selected_hotel or not selected_hotel["maps_link"]:
+                    selected_hotel["maps_link"] = f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote(selected_hotel.get('name', 'hotels') + ' in ' + destination)}"
+                if "google_link" not in selected_hotel or not selected_hotel["google_link"]:
+                    selected_hotel["google_link"] = f"https://www.google.com/travel/hotels/{requests.utils.quote(destination)}"
+        except Exception:
+            selected_hotel = None
+
+    dest_encoded = requests.utils.quote(destination)
+    short_dest = short_location(destination)
+    short_encoded = requests.utils.quote(short_dest.lower())
 
     return {
         "from_location": from_location,
@@ -412,6 +862,7 @@ def trip_from_form():
         "mode_impacts": mode_impacts,
         "eco_choice": eco_choice,
         "economy_choice": economy_choice,
+        "best_choice": best_choice,
         "bus_cost": round(bus_cost, 2),
         "train_cost": round(train_cost, 2),
         "flight_cost": round(flight_cost, 2),
@@ -421,11 +872,26 @@ def trip_from_form():
         ),
         "destination_attractions": destination_details["attractions"],
         "destination_hotels": destination_details["hotels"],
+        "destination_dining": destination_details.get("dining", []),
         "destination_tier": destination_details["tier_label"],
         "places_from_destination": places_from_destination,
         "room_from_destination": room_from_destination,
         "places_to_visit": places_to_visit,
         "per_places_entry_fee": round(per_places_entry_fee, 2),
+        "selected_places": selected_places,
+        "selected_meals": selected_meals,
+        "selected_hotel": selected_hotel,
+        "all_places_maps": f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote('tourist places in ' + destination)}",
+        "all_food_maps": f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote('restaurants in ' + destination)}",
+        "all_food_google": f"https://www.google.com/search?q={requests.utils.quote('famous local food in ' + destination)}",
+        "all_hotels_maps": f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote('hotels in ' + destination)}",
+        "all_hotels_google": f"https://www.google.com/travel/hotels/{dest_encoded}",
+        "oyo_link": f"https://www.oyorooms.com/search?location={dest_encoded}",
+        "mmt_link": f"https://www.makemytrip.com/hotels/{short_encoded}-hotels.html",
+        "stops": stops,
+        "avoid_tolls": avoid_tolls,
+        "avoid_highways": avoid_highways,
+        "avoid_ferries": avoid_ferries,
     }
 
 
@@ -527,7 +993,13 @@ def register():
                     (name, email, generate_password_hash(password)),
                 )
                 conn.commit()
-                session["user_id"] = cursor.lastrowid
+                new_id = cursor.lastrowid
+                # If there are no other admins, make the first user an admin (convenience for initial setup)
+                admin_exists = conn.execute("SELECT COUNT(*) FROM users WHERE is_admin=1").fetchone()[0]
+                if not admin_exists:
+                    conn.execute("UPDATE users SET is_admin=1 WHERE id=?", (new_id,))
+                    conn.commit()
+                session["user_id"] = new_id
                 session["user_name"] = name
                 return redirect(url_for("planner"))
             except sqlite3.IntegrityError:
@@ -550,10 +1022,20 @@ def login():
         user = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
         conn.close()
         if user and check_password_hash(user["password_hash"], password):
-            session["user_id"] = user["id"]
-            session["user_name"] = user["name"]
-            return redirect(next_page if next_page.startswith("/") and not next_page.startswith("//") else url_for("planner"))
-        error = "Email or password is incorrect."
+            # Prevent login for soft-deleted/inactive users
+            is_active = 1
+            try:
+                is_active = int(user['is_active']) if user['is_active'] is not None else 1
+            except Exception:
+                is_active = 1
+            if is_active == 0:
+                error = "This account has been deactivated. Please contact an administrator."
+            else:
+                session["user_id"] = user["id"]
+                session["user_name"] = user["name"]
+                return redirect(next_page if next_page.startswith("/") and not next_page.startswith("//") else url_for("planner"))
+        else:
+            error = "Email or password is incorrect."
     return render_template("login.html", error=error, next_page=next_page)
 
 
@@ -632,6 +1114,283 @@ def delete_trip(trip_id):
     return redirect("/trips")
 
 
+# -----------------------------
+# Admin dashboard routes
+# -----------------------------
+@app.route('/admin')
+@login_required
+@require_admin
+def admin_index():
+    return redirect(url_for('admin_dashboard'))
+
+
+@app.route('/admin/dashboard')
+@login_required
+@require_admin
+def admin_dashboard():
+    conn = get_db()
+    try:
+        total_users = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+        active_users = conn.execute("SELECT COUNT(*) FROM users WHERE is_active=1").fetchone()[0]
+        online_users = conn.execute("SELECT COUNT(*) FROM users WHERE last_seen > datetime('now','-15 minutes')").fetchone()[0]
+    except Exception:
+        total_users = active_users = online_users = 0
+
+    try:
+        total_trips = conn.execute("SELECT COUNT(*) FROM trips").fetchone()[0]
+        total_spend_row = conn.execute("SELECT COALESCE(SUM(total_budget), 0) FROM trips").fetchone()[0]
+        total_spend = round(float(total_spend_row), 2) if total_spend_row else 0.0
+    except Exception:
+        total_trips = 0
+        total_spend = 0.0
+
+    # Transport mode breakdown
+    transport_breakdown = []
+    try:
+        rows = conn.execute("""
+            SELECT COALESCE(NULLIF(transport_mode, ''), 'other') as mode,
+                   COUNT(*) as count,
+                   COALESCE(SUM(total_budget), 0) as spend
+            FROM trips
+            GROUP BY mode
+            ORDER BY count DESC
+        """).fetchall()
+        grand_trips = sum(r["count"] for r in rows) or 1
+        mode_icons = {
+            "car": "🚗",
+            "bike": "🏍️",
+            "bus": "🚌",
+            "train": "🚆",
+            "flight": "✈️",
+            "walk": "🚶",
+            "other": "📍",
+        }
+        transport_breakdown = [
+            {
+                "mode": r["mode"],
+                "label": r["mode"].capitalize(),
+                "icon": mode_icons.get(r["mode"].lower(), "📍"),
+                "count": r["count"],
+                "spend": round(float(r["spend"]), 2),
+                "percentage": round((r["count"] / grand_trips) * 100, 1),
+            }
+            for r in rows
+        ]
+    except Exception:
+        transport_breakdown = []
+
+    # Recent audit logs
+    recent_audits = []
+    try:
+        rows = conn.execute("""
+            SELECT id, actor_user_id, action, target_user_id, details, created_at
+            FROM audit_logs
+            ORDER BY id DESC
+            LIMIT 15
+        """).fetchall()
+        recent_audits = [dict(r) for r in rows]
+    except Exception:
+        recent_audits = []
+
+    # Feedback / inbox entries
+    feedback_count = 0
+    inbox_entries = []
+    try:
+        feedback_count = conn.execute("SELECT COUNT(*) FROM inbox_entries").fetchone()[0]
+        fb_rows = conn.execute("""
+            SELECT id, user_id, name, email, subject, message, created_at
+            FROM inbox_entries
+            ORDER BY id DESC
+            LIMIT 25
+        """).fetchall()
+        inbox_entries = [dict(r) for r in fb_rows]
+    except Exception:
+        feedback_count = 0
+        inbox_entries = []
+
+    conn.close()
+    return render_template(
+        'admin_dashboard.html',
+        total_users=total_users,
+        active_users=active_users,
+        online_users=online_users,
+        total_trips=total_trips,
+        total_spend=total_spend,
+        transport_breakdown=transport_breakdown,
+        recent_audits=recent_audits,
+        feedback_count=feedback_count,
+        inbox_entries=inbox_entries,
+    )
+
+
+@app.route('/admin/login', methods=['GET','POST'])
+def admin_login():
+    # Admin-specific login: only allows users who have is_admin=1 and is_active=1
+    if 'user_id' in session:
+        # If already logged in and an admin, go to admin. If logged-in non-admin, log out first.
+        conn = get_db()
+        try:
+            row = conn.execute('SELECT is_admin FROM users WHERE id=?', (session['user_id'],)).fetchone()
+            is_admin = False
+            if row is not None:
+                try:
+                    is_admin = bool(row['is_admin'])
+                except Exception:
+                    is_admin = False
+            conn.close()
+            if is_admin:
+                return redirect(url_for('admin_dashboard'))
+        except Exception:
+            try:
+                conn.close()
+            except Exception:
+                pass
+        session.clear()
+
+    error = ''
+    next_page = request.values.get('next', '')
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+        conn = get_db()
+        user = conn.execute('SELECT * FROM users WHERE email=?', (email,)).fetchone()
+        conn.close()
+        if user and check_password_hash(user['password_hash'], password):
+            # require admin and active
+            is_active = 1
+            try:
+                is_active = int(user['is_active']) if user['is_active'] is not None else 1
+            except Exception:
+                is_active = 1
+            try:
+                is_admin = bool(user['is_admin'])
+            except Exception:
+                is_admin = False
+            if is_active == 0:
+                error = 'This account has been deactivated. Contact an administrator.'
+            elif not is_admin:
+                error = 'Admin access required. This account is not an administrator.'
+            else:
+                session['user_id'] = user['id']
+                session['user_name'] = user['name']
+                return redirect(url_for('admin_dashboard'))
+        else:
+            error = 'Email or password is incorrect.'
+    return render_template('admin_login.html', error=error, next_page=next_page)
+
+
+@app.route('/admin/members')
+@login_required
+@require_admin
+def admin_members():
+    q = request.args.get('q', '').strip()
+    try:
+        page = max(1, int(request.args.get('page', 1)))
+    except (TypeError, ValueError):
+        page = 1
+    per_page = 12
+    params = []
+    where = "WHERE is_active = 1"
+    if q:
+        where += " AND (name LIKE ? OR email LIKE ?)"
+        term = f"%{q}%"
+        params = [term, term]
+    conn = get_db()
+    total = conn.execute(f"SELECT COUNT(*) FROM users {where}", params).fetchone()[0]
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    page = min(page, total_pages)
+    rows = conn.execute(
+        f"SELECT id, name, email, created_at, is_admin, last_seen, CASE WHEN last_seen > datetime('now','-15 minutes') THEN 1 ELSE 0 END as is_online FROM users {where} ORDER BY id DESC LIMIT ? OFFSET ?",
+        [*params, per_page, (page - 1) * per_page],
+    ).fetchall()
+    # Convert sqlite3.Row objects to plain dicts so templates can safely use dict methods like .get
+    users = [dict(r) for r in rows]
+    conn.close()
+    return render_template('admin_members.html', users=users, q=q, page=page, total_pages=total_pages, total=total)
+
+
+@app.route('/admin/member/<int:user_id>')
+@login_required
+@require_admin
+def admin_member(user_id):
+    try:
+        page = max(1, int(request.args.get('page', 1)))
+    except (TypeError, ValueError):
+        page = 1
+    per_page = 8
+    conn = get_db()
+    user_row = conn.execute("SELECT id, name, email, created_at, is_admin FROM users WHERE id=?", (user_id,)).fetchone()
+    if not user_row:
+        conn.close()
+        return redirect(url_for('admin_members'))
+    # convert to dict for template safety
+    user = dict(user_row)
+    total = conn.execute("SELECT COUNT(*) FROM trips WHERE user_id=?", (user_id,)).fetchone()[0]
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    page = min(page, total_pages)
+    trips = conn.execute(
+        "SELECT * FROM trips WHERE user_id=? ORDER BY id DESC LIMIT ? OFFSET ?",
+        (user_id, per_page, (page - 1) * per_page),
+    ).fetchall()
+    # convert trips rows to dicts too (templates may access keys)
+    trips = [dict(t) for t in trips]
+    conn.close()
+    return render_template('admin_member.html', user=user, trips=trips, page=page, total_pages=total_pages, total=total)
+
+
+@app.route('/admin/member/<int:user_id>/delete', methods=['POST'])
+@login_required
+@require_admin
+def admin_delete_member(user_id):
+    actor = session.get('user_id')
+    conn = get_db()
+    # Soft-delete the user by marking them inactive
+    conn.execute('UPDATE users SET is_active=0 WHERE id=?', (user_id,))
+    conn.execute(
+        'INSERT INTO audit_logs (actor_user_id, action, target_user_id, details) VALUES (?, ?, ?, ?)',
+        (actor, 'delete_user', user_id, f'Deleted by admin {actor}'),
+    )
+    conn.commit()
+    conn.close()
+    return redirect(url_for('admin_dashboard'))
+
+
+@app.route('/feedback', methods=['POST'])
+def feedback():
+    """Receive feedback from users and store in inbox_entries table.
+    If inbox_entries does not exist, create it (simple dev-friendly behavior).
+    """
+    name = request.form.get('name') or session.get('user_name') or ''
+    email = request.form.get('email') or ''
+    subject = request.form.get('subject') or f'Feedback about {request.form.get("destination","")}'
+    message = request.form.get('message') or ''
+    user_id = session.get('user_id')
+    conn = get_db()
+    try:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS inbox_entries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                name TEXT,
+                email TEXT,
+                subject TEXT,
+                message TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        conn.execute('INSERT INTO inbox_entries (user_id, name, email, subject, message) VALUES (?, ?, ?, ?, ?)',
+                     (user_id, name, email, subject, message))
+        conn.commit()
+    except Exception:
+        # Non-fatal — ignore insertion errors to avoid breaking the user flow
+        pass
+    finally:
+        conn.close()
+    # Redirect back to the referring page if present
+    ref = request.headers.get('Referer') or url_for('planner')
+    return redirect(ref)
+
+
 def trip_from_result_form():
     return {
         "destination": request.form.get("destination", ""),
@@ -678,7 +1437,7 @@ def trip_from_edit_form():
         "fuel_cost": max(get_float("fuel_cost"), 0),
         "vehicle_type": request.form.get("vehicle_type", "own"),
         "total_budget": total_budget,
-        "cost_per_person": round(total_budget / travelers, 2),
+        "cost_per_person": round(total_budget / travelers, 2) if travelers > 0 else round(total_budget, 2),
     }
 
 
@@ -715,76 +1474,175 @@ def update_trip():
 def get_distance():
     from_place = request.args.get("from", "").strip()
     destination = request.args.get("destination", "").strip()
-    # The Google Directions API gives the most accurate road result when the
-    # deployment has a restricted server key. Keep OSRM as a no-key fallback.
+    stops_param = request.args.get("stops", "").strip()
+    avoid_tolls = request.args.get("avoid_tolls") in ("1", "true", "yes")
+    avoid_highways = request.args.get("avoid_highways") in ("1", "true", "yes")
+    avoid_ferries = request.args.get("avoid_ferries") in ("1", "true", "yes")
+
+    stops = []
+    if stops_param:
+        try:
+            if stops_param.startswith("["):
+                parsed = json.loads(stops_param)
+                if isinstance(parsed, list):
+                    stops = [str(s).strip() for s in parsed if str(s).strip()]
+            else:
+                stops = [s.strip() for s in stops_param.split("|") if s and s.strip()]
+        except Exception:
+            stops = [s.strip() for s in stops_param.split("|") if s and s.strip()]
+
+    # Construct Google Maps external directions URL with waypoints & avoid options
+    gmaps_avoid_flags = []
+    if avoid_tolls:
+        gmaps_avoid_flags.append("t")
+    if avoid_highways:
+        gmaps_avoid_flags.append("h")
+    if avoid_ferries:
+        gmaps_avoid_flags.append("f")
+
+    avoid_query = f"&avoid={'|'.join(gmaps_avoid_flags)}" if gmaps_avoid_flags else ""
+    waypoints_query = f"&waypoints={'|'.join([requests.utils.quote(s) for s in stops])}" if stops else ""
+    gmaps_directions_url = (
+        f"https://www.google.com/maps/dir/?api=1"
+        f"&origin={requests.utils.quote(from_place)}"
+        f"&destination={requests.utils.quote(destination)}"
+        f"{waypoints_query}{avoid_query}"
+    )
+
     if GOOGLE_DIRECTIONS_API_KEY:
         try:
+            params = {
+                "origin": from_place,
+                "destination": destination,
+                "mode": "driving",
+                "key": GOOGLE_DIRECTIONS_API_KEY,
+            }
+            if stops:
+                params["waypoints"] = "|".join(stops)
+            g_avoids = []
+            if avoid_tolls:
+                g_avoids.append("tolls")
+            if avoid_highways:
+                g_avoids.append("highways")
+            if avoid_ferries:
+                g_avoids.append("ferries")
+            if g_avoids:
+                params["avoid"] = "|".join(g_avoids)
+
             response = requests.get(
                 "https://maps.googleapis.com/maps/api/directions/json",
-                params={
-                    "origin": from_place,
-                    "destination": destination,
-                    "mode": "driving",
-                    "key": GOOGLE_DIRECTIONS_API_KEY,
-                },
+                params=params,
                 timeout=15,
             )
             response.raise_for_status()
             route = response.json().get("routes", [None])[0]
-            leg = route["legs"][0] if route else None
-            if not leg:
-                raise ValueError("No route found")
-            return jsonify({
-                "distance": round(leg["distance"]["value"] / 1000, 2),
-                "duration": round(leg["duration"]["value"] / 3600, 2),
-            })
+            if route and route.get("legs"):
+                total_meters = sum(leg["distance"]["value"] for leg in route["legs"])
+                total_secs = sum(leg["duration"]["value"] for leg in route["legs"])
+                start_pt = route["legs"][0]["start_location"]
+                end_pt = route["legs"][-1]["end_location"]
+                stop_pts = [leg["end_location"] for leg in route["legs"][:-1]]
+                return jsonify({
+                    "distance": round(total_meters / 1000, 2),
+                    "duration": round(total_secs / 3600, 2),
+                    "start_coords": [start_pt["lat"], start_pt["lng"]],
+                    "end_coords": [end_pt["lat"], end_pt["lng"]],
+                    "stop_coords": [[p["lat"], p["lng"]] for p in stop_pts],
+                    "gmaps_url": gmaps_directions_url,
+                    "stops": stops,
+                    "avoid_tolls": avoid_tolls,
+                    "avoid_highways": avoid_highways,
+                    "avoid_ferries": avoid_ferries,
+                })
         except (requests.RequestException, KeyError, IndexError, TypeError, ValueError):
-            # Continue to the public fallback if the Google key is restricted,
-            # unavailable, or has no route for this journey.
             pass
 
+    # Geocoding & multi-stop OSRM route fallback
+    all_points_labels = [from_place] + stops + [destination]
+    point_coords = []
     try:
-        start = geocode(from_place)
-        end = geocode(destination)
+        for label in all_points_labels:
+            pt = geocode(label)
+            if pt is None:
+                return jsonify({"error": f"Unable to locate '{label}'"}), 422
+            point_coords.append(pt)  # (lon, lat)
     except requests.RequestException:
         return jsonify({"error": "Location search is temporarily unavailable. Please try again."}), 503
 
-    if start is None:
-        return jsonify({"error": "Invalid From Location"})
-    if end is None:
-        return jsonify({"error": "Invalid Destination"})
+    start_lat_lon = [point_coords[0][1], point_coords[0][0]]
+    end_lat_lon = [point_coords[-1][1], point_coords[-1][0]]
+    stop_coords = [[c[1], c[0]] for c in point_coords[1:-1]]
 
-    # OSRM provides a dependable keyless route estimate.  ORS remains optional
-    # for deployments that set ORS_API_KEY.
     try:
-        if ORS_API_KEY:
-            response = requests.post(
-                "https://api.openrouteservice.org/v2/directions/driving-car",
-                headers={"Authorization": ORS_API_KEY, "Content-Type": "application/json"},
-                json={"coordinates": [list(start), list(end)]},
-                timeout=15,
-            )
-            response.raise_for_status()
-            summary = response.json()["routes"][0]["summary"]
-        else:
-            coordinates = f"{start[0]},{start[1]};{end[0]},{end[1]}"
-            response = requests.get(
-                f"https://router.project-osrm.org/route/v1/driving/{coordinates}",
-                params={"overview": "false"},
-                headers={"User-Agent": "TravelBudgetPlanner/1.0"},
-                timeout=15,
-            )
-            response.raise_for_status()
-            route = response.json().get("routes", [None])[0]
-            if not route:
-                raise ValueError("No route found")
-            summary = route
+        route_coords = [start_lat_lon] + stop_coords + [end_lat_lon]
+        coordinates_str = ";".join(f"{c[0]},{c[1]}" for c in point_coords)
+
+        response = requests.get(
+            f"https://router.project-osrm.org/route/v1/driving/{coordinates_str}",
+            params={"overview": "simplified", "geometries": "geojson"},
+            headers={"User-Agent": "TravelBudgetPlanner/1.0"},
+            timeout=15,
+        )
+        response.raise_for_status()
+        route = response.json().get("routes", [None])[0]
+        if not route:
+            raise ValueError("No route found")
+
+        distance_km = round(route["distance"] / 1000, 2)
+        duration_hr = round(route["duration"] / 3600, 2)
+
+        # Non-highway / avoid tolls routing adjustment
+        if avoid_highways or avoid_tolls:
+            distance_km = round(distance_km * 1.08, 2)
+            duration_hr = round(duration_hr * 1.15, 2)
+
+        raw_geojson_coords = route.get("geometry", {}).get("coordinates", [])
+        if raw_geojson_coords:
+            route_coords = [[c[1], c[0]] for c in raw_geojson_coords]
+
         return jsonify({
-            "distance": round(summary["distance"] / 1000, 2),
-            "duration": round(summary["duration"] / 3600, 2),
+            "distance": distance_km,
+            "duration": duration_hr,
+            "start_coords": start_lat_lon,
+            "end_coords": end_lat_lon,
+            "stop_coords": stop_coords,
+            "route_geometry": route_coords,
+            "gmaps_url": gmaps_directions_url,
+            "stops": stops,
+            "avoid_tolls": avoid_tolls,
+            "avoid_highways": avoid_highways,
+            "avoid_ferries": avoid_ferries,
         })
     except (requests.RequestException, KeyError, IndexError, TypeError, ValueError):
-        return jsonify({"error": "We couldn't find a drivable route between those locations."}), 422
+        # Straight line geodetic estimate fallback if OSRM is unreachable
+        distance_km = 0
+        for i in range(len(point_coords) - 1):
+            p1, p2 = point_coords[i], point_coords[i+1]
+            # Simple Haversine approximation
+            import math
+            lat1, lon1 = math.radians(p1[1]), math.radians(p1[0])
+            lat2, lon2 = math.radians(p2[1]), math.radians(p2[0])
+            dlat = lat2 - lat1
+            dlon = lon2 - lon1
+            a = math.sin(dlat/2)**2 + math.cos(lat1)*math.cos(lat2)*math.sin(dlon/2)**2
+            c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+            distance_km += 6371.0 * c * 1.25 # Road curvature factor
+
+        distance_km = round(distance_km, 2)
+        duration_hr = round(distance_km / 65, 2)
+        return jsonify({
+            "distance": distance_km,
+            "duration": duration_hr,
+            "start_coords": start_lat_lon,
+            "end_coords": end_lat_lon,
+            "stop_coords": stop_coords,
+            "route_geometry": [start_lat_lon] + stop_coords + [end_lat_lon],
+            "gmaps_url": gmaps_directions_url,
+            "stops": stops,
+            "avoid_tolls": avoid_tolls,
+            "avoid_highways": avoid_highways,
+            "avoid_ferries": avoid_ferries,
+        })
 
 
 @app.route("/location_suggestions")
@@ -792,11 +1650,21 @@ def location_suggestions():
     query = request.args.get("q", "").strip()
     if not query:
         return jsonify([])
-    local_matches = [
-        {"label": city}
-        for city in INDIAN_CITY_SUGGESTIONS
-        if city.lower().startswith(query.lower())
-    ][:5]
+
+    local_matches = []
+    q_lower = query.lower()
+    for city in INDIAN_CITY_SUGGESTIONS:
+        if q_lower in city.lower():
+            parts = [p.strip() for p in city.split(",")]
+            main_text = parts[0] if parts else city
+            secondary_text = ", ".join(parts[1:]) if len(parts) > 1 else ""
+            local_matches.append({
+                "label": city,
+                "main_text": main_text,
+                "secondary_text": secondary_text,
+            })
+    local_matches = local_matches[:5]
+
     if GOOGLE_PLACES_API_KEY:
         try:
             response = requests.get(
@@ -808,11 +1676,16 @@ def location_suggestions():
             predictions = response.json().get("predictions", [])
             if predictions:
                 return jsonify([
-                    {"label": prediction["description"]}
-                    for prediction in predictions[:5]
+                    {
+                        "label": pred["description"],
+                        "main_text": pred.get("structured_formatting", {}).get("main_text", pred["description"].split(",")[0]),
+                        "secondary_text": pred.get("structured_formatting", {}).get("secondary_text", ""),
+                    }
+                    for pred in predictions[:5]
                 ])
         except requests.RequestException:
             pass
+
     try:
         response = requests.get(
             "https://nominatim.openstreetmap.org/search",
@@ -821,10 +1694,19 @@ def location_suggestions():
             timeout=10,
         )
         response.raise_for_status()
-        results = [
-            {"label": place["display_name"], "lat": place["lat"], "lon": place["lon"]}
-            for place in response.json()
-        ]
+        results = []
+        for place in response.json():
+            display = place.get("display_name", "")
+            parts = [p.strip() for p in display.split(",")]
+            main_text = parts[0] if parts else display
+            secondary_text = ", ".join(parts[1:4]) if len(parts) > 1 else ""
+            results.append({
+                "label": display,
+                "main_text": main_text,
+                "secondary_text": secondary_text,
+                "lat": place.get("lat"),
+                "lon": place.get("lon"),
+            })
         return jsonify((local_matches + results)[:5])
     except requests.RequestException:
         return jsonify(local_matches)
@@ -911,6 +1793,41 @@ def nearby_attractions():
     entry_fee = ENTRY_FEE_BY_TIER[estimate["tier_key"]]
     for place in destination_places:
         place["entry_fee"] = entry_fee
+
+    # Always ensure vibrant, interesting stops are provided for "More on the route"
+    if not on_the_way:
+        orig_name = short_location(origin) or "Departure City"
+        dest_name = short_location(destination) or "Destination"
+        on_the_way = [
+            {
+                "name": "Midway Express Highway Plaza & Food Oasis",
+                "address": f"National Highway Corridor between {orig_name} & {dest_name}",
+                "rating": 4.6,
+                "category": "Highway Food Plaza & Clean Restrooms",
+                "entry_fee": 0,
+                "recommended_pause": "30 mins rest pause",
+                "image_url": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80",
+            },
+            {
+                "name": "Scenic Panoramic Ridge & Tea Lounge",
+                "address": f"Scenic Midway Bypass near {dest_name}",
+                "rating": 4.7,
+                "category": "Scenic Viewpoint & Refreshments",
+                "entry_fee": 0,
+                "recommended_pause": "20 mins photo pause",
+                "image_url": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80",
+            },
+            {
+                "name": "Heritage Waypoint & Regional Crafts Bazaar",
+                "address": f"Historic Midway Junction on the {orig_name}–{dest_name} Highway",
+                "rating": 4.5,
+                "category": "Cultural Landmark & Local Snacks",
+                "entry_fee": 40,
+                "recommended_pause": "40 mins exploration",
+                "image_url": "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=600&q=80",
+            }
+        ]
+
     attach_photo_urls(destination_places)
     attach_photo_urls(on_the_way)
     return jsonify({"destination": destination_places, "on_the_way": on_the_way})
@@ -940,6 +1857,133 @@ def place_photo():
 @app.route("/estimate_stay_costs")
 def estimate_stay_costs():
     return jsonify(location_cost_estimate(request.args.get("destination", "")))
+
+
+@app.route("/destination_options")
+def destination_options():
+    destination = request.args.get("destination", "").strip()
+    if not destination:
+        return jsonify({"places": [], "food_meals": [], "hotels": [], "links": {}})
+
+    details = destination_budget_details(destination, 1)
+    estimate = location_cost_estimate(destination)
+    base_food = estimate["food"]
+    base_room = estimate["room"]
+    dest_encoded = requests.utils.quote(destination)
+    short_dest = short_location(destination)
+    short_encoded = requests.utils.quote(short_dest.lower())
+
+    food_meals = [
+        {
+            "id": "breakfast",
+            "name": "Breakfast",
+            "time": "Morning (8:00 AM – 10:30 AM)",
+            "cost": round(base_food * 0.22),
+            "desc": "Fresh Breakfast, Parathas / South Indian & Hot Chai / Coffee",
+            "icon": "🌅",
+            "maps_url": f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote('breakfast restaurants in ' + destination)}",
+            "google_url": f"https://www.google.com/search?q={requests.utils.quote('best breakfast in ' + destination)}"
+        },
+        {
+            "id": "lunch",
+            "name": "Lunch Thali",
+            "time": "Afternoon (12:30 PM – 3:30 PM)",
+            "cost": round(base_food * 0.38),
+            "desc": "Regional Specialty Thali / Multi-Cuisine Meal",
+            "icon": "☀️",
+            "maps_url": f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote('lunch restaurants thali in ' + destination)}",
+            "google_url": f"https://www.google.com/search?q={requests.utils.quote('best thali lunch in ' + destination)}"
+        },
+        {
+            "id": "snacks",
+            "name": "Evening Snacks",
+            "time": "Evening (5:00 PM – 7:00 PM)",
+            "cost": round(base_food * 0.15),
+            "desc": "Local Street Bites, Chaat & Evening Refreshments",
+            "icon": "☕",
+            "maps_url": f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote('street food chaat snacks in ' + destination)}",
+            "google_url": f"https://www.google.com/search?q={requests.utils.quote('famous street food in ' + destination)}"
+        },
+        {
+            "id": "dinner",
+            "name": "Dinner",
+            "time": "Night (7:30 PM – 10:30 PM)",
+            "cost": round(base_food * 0.42),
+            "desc": "Specialty Dinner, Signature Curries & Breads",
+            "icon": "🌙",
+            "maps_url": f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote('dinner restaurants in ' + destination)}",
+            "google_url": f"https://www.google.com/search?q={requests.utils.quote('best dinner restaurants in ' + destination)}"
+        }
+    ]
+
+    hotels = [
+        {
+            "id": "budget",
+            "name": "Budget Stay / OYO Rooms",
+            "type": "Budget / OYO",
+            "cost": round(base_room * 0.65),
+            "desc": "Clean AC Room, Free Wi-Fi & Essential Amenities",
+            "icon": "🏷️",
+            "link": f"https://www.oyorooms.com/search?location={dest_encoded}",
+            "google_link": f"https://www.google.com/travel/hotels/{dest_encoded}",
+            "maps_link": f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote('budget hotels in ' + destination)}"
+        },
+        {
+            "id": "standard",
+            "name": "Standard Comfort Hotel",
+            "type": "3-Star Hotel",
+            "cost": base_room,
+            "desc": "Spacious Room, Restaurant, Parking & Daily Housekeeping",
+            "icon": "🛎️",
+            "link": f"https://www.makemytrip.com/hotels/{short_encoded}-hotels.html",
+            "google_link": f"https://www.google.com/travel/hotels/{dest_encoded}",
+            "maps_link": f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote('hotels in ' + destination)}"
+        },
+        {
+            "id": "premium",
+            "name": "Premium Resort & Suites",
+            "type": "Resort / Luxury",
+            "cost": round(base_room * 1.6),
+            "desc": "Scenic Views, Pool, Breakfast Included & Luxury Stays",
+            "icon": "🌟",
+            "link": f"https://www.google.com/travel/hotels/{dest_encoded}",
+            "google_link": f"https://www.google.com/travel/hotels/{dest_encoded}",
+            "maps_link": f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote('luxury resorts in ' + destination)}"
+        }
+    ]
+
+    places = [
+        {
+            "name": p["name"],
+            "address": p.get("address", destination),
+            "entry_fee": p.get("entry_fee", 50),
+            "rating": p.get("rating", 4.5),
+            "image_url": p.get("image_url", ""),
+            "maps_url": p.get("maps_url", f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote(p['name'] + ' ' + destination)}")
+        }
+        for p in details.get("attractions", [])
+    ]
+
+    links = {
+        "oyo": f"https://www.oyorooms.com/search?location={dest_encoded}",
+        "makemytrip": f"https://www.makemytrip.com/hotels/{short_encoded}-hotels.html",
+        "google": f"https://www.google.com/travel/hotels/{dest_encoded}",
+        "all_places_maps": f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote('tourist places in ' + destination)}",
+        "all_food_maps": f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote('restaurants in ' + destination)}",
+        "all_food_google": f"https://www.google.com/search?q={requests.utils.quote('famous local food in ' + destination)}",
+        "all_hotels_maps": f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote('hotels in ' + destination)}",
+    }
+
+    return jsonify({
+        "destination": destination,
+        "tier": estimate["tier"],
+        "places": places,
+        "food_meals": food_meals,
+        "hotels": hotels,
+        "links": links,
+        "base_food": base_food,
+        "base_room": base_room
+    })
 
 
 @app.route("/reverse_geocode")

@@ -12,13 +12,34 @@
 <main class="container">
   <section id="report">
     <header class="report-hero" style="--trip-image: url('{{ image_url }}')">
-      <div class="hero-copy"><p class="eyebrow">Your trip budget</p><h1>{{ destination_short }}</h1><div class="hero-meta"><span>{{ from_short }} → {{ destination_short }}</span><span>{{ travelers }} traveler{{ '' if travelers == 1 else 's' }}</span><span>{{ total_distance }} km total</span><span>{{ transport_mode|capitalize }} · {{ travel_time }}</span></div></div>
+      <div class="hero-copy"><p class="eyebrow">Your trip budget</p><h1>{{ destination_short }}</h1><div class="hero-meta"><span>{{ from_short }} → {{ destination_short }}</span><span>{{ travelers }} traveler{{ '' if travelers == 1 else 's' }}</span><span>Planned estimate</span><span>{{ total_distance }} km total</span><span>{{ transport_mode|capitalize }} · {{ travel_time }}</span></div></div>
     </header>
     <div class="result-card">
       <div class="section-title"><h2>Trip at a glance</h2><p>Calculated from your itinerary</p></div>
       <div class="summary-grid">
         <div class="summary-item route-summary"><span>Route</span><strong>{{ from_short }} → {{ destination_short }}</strong></div><div class="summary-item"><span>Distance</span><strong>{{ total_distance }} km</strong></div><div class="summary-item"><span>Transport</span><strong>{{ transport_mode|capitalize }}</strong></div><div class="summary-item"><span>Travel time</span><strong>{{ travel_time }}</strong></div><div class="summary-item pollution-summary"><span>Estimated CO₂e</span><strong>{{ emissions_kg }} kg</strong><small>for this {{ total_distance }} km trip</small><div class="pollution-level"><span>Pollution level</span><b>{{ pollution_percent }}%</b></div><div class="pollution-meter" aria-label="Pollution level {{ pollution_percent }} percent"><i style="width: {{ pollution_percent }}%"></i></div></div>
       </div>
+
+      {% if stops and stops|length > 0 or avoid_tolls or avoid_highways or avoid_ferries %}
+      <div class="route-waypoints-banner" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px 16px; margin:14px 0 6px; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px;">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <span style="font-weight:700; font-size:0.85rem; color:#0f172a;">🗺️ Journey Route:</span>
+          <span style="font-size:0.85rem; color:#0284c7; font-weight:600;">{{ from_short }}</span>
+          {% for st in stops %}
+          <span style="color:#94a3b8;">➔</span>
+          <span style="font-size:0.85rem; background:#fef3c7; color:#b45309; padding:2px 8px; border-radius:6px; font-weight:600;">Stop {{ loop.index }}: {{ st.split(',')[0] }}</span>
+          {% endfor %}
+          <span style="color:#94a3b8;">➔</span>
+          <span style="font-size:0.85rem; color:#ef4444; font-weight:700;">{{ destination_short }}</span>
+        </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          {% if avoid_tolls %}<span style="background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; font-size:0.75rem; font-weight:700; padding:3px 8px; border-radius:6px;">🚫 Tolls Avoided (₹0)</span>{% endif %}
+          {% if avoid_highways %}<span style="background:#fef2f2; color:#991b1b; border:1px solid #fecaca; font-size:0.75rem; font-weight:700; padding:3px 8px; border-radius:6px;">🛣️ Highways Avoided</span>{% endif %}
+          {% if avoid_ferries %}<span style="background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; font-size:0.75rem; font-weight:700; padding:3px 8px; border-radius:6px;">⛴️ Ferries Avoided</span>{% endif %}
+        </div>
+      </div>
+      {% endif %}
+
       <hr class="report-divider">
       <div class="insights"><div><div class="section-title"><h2>Where your money goes</h2><p>Expense breakdown</p></div><div class="chart-container"><canvas id="expenseChart"></canvas></div></div><div class="total-box"><h2>Total estimated budget</h2><h1>₹{{ '%.2f'|format(total_budget) }}</h1><p>₹{{ '%.2f'|format(cost_per_person) }} per traveler</p></div></div>
       <hr class="report-divider">
@@ -28,47 +49,260 @@
       </div>
       <hr class="report-divider"><div class="section-title"><h2>Compare transport options</h2><p>For the same trip distance</p></div>
       <div class="summary-grid"><div class="summary-item"><span>Bus</span><strong>₹{{ '%.2f'|format(bus_cost) }}</strong></div><div class="summary-item"><span>Train</span><strong>₹{{ '%.2f'|format(train_cost) }}</strong></div><div class="summary-item"><span>Flight</span><strong>₹{{ '%.2f'|format(flight_cost) }}</strong></div></div>
-      <hr class="report-divider"><div class="section-title"><h2>Eco & economy guide</h2><p>Estimated impact for {{ total_distance }} km</p></div>
-      <div class="recommendations"><div class="recommendation eco-recommendation"><span>Most eco-friendly</span><strong>{{ eco_choice.label }}</strong><small>{{ eco_choice.emissions }} kg CO₂e estimated</small></div><div class="recommendation economy-recommendation"><span>Most economical</span><strong>{{ economy_choice.label }}</strong><small>₹{{ '%.2f'|format(economy_choice.cost) }} estimated transport cost</small></div></div>
+      <hr class="report-divider"><div class="section-title"><h2>Eco & economy guide</h2><p>Distance-based best options for {{ total_distance }} km</p></div>
+      <div class="recommendations" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+        <div class="recommendation best-recommendation" style="background: linear-gradient(135deg, #0b766d, #04524c); color: #ffffff;">
+          <span style="color: #a7f3d0;">✨ Best to Go (Distance Pick)</span>
+          <strong style="color: #ffffff; font-size: 1.35rem;">{{ best_choice.label }}</strong>
+          <small style="color: #d1fae5; line-height: 1.4;">{{ best_choice.reason }}</small>
+        </div>
+        <div class="recommendation eco-recommendation">
+          <span>🌱 Most Eco-Friendly</span>
+          <strong>{{ eco_choice.label }}</strong>
+          <small>{{ eco_choice.emissions }} kg CO₂e for {{ total_distance }} km</small>
+        </div>
+        <div class="recommendation economy-recommendation">
+          <span>💰 Most Economical</span>
+          <strong>{{ economy_choice.label }}</strong>
+          <small>₹{{ '%.2f'|format(economy_choice.cost) }} estimated transport cost</small>
+        </div>
+      </div>
       <div class="impact-table-wrap"><table class="impact-table"><thead><tr><th>Transport</th><th>Estimated cost</th><th>CO₂e pollution</th></tr></thead><tbody>{% for option in mode_impacts %}<tr class="{% if option.mode == transport_mode %}selected-mode{% endif %}"><td>{{ option.label }}{% if option.mode == transport_mode %}<small>Your choice</small>{% endif %}</td><td>₹{{ '%.2f'|format(option.cost) }}</td><td>{{ option.emissions }} kg</td></tr>{% endfor %}</tbody></table></div>
-      <hr class="report-divider"><div class="section-title"><h2>Destination expenses</h2><p>Tourist places, hotels & rooms deducted for {{ destination_short }}</p></div>
-      <div class="destination-budget-note"><span>{{ destination_tier }}</span>{% if places_from_destination or room_from_destination %}<small>Costs below are included in your total budget.</small>{% endif %}</div>
+      <hr class="report-divider"><div class="section-title"><h2>Destination suggestions & expenses</h2><p>Nearby tourist spots, hotel/room options, and food & dining estimates for {{ destination_short }}</p></div>
+      <div class="destination-budget-note"><span>{{ destination_tier }}</span>{% if places_from_destination or room_from_destination %}<small>Automated estimates applied where user inputs were empty.</small>{% else %}<small>Showing tailored suggestions matching your itinerary.</small>{% endif %}</div>
       <div class="destination-budget-grid">
+        <!-- Tourist Spots -->
         <div class="destination-budget-card">
-          <div class="destination-budget-head"><h3>Tourist places</h3><strong>₹{{ '%.2f'|format(places_fee_total) }}</strong></div>
-          <p class="destination-budget-meta">{{ places_to_visit }} place{{ '' if places_to_visit == 1 else 's' }} · ₹{{ '%.2f'|format(per_places_entry_fee) }} avg entry</p>
+          <div class="destination-budget-head"><h3>Tourist spots</h3><strong>₹{{ '%.2f'|format(places_fee_total) }}</strong></div>
+          <p class="destination-budget-meta">{{ places_to_visit }} place{{ '' if places_to_visit == 1 else 's' }} planned · ₹{{ '%.2f'|format(per_places_entry_fee) }} avg entry</p>
+
+          {% if selected_places and selected_places|length > 0 %}
+          <div class="chosen-badge-banner">
+            <span>✓ Chosen in your plan ({{ selected_places|length }})</span>
+            {% if all_places_maps %}<a href="{{ all_places_maps }}" target="_blank" rel="noopener" class="map-action-pill">🗺️ All on Map</a>{% endif %}
+          </div>
+          <div class="attraction-grid">
+            {% for place in selected_places %}
+            <article class="attraction-card">
+              {% if place.image_url %}<img src="{{ place.image_url }}" alt="{{ place.name }}">{% endif %}
+              <div>
+                <h4>{{ place.name }}</h4>
+                <p>{{ place.address or destination }}</p>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                  <span class="price-tag">₹{{ place.entry_fee }} entry</span>
+                  <a href="{{ place.maps_url }}" target="_blank" rel="noopener" class="chip-map-btn">📍 Google Map</a>
+                </div>
+              </div>
+            </article>
+            {% endfor %}
+          </div>
+          {% else %}
           <div class="attraction-grid">
             {% for place in destination_attractions %}
             <article class="attraction-card">
               {% if place.image_url %}<img src="{{ place.image_url }}" alt="{{ place.name }}">{% endif %}
-              <div><h4>{{ place.name }}</h4><p>{{ place.address }}</p>{% if place.rating %}<small>★ {{ place.rating }}</small>{% endif %}<span class="price-tag">₹{{ place.entry_fee }} entry</span></div>
+              <div>
+                <h4>{{ place.name }}</h4>
+                <p>{{ place.address }}</p>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                  {% if place.rating %}<small>★ {{ place.rating }}</small>{% else %}<span></span>{% endif %}
+                  <span class="price-tag">₹{{ place.entry_fee }} entry</span>
+                  <a href="{{ place.maps_url }}" target="_blank" rel="noopener" class="chip-map-btn">📍 Map</a>
+                </div>
+              </div>
             </article>
             {% endfor %}
           </div>
+          {% endif %}
         </div>
+
+        <!-- Hotels & Stays -->
         <div class="destination-budget-card">
-          <div class="destination-budget-head"><h3>Hotels & rooms</h3><strong>₹{{ '%.2f'|format(room_cost) }}</strong></div>
+          <div class="destination-budget-head"><h3>Hotels & stays</h3><strong>₹{{ '%.2f'|format(room_cost) }}</strong></div>
           <p class="destination-budget-meta">{{ trip_days }} day{{ '' if trip_days == 1 else 's' }} · ₹{{ '%.2f'|format(room_cost / trip_days if trip_days else 0) }}/night avg</p>
+
+          {% if selected_hotel %}
+          <div class="chosen-badge-banner">
+            <span>✓ Chosen Stay Tier: {{ selected_hotel.name }}</span>
+            {% if all_hotels_maps %}<a href="{{ all_hotels_maps }}" target="_blank" rel="noopener" class="map-action-pill">📍 Hotels on Map</a>{% endif %}
+          </div>
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px; margin-bottom:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px;">
+              <h4 style="margin:0; font-size:0.95rem; font-weight:700; color:#0f172a;">{{ selected_hotel.icon }} {{ selected_hotel.name }}</h4>
+              <strong style="color:#059669; font-size:1rem;">₹{{ selected_hotel.cost }}/night</strong>
+            </div>
+            <p style="margin:0 0 8px; font-size:0.75rem; color:#64748b;">{{ selected_hotel.desc }}</p>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              {% if selected_hotel.maps_link %}<a href="{{ selected_hotel.maps_link }}" target="_blank" rel="noopener" class="chip-map-btn">📍 Google Maps</a>{% endif %}
+              {% if selected_hotel.google_link %}<a href="{{ selected_hotel.google_link }}" target="_blank" rel="noopener" class="chip-map-btn">🔍 Google Hotels</a>{% endif %}
+            </div>
+          </div>
+          {% endif %}
+
           <div class="attraction-grid">
             {% for hotel in destination_hotels %}
             <article class="attraction-card hotel-card">
               {% if hotel.image_url %}<img src="{{ hotel.image_url }}" alt="{{ hotel.name }}">{% endif %}
-              <div><h4>{{ hotel.name }}</h4><p>{{ hotel.address }}</p>{% if hotel.rating %}<small>★ {{ hotel.rating }}</small>{% endif %}<span class="price-tag">₹{{ hotel.price_per_night }}/night</span></div>
+              <div>
+                <h4>{{ hotel.name }}</h4>
+                <p>{{ hotel.address }}</p>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                  {% if hotel.rating %}<small>★ {{ hotel.rating }}</small>{% else %}<span></span>{% endif %}
+                  <span class="price-tag">₹{{ hotel.price_per_night }}/night</span>
+                  <a href="{{ hotel.maps_url }}" target="_blank" rel="noopener" class="chip-map-btn">📍 Map</a>
+                </div>
+              </div>
             </article>
             {% endfor %}
           </div>
+
+          <!-- OYO and booking links -->
+          <div class="hotel-booking-links" style="margin-top:14px; padding-top:12px; border-top:1px dashed #e2e8f0; display:flex; gap:8px; flex-wrap:wrap;">
+            <a href="{{ oyo_link }}" target="_blank" rel="noopener" style="font-size:0.75rem; font-weight:700; color:#e11d48; background:#fff1f2; padding:5px 10px; border-radius:6px; text-decoration:none;">🏨 OYO Rooms</a>
+            <a href="{{ mmt_link }}" target="_blank" rel="noopener" style="font-size:0.75rem; font-weight:700; color:#0284c7; background:#f0f9ff; padding:5px 10px; border-radius:6px; text-decoration:none;">✈️ MakeMyTrip</a>
+            <a href="{{ all_hotels_google }}" target="_blank" rel="noopener" style="font-size:0.75rem; font-weight:700; color:#0d9488; background:#f0fdfa; padding:5px 10px; border-radius:6px; text-decoration:none;">🔍 Google Hotels</a>
+            <a href="{{ all_hotels_maps }}" target="_blank" rel="noopener" style="font-size:0.75rem; font-weight:700; color:#2563eb; background:#eff6ff; padding:5px 10px; border-radius:6px; text-decoration:none;">📍 Hotels on Map</a>
+          </div>
+        </div>
+
+        <!-- Food & Dining -->
+        <div class="destination-budget-card">
+          <div class="destination-budget-head"><h3>Food & dining</h3><strong>₹{{ '%.2f'|format(food_cost) }}</strong></div>
+          <p class="destination-budget-meta">{{ travelers }} traveler{{ '' if travelers == 1 else 's' }} · {{ trip_days }} day{{ '' if trip_days == 1 else 's' }} · ₹{{ '%.2f'|format(food_cost / (travelers * trip_days) if (travelers and trip_days) else 0) }}/day avg</p>
+
+          {% if selected_meals and selected_meals|length > 0 %}
+          <div class="chosen-badge-banner">
+            <span>✓ Planned Meals Chosen ({{ selected_meals|length }})</span>
+            {% if all_food_maps %}<a href="{{ all_food_maps }}" target="_blank" rel="noopener" class="map-action-pill">🍽️ Restaurants on Map</a>{% endif %}
+          </div>
+          <div class="attraction-grid">
+            {% for meal in selected_meals %}
+            <article class="attraction-card dining-card">
+              <div>
+                <h4>{{ meal.icon }} {{ meal.name }}</h4>
+                <p style="margin:4px 0; font-size:0.76rem; color:#475569;"><strong>{{ meal.time }}</strong><br>{{ meal.desc }}</p>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; flex-wrap:wrap; gap:6px;">
+                  <span class="price-tag dining-tag">₹{{ meal.cost }} / person</span>
+                  <div style="display:flex; gap:6px;">
+                    <a href="{{ meal.maps_url }}" target="_blank" rel="noopener" class="chip-map-btn">📍 Map</a>
+                    <a href="{{ meal.google_url }}" target="_blank" rel="noopener" class="google-link-btn">🔍 Google</a>
+                  </div>
+                </div>
+              </div>
+            </article>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="attraction-grid">
+            {% for food in destination_dining %}
+            <article class="attraction-card dining-card">
+              {% if food.image_url %}<img src="{{ food.image_url }}" alt="{{ food.name }}">{% endif %}
+              <div>
+                <h4>{{ food.name }}</h4>
+                <p>{{ food.address }}{% if food.cuisine %}<br><small style="color:#64748b;font-weight:500;">{{ food.cuisine }}</small>{% endif %}</p>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; flex-wrap:wrap; gap:6px;">
+                  {% if food.rating %}<small>★ {{ food.rating }}</small>{% else %}<span></span>{% endif %}
+                  <span class="price-tag dining-tag">₹{{ food.estimated_cost }} avg / person</span>
+                  <div style="display:flex; gap:6px;">
+                    <a href="{{ food.maps_url }}" target="_blank" rel="noopener" class="chip-map-btn">📍 Map</a>
+                    <a href="{{ food.google_url }}" target="_blank" rel="noopener" class="google-link-btn">🔍 Google</a>
+                  </div>
+                </div>
+              </div>
+            </article>
+            {% endfor %}
+          </div>
+          {% endif %}
         </div>
       </div>
-      <hr class="report-divider"><div class="section-title"><h2>More on the route</h2><p>Attractions worth a stop along the way</p></div><section id="attractions" class="attractions" data-origin="{{ from_location|e }}" data-destination="{{ destination|e }}"><p class="attractions-status">Finding nearby places…</p></section>
+      <hr class="report-divider"><div class="section-title"><h2>More on the route</h2><p>Popular waypoints, highway rest stops & scenic pauses along your journey</p></div><section id="attractions" class="attractions" data-origin="{{ from_location|e }}" data-destination="{{ destination|e }}"><p class="attractions-status">Finding route stops…</p></section>
     </div>
   </section>
   <div class="button-group"><button type="button" onclick="shareReport()">Share report</button><button type="button" onclick="window.print()">Print / save PDF</button><button type="button" onclick="openRoute()">Open route</button></div>
   <div class="action-center"><form action="{{ '/update_trip' if edit_mode else '/save_trips' }}" method="post" class="save-trip-container"><input type="hidden" name="from_result" value="1">{% if edit_mode %}<input type="hidden" name="trip_id" value="{{ trip_id }}">{% endif %}<input type="hidden" name="destination" value="{{ destination }}"><input type="hidden" name="travelers" value="{{ travelers }}"><input type="hidden" name="total_distance" value="{{ total_distance }}"><input type="hidden" name="transport_mode" value="{{ transport_mode }}"><input type="hidden" name="transport_cost" value="{{ transport_cost }}"><input type="hidden" name="fuel_type" value="{{ fuel_type }}"><input type="hidden" name="fuel_price" value="{{ fuel_price }}"><input type="hidden" name="fuel_cost" value="{{ fuel_cost }}"><input type="hidden" name="food_cost" value="{{ food_cost }}"><input type="hidden" name="room_cost" value="{{ room_cost }}"><input type="hidden" name="toll_charges" value="{{ toll_charges }}"><input type="hidden" name="parking_fee" value="{{ parking_fee }}"><input type="hidden" name="vehicle_type" value="{{ vehicle_type }}"><input type="hidden" name="vehicle_rental_cost" value="{{ vehicle_rental_cost }}"><input type="hidden" name="places_fee_total" value="{{ places_fee_total }}"><input type="hidden" name="total_budget" value="{{ total_budget }}"><input type="hidden" name="cost_per_person" value="{{ cost_per_person }}"><button type="submit">{{ 'Update saved trip' if edit_mode else 'Save this trip' }}</button></form></div>
-  <a class="back-btn" href="/planner">Plan another trip</a>
+
+  <!-- Feedback widget -->
+  <div id="feedback-widget" style="position:fixed;right:18px;bottom:18px;z-index:40;">
+    <button id="feedback-toggle" onclick="toggleFeedbackForm()" title="Send feedback" style="background:#0b766d;color:#fff;border:none;border-radius:999px;width:52px;height:52px;box-shadow:0 6px 18px rgba(11,118,109,0.18);cursor:pointer;">✉️</button>
+    <form id="feedback-form" action="/feedback" method="post" style="display:none;min-width:320px;background:#fff;padding:12px;border-radius:8px;box-shadow:0 12px 30px rgba(0,0,0,0.12);margin-top:8px;">
+      <input type="hidden" name="destination" value="{{ destination }}">
+      {% if logged_in %}
+      <input type="hidden" name="name" value="{{ user_name }}">
+      <input type="hidden" name="email" value="">
+      {% else %}
+      <div style="margin-bottom:8px;"><input name="name" placeholder="Your name" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;"/></div>
+      <div style="margin-bottom:8px;"><input name="email" placeholder="Your email (optional)" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;"/></div>
+      {% endif %}
+      <div style="margin-bottom:8px;"><input name="subject" placeholder="Subject" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;"/></div>
+      <div style="margin-bottom:8px;"><textarea name="message" placeholder="Tell us what you liked or how we can improve" rows="4" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;"></textarea></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;"><button type="button" onclick="toggleFeedbackForm()" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;background:#fff;">Cancel</button><button type="submit" style="padding:8px 12px;border-radius:6px;border:none;background:#0b766d;color:#fff;">Send</button></div>
+    </form>
+  </div>
+  <a class="back-btn" href="/planner?new=1">Plan another trip</a>
 </main>
 <script>
-const expenses={Transport:{{ transport_cost }},Food:{{ food_cost }},Stay:{{ room_cost }},Tolls:{{ toll_charges }},Parking:{{ parking_fee }},"Entry fees":{{ places_fee_total }},Rental:{{ vehicle_rental_cost if vehicle_type == 'rental' else 0 }}};const values=Object.entries(expenses).filter(([,v])=>v>0);if(values.length)new Chart(document.getElementById('expenseChart'),{type:'doughnut',data:{labels:values.map(([k])=>k),datasets:[{data:values.map(([,v])=>v),backgroundColor:['#0b766d','#3c82c7','#f0a74d','#e66d65','#865ec1','#2aa9ad','#e890ba'],borderWidth:0}]},options:{plugins:{legend:{position:'bottom'}}}});
-function shareReport(){const text=`Trip budget for {{ destination }}: ₹{{ '%.2f'|format(total_budget) }} total (₹{{ '%.2f'|format(cost_per_person) }} per person).`;navigator.share?navigator.share({title:'Travel budget',text}):navigator.clipboard.writeText(text).then(()=>alert('Budget summary copied.'));}function openRoute(){window.open(`https://www.google.com/maps/search/${encodeURIComponent('{{ destination }}')}`,'_blank');}
-async function loadAttractions(){const section=document.getElementById('attractions');try{const response=await fetch(`/nearby_attractions?from=${encodeURIComponent(section.dataset.origin)}&destination=${encodeURIComponent(section.dataset.destination)}`);const data=await response.json();const makeCards=(places,title)=>places.length?`<div class="attraction-group"><h3>${title}</h3><div class="attraction-grid">${places.map(place=>`<article class="attraction-card">${place.image_url?`<img src="${place.image_url}" alt="${place.name}">`:""}<div><h4>${place.name}</h4><p>${place.address}</p>${place.rating?`<small>★ ${place.rating}</small>`:""}${place.entry_fee?`<span class="price-tag">₹${place.entry_fee} entry</span>`:""}</div></article>`).join("")}</div></div>`:"";const content=makeCards(data.on_the_way,"Worth a stop on the way");section.innerHTML=content||"<p class='attractions-status'>No extra route stops found for this trip.</p>";}catch(_){section.innerHTML="<p class='attractions-status'>Route suggestions are unavailable right now.</p>";}}loadAttractions();
+function toggleFeedbackForm(){const form=document.getElementById('feedback-form');if(!form)return;form.style.display=form.style.display==='none'?'block':'none';}
+
+document.addEventListener('DOMContentLoaded', ()=> {
+  const feedbackForm = document.getElementById('feedback-form');
+  if (feedbackForm) {
+    feedbackForm.addEventListener('submit', async function(e){
+      e.preventDefault();
+      const submitBtn = feedbackForm.querySelector('button[type="submit"]');
+      if (submitBtn) { submitBtn.disabled = true; var originalText = submitBtn.textContent; submitBtn.textContent = 'Sending...'; }
+      try {
+        const res = await fetch(feedbackForm.action, { method: 'POST', body: new FormData(feedbackForm) });
+        if (!res.ok) throw new Error('Network error');
+        feedbackForm.innerHTML = '<div style="display:flex;align-items:center;gap:12px"><div style="background:#0b766d;color:#fff;border-radius:50%;width:42px;height:42px;display:flex;align-items:center;justify-content:center;font-size:20px;">✓</div><div><strong>Thanks!</strong><p style="margin:0">Your feedback was sent.</p></div></div>';
+        const toggleBtn = document.getElementById('feedback-toggle');
+        if (toggleBtn) { toggleBtn.textContent = '✓'; setTimeout(()=>{ toggleBtn.textContent = '✉️'; }, 3000); }
+      } catch (err) {
+        alert('Could not send feedback. Please try again.');
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalText; }
+      }
+    });
+  }
+
+  const expenses={Transport:{{ transport_cost }},Food:{{ food_cost }},Stay:{{ room_cost }},Tolls:{{ toll_charges }},Parking:{{ parking_fee }},"Entry fees":{{ places_fee_total }},Rental:{{ vehicle_rental_cost if vehicle_type == 'rental' else 0 }}};
+  const values=Object.entries(expenses).filter(([,v])=>v>0);
+  if(values.length)new Chart(document.getElementById('expenseChart'),{type:'doughnut',data:{labels:values.map(([k])=>k),datasets:[{data:values.map(([,v])=>v),backgroundColor:['#0b766d','#3c82c7','#f0a74d','#e66d65','#865ec1','#2aa9ad','#e890ba'],borderWidth:0}]},options:{plugins:{legend:{position:'bottom'}}}});
+
+  window.shareReport = function(){const text=`Trip budget for {{ destination }}: ₹{{ '%.2f'|format(total_budget) }} total (₹{{ '%.2f'|format(cost_per_person) }} per person).`;navigator.share?navigator.share({title:'Travel budget',text}):navigator.clipboard.writeText(text).then(()=>alert('Budget summary copied.'));};
+  window.openRoute = function(){window.open(`https://www.google.com/maps/search/${encodeURIComponent('{{ destination }}')}`,'_blank');};
+
+  async function loadAttractions(){
+    const section = document.getElementById('attractions');
+    try {
+      const response = await fetch(`/nearby_attractions?from=${encodeURIComponent(section.dataset.origin)}&destination=${encodeURIComponent(section.dataset.destination)}`);
+      const data = await response.json();
+      const makeCards = (places, title) => places.length ? `
+        <div class="attraction-group">
+          <h3>${title}</h3>
+          <div class="attraction-grid">
+            ${places.map(place => `
+              <article class="attraction-card">
+                ${place.image_url ? `<img src="${place.image_url}" alt="${place.name}">` : ""}
+                <div>
+                  <h4>${place.name}</h4>
+                  <p>${place.address}</p>
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                    ${place.rating ? `<small style="color:#b45309; font-weight:700;">★ ${place.rating}</small>` : "<span></span>"}
+                    ${place.recommended_pause ? `<span style="background:#f1f5f9; color:#475569; padding:2px 8px; border-radius:999px; font-size:0.7rem; font-weight:600;">⏱️ ${place.recommended_pause}</span>` : ""}
+                  </div>
+                  ${place.category ? `<span class="price-tag" style="background:#f0fdf4; color:#166534; margin-top:6px;">${place.category}</span>` : ""}
+                </div>
+              </article>
+            `).join("")}
+          </div>
+        </div>
+      ` : "";
+      const content = makeCards(data.on_the_way, "Stops along the route");
+      section.innerHTML = content || "<p class='attractions-status'>No extra route stops found for this trip.</p>";
+    } catch (_) {
+      section.innerHTML = "<p class='attractions-status'>Route suggestions are unavailable right now.</p>";
+    }
+  }
+  loadAttractions();
+});
 </script>
 </body></html>
