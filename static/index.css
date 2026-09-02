@@ -579,6 +579,354 @@
     box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
 }
 
+/* ===== Saved Places Quick Bar ===== */
+.gmap-saved-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+.saved-bar-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.saved-bar-pills {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.saved-bar-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.saved-bar-pill:hover {
+    background: rgba(56, 189, 248, 0.2);
+    border-color: #38bdf8;
+    transform: translateY(-1px);
+}
+.saved-bar-pill.is-set {
+    background: rgba(16, 185, 129, 0.18);
+    border-color: #10b981;
+    color: #ffffff;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.25);
+}
+.saved-bar-pill.is-set:hover {
+    background: rgba(16, 185, 129, 0.3);
+}
+
+/* ===== Intermediate Stops (Waypoints) ===== */
+.gmap-stops-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.gmap-stop-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    animation: fadeIn 0.25s ease-out;
+}
+.gmap-stop-badge {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #f59e0b;
+    color: #0f172a;
+    font-size: 10px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.gmap-stop-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+.gmap-stop-btn-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.gmap-stop-btn-icon:hover {
+    background: rgba(56, 189, 248, 0.3);
+    border-color: #38bdf8;
+}
+.gmap-stop-btn-del:hover {
+    background: rgba(239, 68, 68, 0.8) !important;
+    border-color: #ef4444 !important;
+}
+
+.gmap-stop-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin-top: -6px;
+    margin-bottom: 14px;
+}
+.gmap-add-stop-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #38bdf8;
+    border: 1px dashed rgba(56, 189, 248, 0.45);
+    padding: 7px 16px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.gmap-add-stop-btn:hover {
+    background: rgba(56, 189, 248, 0.18);
+    border-color: #38bdf8;
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+.add-stop-plus {
+    font-size: 14px;
+    font-weight: 800;
+}
+
+/* ===== Route Avoidances ===== */
+.gmap-route-avoidances {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+}
+.route-avoid-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.route-avoid-pills {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.route-avoid-pill {
+    cursor: pointer;
+    user-select: none;
+}
+.route-avoid-pill input[type="checkbox"] {
+    display: none;
+}
+.avoid-pill-box {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: rgba(255, 255, 255, 0.78);
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+.route-avoid-pill:hover .avoid-pill-box {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.35);
+    color: #ffffff;
+}
+.route-avoid-pill input[type="checkbox"]:checked + .avoid-pill-box {
+    background: rgba(239, 68, 68, 0.22);
+    border-color: #ef4444;
+    color: #ffffff;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.35);
+}
+
+/* ===== Saved Place Modal & Popover ===== */
+.gmap-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+.gmap-modal-box {
+    background: #0f172a;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    width: 100%;
+    max-width: 440px;
+    padding: 22px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    animation: modalSlideUp 0.25s ease-out;
+}
+@keyframes modalSlideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+.gmap-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+.gmap-modal-header h3 {
+    margin: 0;
+    font-size: 16px;
+    color: #ffffff;
+    font-weight: 700;
+}
+.gmap-modal-close {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+    transition: color 0.15s ease;
+}
+.gmap-modal-close:hover {
+    color: #ffffff;
+}
+.modal-field-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #38bdf8;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.modal-input {
+    width: 100%;
+    padding: 12px 14px;
+}
+.gmap-modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+.modal-btn-cancel {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+.modal-btn-cancel:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+.modal-btn-save {
+    background: #0284c7;
+    border: 1px solid #38bdf8;
+    color: #ffffff;
+    padding: 8px 18px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
+    transition: background 0.15s ease;
+}
+.modal-btn-save:hover {
+    background: #0369a1;
+}
+
+/* Action Popover */
+.gmap-popover {
+    position: fixed;
+    z-index: 9998;
+    background: #0f172a;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 16px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+    padding: 12px;
+    min-width: 240px;
+    animation: fadeIn 0.15s ease-out;
+}
+.popover-header {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 8px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.popover-header strong {
+    color: #ffffff;
+    font-size: 13px;
+}
+.popover-addr {
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 210px;
+}
+.popover-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.popover-btn {
+    background: transparent;
+    border: none;
+    color: #ffffff;
+    padding: 7px 10px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+.popover-btn:hover {
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+}
+.popover-delete:hover {
+    background: rgba(239, 68, 68, 0.2) !important;
+    color: #ef4444 !important;
+}
+
 /* ===== Google Maps Directions Card ===== */
 .gmap-directions-card {
     position: relative;

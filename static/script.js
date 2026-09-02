@@ -89,6 +89,10 @@ function savePlannerState() {
     });
     state.oneWayDistance = Number(oneWayDistance) || 0;
     state.oneWayRouteMinutes = Number(oneWayRouteMinutes) || 0;
+    state.avoid_tolls = !!document.getElementById("avoid_tolls")?.checked;
+    state.avoid_highways = !!document.getElementById("avoid_highways")?.checked;
+    state.avoid_ferries = !!document.getElementById("avoid_ferries")?.checked;
+    state.routeStops = (routeStops || []).filter(s => s && s.trim().length > 0);
     try {
         localStorage.setItem("travelBudgetPlannerState", JSON.stringify(state));
     } catch (_) {}
@@ -110,6 +114,12 @@ function loadPlannerState() {
                 oneWayRouteMinutes = Number(value) || 0;
             } else if (key === "oneWayDistance") {
                 oneWayDistance = Number(value) || 0;
+            } else if (["avoid_tolls", "avoid_highways", "avoid_ferries"].includes(key)) {
+                const cb = document.getElementById(key);
+                if (cb) cb.checked = !!value;
+            } else if (key === "routeStops" && Array.isArray(value)) {
+                routeStops = value;
+                renderRouteStops();
             } else {
                 const field = document.querySelector(`[name="${key}"]`);
                 if (field) field.value = value;
@@ -226,10 +236,19 @@ function updateTravelTime() {
 }
 
 function updateAutoTolls() {
+    const avoidTolls = document.getElementById("avoid_tolls")?.checked;
     const mode = document.getElementById("transport_mode")?.value;
     const tollInput = document.getElementById("toll_charges");
     const hintEl = document.getElementById("toll_auto_hint");
     if (!tollInput || !hintEl) return;
+
+    if (avoidTolls) {
+        tollInput.value = 0;
+        hintEl.textContent = "🚫 Avoid Tolls active: Toll charge set to ₹0.00";
+        hintEl.style.display = "block";
+        hintEl.style.color = "#10b981";
+        return;
+    }
 
     if (mode === "car") {
         const dist = Number(document.getElementById("distance")?.value) || oneWayDistance || 0;
@@ -245,26 +264,12 @@ function updateAutoTolls() {
             tollInput.value = totalToll;
             hintEl.textContent = `⚡ Auto-calculated for Car: ₹${totalToll} (${isRound ? 'Round Trip' : 'One Way'}, ${Math.round(isRound ? dist * 2 : dist)} km)`;
             hintEl.style.display = "block";
+            hintEl.style.color = "";
         } else {
             hintEl.style.display = "none";
         }
     } else {
         hintEl.style.display = "none";
-    }
-}
-
-function swapLocations() {
-    const fromInput = document.getElementById("from_location");
-    const destInput = document.getElementById("destination");
-    if (!fromInput || !destInput) return;
-    const temp = fromInput.value;
-    fromInput.value = destInput.value;
-    destInput.value = temp;
-
-    if (fromInput.value.trim() && destInput.value.trim()) {
-        calculateDistance();
-        fetchDestinationOptions(destInput.value.trim());
-        savePlannerState();
     }
 }
 
@@ -336,9 +341,23 @@ async function calculateDistance() {
     const from = document.getElementById("from_location")?.value?.trim();
     const destination = document.getElementById("destination")?.value?.trim();
     if (!from || !destination) return;
+
+    const validStops = (routeStops || []).map(s => (s || "").trim()).filter(s => s.length > 0);
+    const avoidTolls = !!document.getElementById("avoid_tolls")?.checked;
+    const avoidHighways = !!document.getElementById("avoid_highways")?.checked;
+    const avoidFerries = !!document.getElementById("avoid_ferries")?.checked;
+
     setLoadingState(true);
     try {
-        const response = await fetch(`/get_distance?from=${encodeURIComponent(from)}&destination=${encodeURIComponent(destination)}`);
+        let url = `/get_distance?from=${encodeURIComponent(from)}&destination=${encodeURIComponent(destination)}`;
+        if (validStops.length > 0) {
+            url += `&stops=${encodeURIComponent(JSON.stringify(validStops))}`;
+        }
+        if (avoidTolls) url += `&avoid_tolls=1`;
+        if (avoidHighways) url += `&avoid_highways=1`;
+        if (avoidFerries) url += `&avoid_ferries=1`;
+
+        const response = await fetch(url);
         const data = await response.json();
         if (!response.ok || data.error) throw new Error(data.error || "Unable to calculate this route.");
         oneWayDistance = Number(data.distance);
@@ -749,6 +768,23 @@ function drawRoutePreview(origin, destination, routeData = null) {
             }).bindPopup(`<b>Start:</b> ${origin}`);
             leafletRouteLayer.addLayer(startMarker);
 
+            // Add intermediate stop markers (Orange / Amber)
+            if (routeData?.stop_coords && routeData.stop_coords.length > 0) {
+                const stopsLabels = routeData.stops || [];
+                routeData.stop_coords.forEach((stopPt, idx) => {
+                    const label = stopsLabels[idx] || `Stop ${idx + 1}`;
+                    const stopMarker = L.circleMarker(stopPt, {
+                        radius: 8,
+                        fillColor: "#f59e0b",
+                        color: "#ffffff",
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 0.95
+                    }).bindPopup(`<b>Stop ${idx + 1}:</b> ${label}`);
+                    leafletRouteLayer.addLayer(stopMarker);
+                });
+            }
+
             // Add destination marker (Red)
             const endPoint = coords[coords.length - 1];
             const endMarker = L.circleMarker(endPoint, {
@@ -817,7 +853,15 @@ function selectLocation(inputId, boxId, value) {
     const box = document.getElementById(boxId);
     if (box) box.style.display = "none";
     updateClearButtonsVisibility();
-    if (inputId === "destination") {
+
+    if (inputId.startsWith("stop_input_")) {
+        const idx = parseInt(inputId.replace("stop_input_", ""), 10);
+        if (!isNaN(idx)) {
+            routeStops[idx] = value;
+            const hiddenInput = document.getElementById("stops_json");
+            if (hiddenInput) hiddenInput.value = JSON.stringify(routeStops.filter(s => s && s.trim().length > 0));
+        }
+    } else if (inputId === "destination") {
         fetchDestinationOptions(value);
     }
     calculateDistance();
@@ -933,6 +977,333 @@ function swapLocations() {
     savePlannerState();
 }
 
+/* ========================================================
+   GOOGLE MAPS SAVED PLACES (Home, Work, Favorite)
+   ======================================================== */
+let savedPlaces = { home: "", work: "", favorite: "" };
+let activeSavedType = "home";
+
+async function loadSavedPlaces() {
+    try {
+        const local = localStorage.getItem("travelBudgetSavedPlaces");
+        if (local) {
+            savedPlaces = { ...savedPlaces, ...JSON.parse(local) };
+        }
+    } catch (_) {}
+
+    try {
+        const res = await fetch("/api/saved_places");
+        if (res.ok) {
+            const data = await res.json();
+            if (data.places && Array.isArray(data.places)) {
+                data.places.forEach(p => {
+                    if (p.place_type in savedPlaces) {
+                        savedPlaces[p.place_type] = p.address;
+                    }
+                });
+            }
+        }
+    } catch (_) {}
+
+    updateSavedPlacesUI();
+}
+
+function updateSavedPlacesUI() {
+    const homePill = document.getElementById("home_pill");
+    const homeTitle = document.getElementById("home_pill_title");
+    if (homePill && homeTitle) {
+        if (savedPlaces.home) {
+            homePill.classList.add("is-set");
+            homeTitle.textContent = `Home (${shortenLoc(savedPlaces.home)})`;
+            homePill.title = `Home: ${savedPlaces.home}`;
+        } else {
+            homePill.classList.remove("is-set");
+            homeTitle.textContent = "Home";
+            homePill.title = "Click to set Home address";
+        }
+    }
+
+    const workPill = document.getElementById("work_pill");
+    const workTitle = document.getElementById("work_pill_title");
+    if (workPill && workTitle) {
+        if (savedPlaces.work) {
+            workPill.classList.add("is-set");
+            workTitle.textContent = `Work (${shortenLoc(savedPlaces.work)})`;
+            workPill.title = `Work: ${savedPlaces.work}`;
+        } else {
+            workPill.classList.remove("is-set");
+            workTitle.textContent = "Work";
+            workPill.title = "Click to set Work address";
+        }
+    }
+
+    const favPill = document.getElementById("fav_pill");
+    const favTitle = document.getElementById("fav_pill_title");
+    if (favPill && favTitle) {
+        if (savedPlaces.favorite) {
+            favPill.classList.add("is-set");
+            favTitle.textContent = `Fav (${shortenLoc(savedPlaces.favorite)})`;
+            favPill.title = `Favorite: ${savedPlaces.favorite}`;
+        } else {
+            favPill.classList.remove("is-set");
+            favTitle.textContent = "Favorite";
+            favPill.title = "Click to set Favorite address";
+        }
+    }
+}
+
+function shortenLoc(addr) {
+    if (!addr) return "";
+    const firstPart = addr.split(",")[0].trim();
+    return firstPart.length > 15 ? firstPart.substring(0, 13) + "…" : firstPart;
+}
+
+function handleSavedPlaceClick(type, event) {
+    event?.stopPropagation();
+    activeSavedType = type;
+    const currentVal = savedPlaces[type];
+    if (currentVal && currentVal.trim()) {
+        openSavedPlacePopover(type, event.currentTarget);
+    } else {
+        openSavedPlaceModal(type);
+    }
+}
+
+function openSavedPlacePopover(type, anchorElement) {
+    const popover = document.getElementById("saved_place_popover");
+    const titleEl = document.getElementById("popover_title");
+    const addrEl = document.getElementById("popover_address");
+    if (!popover || !anchorElement) return;
+
+    const icons = { home: "🏠 Home", work: "🏢 Work", favorite: "⭐ Favorite" };
+    if (titleEl) titleEl.textContent = icons[type] || "Saved Place";
+    if (addrEl) addrEl.textContent = savedPlaces[type] || "Not set";
+
+    const rect = anchorElement.getBoundingClientRect();
+    popover.style.top = `${rect.bottom + window.scrollY + 6}px`;
+    popover.style.left = `${Math.max(10, Math.min(window.innerWidth - 260, rect.left + window.scrollX))}px`;
+    popover.style.display = "block";
+
+    setTimeout(() => {
+        document.addEventListener("click", closePopoverOnClickOutside);
+    }, 50);
+}
+
+function closePopoverOnClickOutside(e) {
+    const popover = document.getElementById("saved_place_popover");
+    if (popover && !popover.contains(e.target)) {
+        popover.style.display = "none";
+        document.removeEventListener("click", closePopoverOnClickOutside);
+    }
+}
+
+function applySavedPlace(target) {
+    const addr = savedPlaces[activeSavedType];
+    const popover = document.getElementById("saved_place_popover");
+    if (popover) popover.style.display = "none";
+    document.removeEventListener("click", closePopoverOnClickOutside);
+
+    if (!addr) return;
+    if (target === "from") {
+        const fromEl = document.getElementById("from_location");
+        if (fromEl) fromEl.value = addr;
+        updateClearButtonsVisibility();
+        calculateDistance();
+    } else if (target === "to") {
+        const toEl = document.getElementById("destination");
+        if (toEl) toEl.value = addr;
+        updateClearButtonsVisibility();
+        fetchDestinationOptions(addr);
+        calculateDistance();
+    } else if (target === "stop") {
+        addRouteStop(addr);
+    }
+    savePlannerState();
+}
+
+function editSavedPlace() {
+    const popover = document.getElementById("saved_place_popover");
+    if (popover) popover.style.display = "none";
+    document.removeEventListener("click", closePopoverOnClickOutside);
+    openSavedPlaceModal(activeSavedType);
+}
+
+async function deleteSavedPlace() {
+    const popover = document.getElementById("saved_place_popover");
+    if (popover) popover.style.display = "none";
+    document.removeEventListener("click", closePopoverOnClickOutside);
+
+    savedPlaces[activeSavedType] = "";
+    try {
+        localStorage.setItem("travelBudgetSavedPlaces", JSON.stringify(savedPlaces));
+        await fetch(`/api/saved_places/${encodeURIComponent(activeSavedType)}`, { method: "DELETE" });
+    } catch (_) {}
+    updateSavedPlacesUI();
+}
+
+function openSavedPlaceModal(type) {
+    activeSavedType = type;
+    const modal = document.getElementById("saved_place_modal");
+    const titleEl = document.getElementById("saved_modal_title");
+    const input = document.getElementById("saved_place_input");
+    if (!modal || !input) return;
+
+    const labels = { home: "🏠 Save Home Address", work: "🏢 Save Work / Office Address", favorite: "⭐ Save Favorite Address" };
+    if (titleEl) titleEl.textContent = labels[type] || "Save Location";
+    input.value = savedPlaces[type] || "";
+    modal.style.display = "flex";
+    input.focus();
+}
+
+function closeSavedPlaceModal() {
+    const modal = document.getElementById("saved_place_modal");
+    if (modal) modal.style.display = "none";
+    const box = document.getElementById("saved_place_suggestions");
+    if (box) box.style.display = "none";
+}
+
+async function savePlaceFromModal() {
+    const input = document.getElementById("saved_place_input");
+    const address = input?.value?.trim();
+    if (!address) {
+        alert("Please enter a location or address.");
+        return;
+    }
+    savedPlaces[activeSavedType] = address;
+    try {
+        localStorage.setItem("travelBudgetSavedPlaces", JSON.stringify(savedPlaces));
+        await fetch("/api/saved_places", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ place_type: activeSavedType, address: address })
+        });
+    } catch (_) {}
+    updateSavedPlacesUI();
+    closeSavedPlaceModal();
+}
+
+function onSavedPlaceInput() {
+    scheduleLocationSearch("saved_place_input", "saved_place_suggestions");
+}
+
+/* ========================================================
+   INTERMEDIATE STOPS (WAYPOINTS) MANAGEMENT
+   ======================================================== */
+let routeStops = [];
+
+function addRouteStop(initialValue = "") {
+    if (routeStops.length >= 6) {
+        alert("Maximum 6 intermediate stops allowed.");
+        return;
+    }
+    routeStops.push(initialValue);
+    renderRouteStops();
+    if (initialValue) {
+        calculateDistance();
+    } else {
+        const newIdx = routeStops.length - 1;
+        const newInp = document.getElementById(`stop_input_${newIdx}`);
+        if (newInp) newInp.focus();
+    }
+    savePlannerState();
+}
+
+function renderRouteStops() {
+    const container = document.getElementById("stops_container");
+    const trackLine = document.getElementById("gmap_track_line");
+    if (!container) return;
+
+    container.replaceChildren();
+
+    routeStops.forEach((stopVal, idx) => {
+        const row = document.createElement("div");
+        row.className = "gmap-stop-row";
+        row.id = `stop_row_${idx}`;
+
+        const stopLetter = String.fromCharCode(65 + idx);
+
+        row.innerHTML = `
+            <span class="gmap-stop-badge" title="Stop ${idx + 1}">${stopLetter}</span>
+            <div class="gmap-input-box">
+                <input type="text" id="stop_input_${idx}" class="gmap-text-input"
+                       placeholder=" " autocomplete="off" value="${escapeHtml(stopVal)}"
+                       oninput="onStopInputChange(${idx})">
+                <label for="stop_input_${idx}" class="gmap-input-label">Stop ${idx + 1} (via...)</label>
+                <button type="button" class="gmap-clear-btn" onclick="clearStopInput(${idx})"
+                        style="display:${stopVal ? 'inline-flex' : 'none'};">✕</button>
+                <div id="stop_sugg_${idx}" class="suggestions gmap-suggestions-box"></div>
+            </div>
+            <div class="gmap-stop-controls">
+                <button type="button" class="gmap-stop-btn-icon" onclick="moveRouteStop(${idx}, -1)"
+                        title="Move Up" ${idx === 0 ? 'disabled style="opacity:0.3;cursor:default;"' : ''}>▲</button>
+                <button type="button" class="gmap-stop-btn-icon" onclick="moveRouteStop(${idx}, 1)"
+                        title="Move Down" ${idx === routeStops.length - 1 ? 'disabled style="opacity:0.3;cursor:default;"' : ''}>▼</button>
+                <button type="button" class="gmap-stop-btn-icon gmap-stop-btn-del" onclick="removeRouteStop(${idx})"
+                        title="Remove Stop">✕</button>
+            </div>
+        `;
+        container.appendChild(row);
+    });
+
+    const hiddenInput = document.getElementById("stops_json");
+    if (hiddenInput) {
+        hiddenInput.value = JSON.stringify(routeStops.filter(s => s && s.trim().length > 0));
+    }
+
+    if (trackLine) {
+        trackLine.style.minHeight = `${Math.max(20, routeStops.length * 48)}px`;
+    }
+}
+
+function escapeHtml(str) {
+    if (!str) return "";
+    return str.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function onStopInputChange(idx) {
+    const input = document.getElementById(`stop_input_${idx}`);
+    if (!input) return;
+    routeStops[idx] = input.value;
+    scheduleLocationSearch(`stop_input_${idx}`, `stop_sugg_${idx}`);
+    const clearBtn = input.parentElement.querySelector(".gmap-clear-btn");
+    if (clearBtn) clearBtn.style.display = input.value ? "inline-flex" : "none";
+    const hiddenInput = document.getElementById("stops_json");
+    if (hiddenInput) hiddenInput.value = JSON.stringify(routeStops.filter(s => s && s.trim().length > 0));
+}
+
+function clearStopInput(idx) {
+    const input = document.getElementById(`stop_input_${idx}`);
+    if (input) input.value = "";
+    routeStops[idx] = "";
+    onStopInputChange(idx);
+    calculateDistance();
+    savePlannerState();
+}
+
+function moveRouteStop(idx, dir) {
+    const newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= routeStops.length) return;
+    const temp = routeStops[idx];
+    routeStops[idx] = routeStops[newIdx];
+    routeStops[newIdx] = temp;
+    renderRouteStops();
+    calculateDistance();
+    savePlannerState();
+}
+
+function removeRouteStop(idx) {
+    routeStops.splice(idx, 1);
+    renderRouteStops();
+    calculateDistance();
+    savePlannerState();
+}
+
+function onAvoidOptionChanged() {
+    updateAutoTolls();
+    calculateDistance();
+    savePlannerState();
+}
+
 document.getElementById("from_location")?.addEventListener("change", () => {
     updateClearButtonsVisibility();
     calculateDistance();
@@ -965,6 +1336,8 @@ document.querySelectorAll("#planner_form input, #planner_form select").forEach(i
 
 window.onload = () => {
     loadPlannerState();
+    loadSavedPlaces();
+    renderRouteStops();
     updateClearButtonsVisibility();
     syncGmapModeTabs();
     onTransportChange();

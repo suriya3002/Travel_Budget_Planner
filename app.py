@@ -384,11 +384,87 @@ def init_db():
         )
     """)
 
+    # Saved places (Home, Work, Favorites)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS saved_places (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            place_type TEXT,
+            label TEXT,
+            address TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
     conn.commit()
     conn.close()
 
 
 init_db()
+
+
+@app.route("/api/saved_places", methods=["GET", "POST"])
+def api_saved_places():
+    user_id = session.get("user_id")
+    conn = get_db()
+    if request.method == "POST":
+        data = request.get_json(silent=True) or request.form
+        place_type = data.get("place_type", "favorite").strip().lower()
+        label = data.get("label", "").strip() or place_type.capitalize()
+        address = data.get("address", "").strip()
+        if not address:
+            conn.close()
+            return jsonify({"error": "Address is required"}), 400
+
+        if user_id:
+            if place_type in ("home", "work"):
+                existing = conn.execute(
+                    "SELECT id FROM saved_places WHERE user_id = ? AND place_type = ?",
+                    (user_id, place_type),
+                ).fetchone()
+                if existing:
+                    conn.execute(
+                        "UPDATE saved_places SET address = ?, label = ? WHERE id = ?",
+                        (address, label, existing["id"]),
+                    )
+                else:
+                    conn.execute(
+                        "INSERT INTO saved_places (user_id, place_type, label, address) VALUES (?, ?, ?, ?)",
+                        (user_id, place_type, label, address),
+                    )
+            else:
+                conn.execute(
+                    "INSERT INTO saved_places (user_id, place_type, label, address) VALUES (?, ?, ?, ?)",
+                    (user_id, place_type, label, address),
+                )
+            conn.commit()
+        conn.close()
+        return jsonify({"success": True, "place_type": place_type, "label": label, "address": address})
+
+    # GET
+    places = []
+    if user_id:
+        rows = conn.execute(
+            "SELECT id, place_type, label, address FROM saved_places WHERE user_id = ? ORDER BY id ASC",
+            (user_id,),
+        ).fetchall()
+        places = [dict(r) for r in rows]
+    conn.close()
+    return jsonify({"places": places})
+
+
+@app.route("/api/saved_places/<place_type>", methods=["DELETE"])
+def api_delete_saved_place(place_type):
+    user_id = session.get("user_id")
+    if user_id:
+        conn = get_db()
+        conn.execute(
+            "DELETE FROM saved_places WHERE user_id = ? AND place_type = ?",
+            (user_id, place_type),
+        )
+        conn.commit()
+        conn.close()
+    return jsonify({"success": True})
 
 
 @app.before_request
@@ -574,9 +650,27 @@ def trip_from_form():
 
     food_cost_per_person = get_float("food_cost_per_person")
 
+    avoid_tolls = request.form.get("avoid_tolls") in ("1", "true", "yes", "on")
+    avoid_highways = request.form.get("avoid_highways") in ("1", "true", "yes", "on")
+    avoid_ferries = request.form.get("avoid_ferries") in ("1", "true", "yes", "on")
+
+    raw_stops_json = request.form.get("stops_json", "").strip()
+    stops = []
+    if raw_stops_json:
+        try:
+            parsed_stops = json.loads(raw_stops_json)
+            if isinstance(parsed_stops, list):
+                stops = [str(s).strip() for s in parsed_stops if str(s).strip()]
+        except Exception:
+            stops = [s.strip() for s in raw_stops_json.split("|") if s.strip()]
+
     # Round-trip tolls: calculate return journey highway tolls properly when round_trip == 'yes'
-    if raw_toll != "":
+    if avoid_tolls:
+        one_way_toll = 0.0
+        toll_charges = 0.0
+    elif raw_toll != "":
         one_way_toll = get_float("toll_charges")
+        toll_charges = one_way_toll * 2 if round_trip == "yes" else one_way_toll
     elif transport_mode == "car":
         if distance <= 100:
             one_way_toll = 0.0
@@ -586,13 +680,10 @@ def trip_from_form():
             one_way_toll = 400.0
         else:
             one_way_toll = 700.0
+        toll_charges = one_way_toll * 2 if round_trip == "yes" else one_way_toll
     else:
         one_way_toll = 0.0
-
-    if round_trip == "yes":
-        toll_charges = one_way_toll * 2
-    else:
-        toll_charges = one_way_toll
+        toll_charges = 0.0
 
     destination_details = destination_budget_details(destination, trip_days)
 
@@ -797,6 +888,10 @@ def trip_from_form():
         "all_hotels_google": f"https://www.google.com/travel/hotels/{dest_encoded}",
         "oyo_link": f"https://www.oyorooms.com/search?location={dest_encoded}",
         "mmt_link": f"https://www.makemytrip.com/hotels/{short_encoded}-hotels.html",
+        "stops": stops,
+        "avoid_tolls": avoid_tolls,
+        "avoid_highways": avoid_highways,
+        "avoid_ferries": avoid_ferries,
     }
 
 
@@ -1379,95 +1474,175 @@ def update_trip():
 def get_distance():
     from_place = request.args.get("from", "").strip()
     destination = request.args.get("destination", "").strip()
-    # The Google Directions API gives the most accurate road result when the
-    # deployment has a restricted server key. Keep OSRM as a no-key fallback.
-    gmaps_directions_url = f"https://www.google.com/maps/dir/?api=1&origin={requests.utils.quote(from_place)}&destination={requests.utils.quote(destination)}"
+    stops_param = request.args.get("stops", "").strip()
+    avoid_tolls = request.args.get("avoid_tolls") in ("1", "true", "yes")
+    avoid_highways = request.args.get("avoid_highways") in ("1", "true", "yes")
+    avoid_ferries = request.args.get("avoid_ferries") in ("1", "true", "yes")
+
+    stops = []
+    if stops_param:
+        try:
+            if stops_param.startswith("["):
+                parsed = json.loads(stops_param)
+                if isinstance(parsed, list):
+                    stops = [str(s).strip() for s in parsed if str(s).strip()]
+            else:
+                stops = [s.strip() for s in stops_param.split("|") if s and s.strip()]
+        except Exception:
+            stops = [s.strip() for s in stops_param.split("|") if s and s.strip()]
+
+    # Construct Google Maps external directions URL with waypoints & avoid options
+    gmaps_avoid_flags = []
+    if avoid_tolls:
+        gmaps_avoid_flags.append("t")
+    if avoid_highways:
+        gmaps_avoid_flags.append("h")
+    if avoid_ferries:
+        gmaps_avoid_flags.append("f")
+
+    avoid_query = f"&avoid={'|'.join(gmaps_avoid_flags)}" if gmaps_avoid_flags else ""
+    waypoints_query = f"&waypoints={'|'.join([requests.utils.quote(s) for s in stops])}" if stops else ""
+    gmaps_directions_url = (
+        f"https://www.google.com/maps/dir/?api=1"
+        f"&origin={requests.utils.quote(from_place)}"
+        f"&destination={requests.utils.quote(destination)}"
+        f"{waypoints_query}{avoid_query}"
+    )
 
     if GOOGLE_DIRECTIONS_API_KEY:
         try:
+            params = {
+                "origin": from_place,
+                "destination": destination,
+                "mode": "driving",
+                "key": GOOGLE_DIRECTIONS_API_KEY,
+            }
+            if stops:
+                params["waypoints"] = "|".join(stops)
+            g_avoids = []
+            if avoid_tolls:
+                g_avoids.append("tolls")
+            if avoid_highways:
+                g_avoids.append("highways")
+            if avoid_ferries:
+                g_avoids.append("ferries")
+            if g_avoids:
+                params["avoid"] = "|".join(g_avoids)
+
             response = requests.get(
                 "https://maps.googleapis.com/maps/api/directions/json",
-                params={
-                    "origin": from_place,
-                    "destination": destination,
-                    "mode": "driving",
-                    "key": GOOGLE_DIRECTIONS_API_KEY,
-                },
+                params=params,
                 timeout=15,
             )
             response.raise_for_status()
             route = response.json().get("routes", [None])[0]
-            leg = route["legs"][0] if route else None
-            if not leg:
-                raise ValueError("No route found")
-            return jsonify({
-                "distance": round(leg["distance"]["value"] / 1000, 2),
-                "duration": round(leg["duration"]["value"] / 3600, 2),
-                "start_coords": [leg["start_location"]["lat"], leg["start_location"]["lng"]],
-                "end_coords": [leg["end_location"]["lat"], leg["end_location"]["lng"]],
-                "gmaps_url": gmaps_directions_url,
-            })
+            if route and route.get("legs"):
+                total_meters = sum(leg["distance"]["value"] for leg in route["legs"])
+                total_secs = sum(leg["duration"]["value"] for leg in route["legs"])
+                start_pt = route["legs"][0]["start_location"]
+                end_pt = route["legs"][-1]["end_location"]
+                stop_pts = [leg["end_location"] for leg in route["legs"][:-1]]
+                return jsonify({
+                    "distance": round(total_meters / 1000, 2),
+                    "duration": round(total_secs / 3600, 2),
+                    "start_coords": [start_pt["lat"], start_pt["lng"]],
+                    "end_coords": [end_pt["lat"], end_pt["lng"]],
+                    "stop_coords": [[p["lat"], p["lng"]] for p in stop_pts],
+                    "gmaps_url": gmaps_directions_url,
+                    "stops": stops,
+                    "avoid_tolls": avoid_tolls,
+                    "avoid_highways": avoid_highways,
+                    "avoid_ferries": avoid_ferries,
+                })
         except (requests.RequestException, KeyError, IndexError, TypeError, ValueError):
-            # Continue to the public fallback if the Google key is restricted,
-            # unavailable, or has no route for this journey.
             pass
 
+    # Geocoding & multi-stop OSRM route fallback
+    all_points_labels = [from_place] + stops + [destination]
+    point_coords = []
     try:
-        start = geocode(from_place)
-        end = geocode(destination)
+        for label in all_points_labels:
+            pt = geocode(label)
+            if pt is None:
+                return jsonify({"error": f"Unable to locate '{label}'"}), 422
+            point_coords.append(pt)  # (lon, lat)
     except requests.RequestException:
         return jsonify({"error": "Location search is temporarily unavailable. Please try again."}), 503
 
-    if start is None:
-        return jsonify({"error": "Invalid From Location"})
-    if end is None:
-        return jsonify({"error": "Invalid Destination"})
+    start_lat_lon = [point_coords[0][1], point_coords[0][0]]
+    end_lat_lon = [point_coords[-1][1], point_coords[-1][0]]
+    stop_coords = [[c[1], c[0]] for c in point_coords[1:-1]]
 
-    start_lat_lon = [start[1], start[0]]
-    end_lat_lon = [end[1], end[0]]
-
-    # OSRM provides a dependable keyless route estimate with full geometry.
     try:
-        route_coords = [start_lat_lon, end_lat_lon]
-        if ORS_API_KEY:
-            response = requests.post(
-                "https://api.openrouteservice.org/v2/directions/driving-car",
-                headers={"Authorization": ORS_API_KEY, "Content-Type": "application/json"},
-                json={"coordinates": [list(start), list(end)]},
-                timeout=15,
-            )
-            response.raise_for_status()
-            summary = response.json()["routes"][0]["summary"]
-            distance_km = round(summary["distance"] / 1000, 2)
-            duration_hr = round(summary["duration"] / 3600, 2)
-        else:
-            coordinates = f"{start[0]},{start[1]};{end[0]},{end[1]}"
-            response = requests.get(
-                f"https://router.project-osrm.org/route/v1/driving/{coordinates}",
-                params={"overview": "simplified", "geometries": "geojson"},
-                headers={"User-Agent": "TravelBudgetPlanner/1.0"},
-                timeout=15,
-            )
-            response.raise_for_status()
-            route = response.json().get("routes", [None])[0]
-            if not route:
-                raise ValueError("No route found")
-            distance_km = round(route["distance"] / 1000, 2)
-            duration_hr = round(route["duration"] / 3600, 2)
-            raw_geojson_coords = route.get("geometry", {}).get("coordinates", [])
-            if raw_geojson_coords:
-                route_coords = [[c[1], c[0]] for c in raw_geojson_coords]
+        route_coords = [start_lat_lon] + stop_coords + [end_lat_lon]
+        coordinates_str = ";".join(f"{c[0]},{c[1]}" for c in point_coords)
+
+        response = requests.get(
+            f"https://router.project-osrm.org/route/v1/driving/{coordinates_str}",
+            params={"overview": "simplified", "geometries": "geojson"},
+            headers={"User-Agent": "TravelBudgetPlanner/1.0"},
+            timeout=15,
+        )
+        response.raise_for_status()
+        route = response.json().get("routes", [None])[0]
+        if not route:
+            raise ValueError("No route found")
+
+        distance_km = round(route["distance"] / 1000, 2)
+        duration_hr = round(route["duration"] / 3600, 2)
+
+        # Non-highway / avoid tolls routing adjustment
+        if avoid_highways or avoid_tolls:
+            distance_km = round(distance_km * 1.08, 2)
+            duration_hr = round(duration_hr * 1.15, 2)
+
+        raw_geojson_coords = route.get("geometry", {}).get("coordinates", [])
+        if raw_geojson_coords:
+            route_coords = [[c[1], c[0]] for c in raw_geojson_coords]
 
         return jsonify({
             "distance": distance_km,
             "duration": duration_hr,
             "start_coords": start_lat_lon,
             "end_coords": end_lat_lon,
+            "stop_coords": stop_coords,
             "route_geometry": route_coords,
             "gmaps_url": gmaps_directions_url,
+            "stops": stops,
+            "avoid_tolls": avoid_tolls,
+            "avoid_highways": avoid_highways,
+            "avoid_ferries": avoid_ferries,
         })
     except (requests.RequestException, KeyError, IndexError, TypeError, ValueError):
-        return jsonify({"error": "We couldn't find a drivable route between those locations."}), 422
+        # Straight line geodetic estimate fallback if OSRM is unreachable
+        distance_km = 0
+        for i in range(len(point_coords) - 1):
+            p1, p2 = point_coords[i], point_coords[i+1]
+            # Simple Haversine approximation
+            import math
+            lat1, lon1 = math.radians(p1[1]), math.radians(p1[0])
+            lat2, lon2 = math.radians(p2[1]), math.radians(p2[0])
+            dlat = lat2 - lat1
+            dlon = lon2 - lon1
+            a = math.sin(dlat/2)**2 + math.cos(lat1)*math.cos(lat2)*math.sin(dlon/2)**2
+            c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+            distance_km += 6371.0 * c * 1.25 # Road curvature factor
+
+        distance_km = round(distance_km, 2)
+        duration_hr = round(distance_km / 65, 2)
+        return jsonify({
+            "distance": distance_km,
+            "duration": duration_hr,
+            "start_coords": start_lat_lon,
+            "end_coords": end_lat_lon,
+            "stop_coords": stop_coords,
+            "route_geometry": [start_lat_lon] + stop_coords + [end_lat_lon],
+            "gmaps_url": gmaps_directions_url,
+            "stops": stops,
+            "avoid_tolls": avoid_tolls,
+            "avoid_highways": avoid_highways,
+            "avoid_ferries": avoid_ferries,
+        })
 
 
 @app.route("/location_suggestions")
