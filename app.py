@@ -63,20 +63,95 @@ def attach_photo_urls(places):
     return places
 
 
+def find_dining(coordinates, radius=12000, limit=4):
+    if not GOOGLE_PLACES_API_KEY or not coordinates:
+        return []
+    try:
+        response = requests.get(
+            "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+            params={
+                "location": f"{coordinates[1]},{coordinates[0]}",
+                "radius": radius,
+                "type": "restaurant",
+                "key": GOOGLE_PLACES_API_KEY,
+            },
+            timeout=12,
+        )
+        response.raise_for_status()
+        return [
+            {
+                "name": place.get("name", "Local Restaurant"),
+                "address": place.get("vicinity", "India"),
+                "rating": place.get("rating"),
+                "price_level": place.get("price_level", 2),
+                "photo": place.get("photos", [{}])[0].get("photo_reference", "") if place.get("photos") else "",
+            }
+            for place in response.json().get("results", [])[:limit]
+        ]
+    except requests.RequestException:
+        return []
+
+
+POPULAR_DESTINATION_ATTRACTIONS = {
+    "goa": [
+        {"name": "Baga & Calangute Beach", "entry_fee": 0, "rating": 4.7, "image_url": "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Aguada Fort & Lighthouse", "entry_fee": 50, "rating": 4.6, "image_url": "https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Dudhsagar Waterfalls Trail", "entry_fee": 100, "rating": 4.8, "image_url": "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Basilica of Bom Jesus", "entry_fee": 0, "rating": 4.6, "image_url": "https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Chapora Fort Viewpoint", "entry_fee": 20, "rating": 4.5, "image_url": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80"}
+    ],
+    "jaipur": [
+        {"name": "Amber Palace & Fort", "entry_fee": 200, "rating": 4.7, "image_url": "https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Hawa Mahal (Palace of Winds)", "entry_fee": 50, "rating": 4.6, "image_url": "https://images.unsplash.com/photo-1603228254119-e6aef2999238?auto=format&fit=crop&w=600&q=80"},
+        {"name": "City Palace & Museum", "entry_fee": 300, "rating": 4.6, "image_url": "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Jantar Mantar Observatory", "entry_fee": 50, "rating": 4.5, "image_url": "https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Nahargarh Fort Sunset Point", "entry_fee": 50, "rating": 4.7, "image_url": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80"}
+    ],
+    "agra": [
+        {"name": "Taj Mahal", "entry_fee": 250, "rating": 4.9, "image_url": "https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Agra Fort", "entry_fee": 50, "rating": 4.7, "image_url": "https://images.unsplash.com/photo-1585136917192-e4277b02c89f?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Fatehpur Sikri Royal Complex", "entry_fee": 50, "rating": 4.6, "image_url": "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Mehtab Bagh Sunset Garden", "entry_fee": 25, "rating": 4.5, "image_url": "https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=600&q=80"}
+    ],
+    "delhi": [
+        {"name": "Red Fort & Museum", "entry_fee": 80, "rating": 4.6, "image_url": "https://images.unsplash.com/photo-1585136917192-e4277b02c89f?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Qutub Minar Complex", "entry_fee": 40, "rating": 4.7, "image_url": "https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Humayun's Tomb", "entry_fee": 40, "rating": 4.6, "image_url": "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=600&q=80"},
+        {"name": "India Gate & War Memorial", "entry_fee": 0, "rating": 4.8, "image_url": "https://images.unsplash.com/photo-1587474260584-136574528ed5?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Akshardham Exhibition", "entry_fee": 250, "rating": 4.8, "image_url": "https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=600&q=80"}
+    ],
+    "mumbai": [
+        {"name": "Gateway of India & Promenade", "entry_fee": 0, "rating": 4.7, "image_url": "https://images.unsplash.com/photo-1570168007204-dfb528c6958f?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Elephanta Caves & Ferry", "entry_fee": 260, "rating": 4.5, "image_url": "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Chhatrapati Shivaji Maharaj Museum", "entry_fee": 150, "rating": 4.7, "image_url": "https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Marine Drive Sunset Walk", "entry_fee": 0, "rating": 4.8, "image_url": "https://images.unsplash.com/photo-1567157577867-05ccb1388e66?auto=format&fit=crop&w=600&q=80"}
+    ],
+    "ooty": [
+        {"name": "Ooty Government Botanical Garden", "entry_fee": 50, "rating": 4.6, "image_url": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Doddabetta Peak Viewpoint", "entry_fee": 30, "rating": 4.6, "image_url": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Pykara Lake & Boating", "entry_fee": 60, "rating": 4.6, "image_url": "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=600&q=80"},
+        {"name": "Nilgiri Mountain Toy Train", "entry_fee": 200, "rating": 4.8, "image_url": "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=600&q=80"}
+    ]
+}
+
+
 def destination_budget_details(destination, trip_days):
-    """Fetch tourist places and hotels at the destination with estimated costs."""
+    """Fetch tourist places, hotels, and food/dining at the destination with estimated costs."""
     estimate = location_cost_estimate(destination)
     tier_key = estimate["tier_key"]
     entry_fee = ENTRY_FEE_BY_TIER[tier_key]
     base_room = estimate["room"]
+    base_food = estimate["food"]
 
     attractions = []
     hotels = []
+    dining = []
     try:
         coordinates = geocode(destination)
         if coordinates:
             attractions = find_attractions(coordinates, radius=12000, limit=5)
             hotels = find_lodging(coordinates, radius=12000, limit=4)
+            dining = find_dining(coordinates, radius=12000, limit=4)
     except requests.RequestException:
         pass
 
@@ -88,21 +163,53 @@ def destination_budget_details(destination, trip_days):
             base_room, hotel.get("price_level", 2)
         )
 
+    for item in dining:
+        level = item.get("price_level", 2)
+        multiplier = {0: 0.35, 1: 0.45, 2: 0.70, 3: 1.10, 4: 1.75}.get(level, 0.70)
+        item["estimated_cost"] = round(base_food * multiplier)
+        item["cuisine"] = "Local & Indian Specialties"
+
     attach_photo_urls(attractions)
     attach_photo_urls(hotels)
+    attach_photo_urls(dining)
 
     if not attractions:
         place_name = short_location(destination) or "your destination"
-        attractions = [
-            {
-                "name": f"{place_name} — suggested sight {index}",
-                "address": destination,
-                "rating": None,
-                "entry_fee": entry_fee,
-                "image_url": "",
-            }
-            for index in range(1, 4)
-        ]
+        lower_dest = (destination or "").lower()
+        matched_popular = next((v for k, v in POPULAR_DESTINATION_ATTRACTIONS.items() if k in lower_dest), None)
+        if matched_popular:
+            attractions = [dict(item) for item in matched_popular]
+        else:
+            attractions = [
+                {
+                    "name": f"{place_name} — Heritage Fort & Palace",
+                    "address": f"Historic Quarter, {destination}",
+                    "rating": 4.6,
+                    "entry_fee": entry_fee,
+                    "image_url": "https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=600&q=80",
+                },
+                {
+                    "name": f"{place_name} — Scenic Viewpoint & Lake",
+                    "address": f"Promenade, {destination}",
+                    "rating": 4.7,
+                    "entry_fee": max(round(entry_fee * 0.5), 20),
+                    "image_url": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80",
+                },
+                {
+                    "name": f"{place_name} — Central Botanical Park",
+                    "address": f"City Center, {destination}",
+                    "rating": 4.5,
+                    "entry_fee": max(round(entry_fee * 0.3), 30),
+                    "image_url": "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=600&q=80",
+                },
+                {
+                    "name": f"{place_name} — Cultural Museum & Art Gallery",
+                    "address": f"Civic Center, {destination}",
+                    "rating": 4.6,
+                    "entry_fee": entry_fee,
+                    "image_url": "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=600&q=80",
+                },
+            ]
 
     places_fee_total = sum(place["entry_fee"] for place in attractions)
     places_count = len(attractions)
@@ -130,9 +237,39 @@ def destination_budget_details(destination, trip_days):
         ]
         room_per_day = round(sum(hotel["price_per_night"] for hotel in hotels) / len(hotels))
 
+    if not dining:
+        place_name = short_location(destination) or "your destination"
+        dining = [
+            {
+                "name": f"{place_name} — Heritage Thali & Local Flavors",
+                "address": f"City Center, {destination}",
+                "rating": 4.6,
+                "cuisine": "Authentic Thali & Traditional Cuisine",
+                "estimated_cost": round(base_food * 0.65),
+                "image_url": "https://images.unsplash.com/photo-1585937421612-70a008356fbe?auto=format&fit=crop&w=600&q=80",
+            },
+            {
+                "name": f"{place_name} — Street Food & Regional Delights",
+                "address": f"Old Town Market, {destination}",
+                "rating": 4.5,
+                "cuisine": "Popular Street Food & Snacks",
+                "estimated_cost": round(base_food * 0.35),
+                "image_url": "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=600&q=80",
+            },
+            {
+                "name": f"{place_name} — Garden Cafe & Bistro",
+                "address": f"Promenade Road, {destination}",
+                "rating": 4.7,
+                "cuisine": "Cafe, Beverages & Continental",
+                "estimated_cost": round(base_food * 0.95),
+                "image_url": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80",
+            },
+        ]
+
     return {
         "attractions": attractions,
         "hotels": hotels,
+        "dining": dining,
         "places_count": places_count,
         "places_fee_total": places_fee_total,
         "per_place_fee": per_place_fee,
@@ -208,6 +345,19 @@ def init_db():
             action TEXT,
             target_user_id INTEGER,
             details TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Inbox entries for feedback and user messages
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS inbox_entries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            name TEXT,
+            email TEXT,
+            subject TEXT,
+            message TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -364,8 +514,12 @@ def trip_from_form():
     round_trip = request.form.get("round_trip", "no")
     total_distance = distance * 2 if round_trip == "yes" else distance
 
-    places_to_visit = get_int("places_to_visit")
-    per_places_entry_fee = get_float("per_places_entry_fee")
+    # Check whether user explicitly submitted values (including "0")
+    raw_places = request.form.get("places_to_visit", "").strip()
+    raw_entry_fee = request.form.get("per_places_entry_fee", "").strip()
+    raw_room_cost = request.form.get("room_cost", "").strip()
+    raw_toll = request.form.get("toll_charges", "").strip()
+
     vehicle_type = request.form.get("vehicle_type", "own")
     vehicle_rental_cost = get_float("vehicle_rental_cost")
     vehicle_cost = vehicle_rental_cost if vehicle_type == "rental" else 0
@@ -378,9 +532,9 @@ def trip_from_form():
     fuel_cost = 0.0
 
     if transport_mode == "walk":
-        transport_cost = 0
-    elif transport_mode in ("bike", "car") and mileage > 0:
-        fuel_cost = (total_distance / mileage) * fuel_price
+        transport_cost = 0.0
+    elif transport_mode in ("bike", "car"):
+        fuel_cost = (total_distance / mileage * fuel_price) if mileage > 0 else 0.0
         transport_cost = fuel_cost
     elif transport_mode == "bus":
         rate = get_float("bus_type") or 0.835
@@ -397,36 +551,57 @@ def trip_from_form():
     flight_cost = total_distance * 4.75 * travelers
 
     food_cost_per_person = get_float("food_cost_per_person")
-    room_cost_per_day = get_float("room_cost")
 
-    if transport_mode == "car":
+    # Round-trip tolls: calculate return journey highway tolls properly when round_trip == 'yes'
+    if raw_toll != "":
+        one_way_toll = get_float("toll_charges")
+    elif transport_mode == "car":
         if distance <= 100:
-            toll_charges = 0
+            one_way_toll = 0.0
         elif distance <= 300:
-            toll_charges = 150
+            one_way_toll = 150.0
         elif distance <= 600:
-            toll_charges = 400
+            one_way_toll = 400.0
         else:
-            toll_charges = 700
+            one_way_toll = 700.0
     else:
-        toll_charges = 0
+        one_way_toll = 0.0
+
+    if round_trip == "yes":
+        toll_charges = one_way_toll * 2
+    else:
+        toll_charges = one_way_toll
 
     destination_details = destination_budget_details(destination, trip_days)
 
-    # Removed calculation mode; always use planned ("before") estimates from destination details when available.
+    # Keep user input: stop overwriting user-entered values with automated defaults when user explicitly submits 0
     places_from_destination = False
     room_from_destination = False
-    if destination_details["places_count"] > 0:
+
+    if raw_places != "":
+        places_to_visit = get_int("places_to_visit")
+    elif destination_details.get("places_count", 0) > 0:
         places_to_visit = destination_details["places_count"]
-        per_places_entry_fee = destination_details["per_place_fee"]
-        places_fee_total = destination_details["places_fee_total"]
         places_from_destination = True
     else:
-        places_fee_total = places_to_visit * per_places_entry_fee
+        places_to_visit = 0
 
-    if destination_details["hotels"]:
+    if raw_entry_fee != "":
+        per_places_entry_fee = get_float("per_places_entry_fee")
+    elif places_from_destination:
+        per_places_entry_fee = destination_details.get("per_place_fee", 0.0)
+    else:
+        per_places_entry_fee = 0.0
+
+    places_fee_total = places_to_visit * per_places_entry_fee
+
+    if raw_room_cost != "":
+        room_cost_per_day = get_float("room_cost")
+    elif destination_details.get("hotels"):
         room_cost_per_day = destination_details["room_per_day"]
         room_from_destination = True
+    else:
+        room_cost_per_day = 0.0
 
     food_cost = food_cost_per_person * travelers * trip_days
     room_cost = room_cost_per_day * trip_days
@@ -439,7 +614,7 @@ def trip_from_form():
         + vehicle_cost
         + places_fee_total
     )
-    cost_per_person = total_budget / travelers if travelers > 0 else 0
+    cost_per_person = (total_budget / travelers) if travelers > 0 else total_budget
     # Reuse the exact Travel Time shown in the planner. This prevents the
     # result page from showing a differently rounded/recalculated value.
     travel_time = request.form.get("travel_time", "").strip()
@@ -450,8 +625,8 @@ def trip_from_form():
     pollution_percent = min(round(emissions_kg, 1), 100)
     comparison_costs = {
         "walk": 0,
-        "bike": round((total_distance / (mileage or 45)) * fuel_price, 2),
-        "car": round((total_distance / (mileage or 15)) * fuel_price, 2),
+        "bike": round((total_distance / (mileage if mileage > 0 else 45)) * fuel_price, 2),
+        "car": round((total_distance / (mileage if mileage > 0 else 15)) * fuel_price, 2),
         "bus": round(bus_cost, 2),
         "train": round(train_cost, 2),
         "flight": round(flight_cost, 2),
@@ -465,8 +640,44 @@ def trip_from_form():
         }
         for mode in ("walk", "bike", "car", "bus", "train", "flight")
     ]
-    eco_choice = min(mode_impacts, key=lambda item: item["emissions"])
-    economy_choice = min(mode_impacts, key=lambda item: item["cost"])
+
+    # Filter viable practical transport modes by travel distance:
+    if total_distance <= 15:
+        viable_modes = [m for m in mode_impacts if m["mode"] in ("walk", "bike", "car", "bus")]
+    elif total_distance <= 100:
+        viable_modes = [m for m in mode_impacts if m["mode"] in ("bike", "car", "bus", "train")]
+    elif total_distance <= 400:
+        viable_modes = [m for m in mode_impacts if m["mode"] in ("car", "bus", "train")]
+    elif total_distance <= 900:
+        viable_modes = [m for m in mode_impacts if m["mode"] in ("train", "car", "bus", "flight")]
+    else:
+        viable_modes = [m for m in mode_impacts if m["mode"] in ("flight", "train", "car")]
+
+    if not viable_modes:
+        viable_modes = mode_impacts
+
+    eco_choice = min(viable_modes, key=lambda item: item["emissions"])
+    economy_choice = min(viable_modes, key=lambda item: item["cost"])
+
+    # Smart "Best to Go" recommendation automatically determined by distance to travel:
+    if total_distance <= 5:
+        best_mode = "walk" if total_distance <= 2 else "bike"
+        best_reason = f"Ideal for short {total_distance} km trip with zero fuel and minimal emissions."
+    elif total_distance <= 40:
+        best_mode = "bike" if travelers == 1 else "car"
+        best_reason = f"Fastest & most convenient door-to-door transit for {total_distance} km."
+    elif total_distance <= 300:
+        best_mode = "car" if travelers >= 2 else "bus"
+        best_reason = f"Optimal comfort, flexible halts, and great value for {total_distance} km road trip."
+    elif total_distance <= 900:
+        best_mode = "train"
+        best_reason = f"Top-rated eco-friendly and relaxed choice for {total_distance} km intercity travel."
+    else:
+        best_mode = "flight" if total_distance > 1200 else "train"
+        best_reason = f"Fastest journey and maximum convenience for long-distance {total_distance} km travel."
+
+    best_choice = next((m for m in mode_impacts if m["mode"] == best_mode), economy_choice)
+    best_choice = {**best_choice, "reason": best_reason}
 
     return {
         "from_location": from_location,
@@ -496,6 +707,7 @@ def trip_from_form():
         "mode_impacts": mode_impacts,
         "eco_choice": eco_choice,
         "economy_choice": economy_choice,
+        "best_choice": best_choice,
         "bus_cost": round(bus_cost, 2),
         "train_cost": round(train_cost, 2),
         "flight_cost": round(flight_cost, 2),
@@ -505,6 +717,7 @@ def trip_from_form():
         ),
         "destination_attractions": destination_details["attractions"],
         "destination_hotels": destination_details["hotels"],
+        "destination_dining": destination_details.get("dining", []),
         "destination_tier": destination_details["tier_label"],
         "places_from_destination": places_from_destination,
         "room_from_destination": room_from_destination,
@@ -754,27 +967,91 @@ def admin_dashboard():
     except Exception:
         total_users = active_users = online_users = 0
 
+    try:
+        total_trips = conn.execute("SELECT COUNT(*) FROM trips").fetchone()[0]
+        total_spend_row = conn.execute("SELECT COALESCE(SUM(total_budget), 0) FROM trips").fetchone()[0]
+        total_spend = round(float(total_spend_row), 2) if total_spend_row else 0.0
+    except Exception:
+        total_trips = 0
+        total_spend = 0.0
+
+    # Transport mode breakdown
+    transport_breakdown = []
+    try:
+        rows = conn.execute("""
+            SELECT COALESCE(NULLIF(transport_mode, ''), 'other') as mode,
+                   COUNT(*) as count,
+                   COALESCE(SUM(total_budget), 0) as spend
+            FROM trips
+            GROUP BY mode
+            ORDER BY count DESC
+        """).fetchall()
+        grand_trips = sum(r["count"] for r in rows) or 1
+        mode_icons = {
+            "car": "🚗",
+            "bike": "🏍️",
+            "bus": "🚌",
+            "train": "🚆",
+            "flight": "✈️",
+            "walk": "🚶",
+            "other": "📍",
+        }
+        transport_breakdown = [
+            {
+                "mode": r["mode"],
+                "label": r["mode"].capitalize(),
+                "icon": mode_icons.get(r["mode"].lower(), "📍"),
+                "count": r["count"],
+                "spend": round(float(r["spend"]), 2),
+                "percentage": round((r["count"] / grand_trips) * 100, 1),
+            }
+            for r in rows
+        ]
+    except Exception:
+        transport_breakdown = []
+
     # Recent audit logs
     recent_audits = []
     try:
-        rows = conn.execute("SELECT id, actor_user_id, action, target_user_id, details, created_at FROM audit_logs ORDER BY created_at DESC LIMIT 8").fetchall()
+        rows = conn.execute("""
+            SELECT id, actor_user_id, action, target_user_id, details, created_at
+            FROM audit_logs
+            ORDER BY id DESC
+            LIMIT 15
+        """).fetchall()
         recent_audits = [dict(r) for r in rows]
     except Exception:
         recent_audits = []
 
-    # Feedback / inbox entries (optional table)
+    # Feedback / inbox entries
     feedback_count = 0
-    recent_feedback = []
+    inbox_entries = []
     try:
         feedback_count = conn.execute("SELECT COUNT(*) FROM inbox_entries").fetchone()[0]
-        fb_rows = conn.execute("SELECT id, name, email, subject, message, created_at FROM inbox_entries ORDER BY created_at DESC LIMIT 8").fetchall()
-        recent_feedback = [dict(r) for r in fb_rows]
+        fb_rows = conn.execute("""
+            SELECT id, user_id, name, email, subject, message, created_at
+            FROM inbox_entries
+            ORDER BY id DESC
+            LIMIT 25
+        """).fetchall()
+        inbox_entries = [dict(r) for r in fb_rows]
     except Exception:
         feedback_count = 0
-        recent_feedback = []
+        inbox_entries = []
 
     conn.close()
-    return render_template('admin_dashboard.html', total_users=total_users, active_users=active_users, online_users=online_users, recent_audits=recent_audits, feedback_count=feedback_count, recent_feedback=recent_feedback)
+    return render_template(
+        'admin_dashboard.html',
+        total_users=total_users,
+        active_users=active_users,
+        online_users=online_users,
+        total_trips=total_trips,
+        total_spend=total_spend,
+        transport_breakdown=transport_breakdown,
+        recent_audits=recent_audits,
+        feedback_count=feedback_count,
+        inbox_entries=inbox_entries,
+    )
 
 
 @app.route('/admin/login', methods=['GET','POST'])
@@ -991,7 +1268,7 @@ def trip_from_edit_form():
         "fuel_cost": max(get_float("fuel_cost"), 0),
         "vehicle_type": request.form.get("vehicle_type", "own"),
         "total_budget": total_budget,
-        "cost_per_person": round(total_budget / travelers, 2),
+        "cost_per_person": round(total_budget / travelers, 2) if travelers > 0 else round(total_budget, 2),
     }
 
 
@@ -1224,6 +1501,41 @@ def nearby_attractions():
     entry_fee = ENTRY_FEE_BY_TIER[estimate["tier_key"]]
     for place in destination_places:
         place["entry_fee"] = entry_fee
+
+    # Always ensure vibrant, interesting stops are provided for "More on the route"
+    if not on_the_way:
+        orig_name = short_location(origin) or "Departure City"
+        dest_name = short_location(destination) or "Destination"
+        on_the_way = [
+            {
+                "name": "Midway Express Highway Plaza & Food Oasis",
+                "address": f"National Highway Corridor between {orig_name} & {dest_name}",
+                "rating": 4.6,
+                "category": "Highway Food Plaza & Clean Restrooms",
+                "entry_fee": 0,
+                "recommended_pause": "30 mins rest pause",
+                "image_url": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80",
+            },
+            {
+                "name": "Scenic Panoramic Ridge & Tea Lounge",
+                "address": f"Scenic Midway Bypass near {dest_name}",
+                "rating": 4.7,
+                "category": "Scenic Viewpoint & Refreshments",
+                "entry_fee": 0,
+                "recommended_pause": "20 mins photo pause",
+                "image_url": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80",
+            },
+            {
+                "name": "Heritage Waypoint & Regional Crafts Bazaar",
+                "address": f"Historic Midway Junction on the {orig_name}–{dest_name} Highway",
+                "rating": 4.5,
+                "category": "Cultural Landmark & Local Snacks",
+                "entry_fee": 40,
+                "recommended_pause": "40 mins exploration",
+                "image_url": "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=600&q=80",
+            }
+        ]
+
     attach_photo_urls(destination_places)
     attach_photo_urls(on_the_way)
     return jsonify({"destination": destination_places, "on_the_way": on_the_way})
@@ -1253,6 +1565,114 @@ def place_photo():
 @app.route("/estimate_stay_costs")
 def estimate_stay_costs():
     return jsonify(location_cost_estimate(request.args.get("destination", "")))
+
+
+@app.route("/destination_options")
+def destination_options():
+    destination = request.args.get("destination", "").strip()
+    if not destination:
+        return jsonify({"places": [], "food_meals": [], "hotels": [], "links": {}})
+
+    details = destination_budget_details(destination, 1)
+    estimate = location_cost_estimate(destination)
+    base_food = estimate["food"]
+    base_room = estimate["room"]
+    dest_encoded = requests.utils.quote(destination)
+    short_dest = short_location(destination)
+    short_encoded = requests.utils.quote(short_dest.lower())
+
+    food_meals = [
+        {
+            "id": "breakfast",
+            "name": "Breakfast",
+            "time": "Morning (8:00 AM – 10:30 AM)",
+            "cost": round(base_food * 0.22),
+            "desc": "Fresh Breakfast, Parathas / South Indian & Hot Chai / Coffee",
+            "icon": "🌅"
+        },
+        {
+            "id": "lunch",
+            "name": "Lunch Thali",
+            "time": "Afternoon (12:30 PM – 3:30 PM)",
+            "cost": round(base_food * 0.38),
+            "desc": "Regional Specialty Thali / Multi-Cuisine Meal",
+            "icon": "☀️"
+        },
+        {
+            "id": "snacks",
+            "name": "Evening Snacks",
+            "time": "Evening (5:00 PM – 7:00 PM)",
+            "cost": round(base_food * 0.15),
+            "desc": "Local Street Bites, Chaat & Evening Refreshments",
+            "icon": "☕"
+        },
+        {
+            "id": "dinner",
+            "name": "Dinner",
+            "time": "Night (7:30 PM – 10:30 PM)",
+            "cost": round(base_food * 0.42),
+            "desc": "Specialty Dinner, Signature Curries & Breads",
+            "icon": "🌙"
+        }
+    ]
+
+    hotels = [
+        {
+            "id": "budget",
+            "name": "Budget Stay / OYO Rooms",
+            "type": "Budget / OYO",
+            "cost": round(base_room * 0.65),
+            "desc": "Clean AC Room, Free Wi-Fi & Essential Amenities",
+            "icon": "🏷️",
+            "link": f"https://www.oyorooms.com/search?location={dest_encoded}"
+        },
+        {
+            "id": "standard",
+            "name": "Standard Comfort Hotel",
+            "type": "3-Star Hotel",
+            "cost": base_room,
+            "desc": "Spacious Room, Restaurant, Parking & Daily Housekeeping",
+            "icon": "🛎️",
+            "link": f"https://www.makemytrip.com/hotels/{short_encoded}-hotels.html"
+        },
+        {
+            "id": "premium",
+            "name": "Premium Resort & Suites",
+            "type": "Resort / Luxury",
+            "cost": round(base_room * 1.6),
+            "desc": "Scenic Views, Pool, Breakfast Included & Luxury Stays",
+            "icon": "🌟",
+            "link": f"https://www.google.com/travel/hotels/{dest_encoded}"
+        }
+    ]
+
+    places = [
+        {
+            "name": p["name"],
+            "address": p.get("address", destination),
+            "entry_fee": p.get("entry_fee", 50),
+            "rating": p.get("rating", 4.5),
+            "image_url": p.get("image_url", "")
+        }
+        for p in details.get("attractions", [])
+    ]
+
+    links = {
+        "oyo": f"https://www.oyorooms.com/search?location={dest_encoded}",
+        "makemytrip": f"https://www.makemytrip.com/hotels/{short_encoded}-hotels.html",
+        "google": f"https://www.google.com/travel/hotels/{dest_encoded}"
+    }
+
+    return jsonify({
+        "destination": destination,
+        "tier": estimate["tier"],
+        "places": places,
+        "food_meals": food_meals,
+        "hotels": hotels,
+        "links": links,
+        "base_food": base_food,
+        "base_room": base_room
+    })
 
 
 @app.route("/reverse_geocode")

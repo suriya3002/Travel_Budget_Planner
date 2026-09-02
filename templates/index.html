@@ -18,8 +18,11 @@
 
 <div class="top-bar">
     <a href="/" class="logo-link">🌍 TravelBudget</a>
-    <a href="/trips" class="saved-trips-btn">📋 Saved Trips</a>
-    {% if is_admin %}<a href="/admin" class="admin-link">⚙️ Admin</a>{% endif %}
+    <div class="top-bar-actions" style="display:flex; gap:10px; align-items:center;">
+        <button type="button" class="clear-btn" onclick="clearPlannerForm()" title="Reset all fields and plan a fresh trip">↺ Start Fresh</button>
+        <a href="/trips" class="saved-trips-btn">📋 Saved Trips</a>
+        {% if is_admin %}<a href="/admin" class="admin-link">⚙️ Admin</a>{% endif %}
+    </div>
 </div>
 
 <h1 class="page-title">Plan Your Trip</h1>
@@ -44,7 +47,7 @@
     </div>
 
     <div class="field-group animate-in" style="--delay:0.1s">
-      <input type="number" name="travelers" id="travelers" min="1" required placeholder=" ">
+      <input type="number" name="travelers" id="travelers" min="1" value="1" required placeholder=" ">
       <label for="travelers">Number of Travelers</label>
     </div>
 
@@ -136,6 +139,13 @@
       <div id="from_suggestions" class="suggestions"></div>
     </div>
 
+    <!-- Swap locations button -->
+    <div class="swap-locations-wrap">
+      <button type="button" class="swap-locations-btn" onclick="swapLocations()" title="Reverse / Swap From and Destination locations">
+        <span class="swap-icon">⇅</span> Swap From & Destination
+      </button>
+    </div>
+
     <div class="field-group animate-in" style="--delay:0.3s">
       <input type="text" id="destination" name="destination"
              placeholder=" " autocomplete="off" required>
@@ -150,33 +160,70 @@
   <!-- STEP 3 -->
   <div class="form-step" data-step="3">
     <div class="step-header">
-      <h2>💰 Expenses</h2>
-      <p>Add your trip costs for an accurate budget</p>
+      <h2>💰 Expenses & Suggestions</h2>
+      <p>Select tailored tourist spots, meal timings, and hotel stays</p>
     </div>
 
+    <!-- 1. Tourist Places Selection Box -->
+    <div id="places_suggestions_section" class="section-card slide-down" style="display:none; margin-bottom:18px;">
+      <div class="suggestion-header-row">
+        <div>
+          <h3>🏛️ Suggested Tourist Places to Visit</h3>
+          <p class="suggestion-sub">Click to select sights; count and entry fees calculate automatically</p>
+        </div>
+      </div>
+      <div id="places_chips_container" class="places-chips-grid"></div>
+      <div id="places_summary_pill" class="suggestion-summary-pill" style="display:none;"></div>
+    </div>
+
+    <!-- 2. Food & Meal Timing Suggestions Box -->
+    <div id="food_suggestions_section" class="section-card slide-down" style="display:none; margin-bottom:18px;">
+      <div class="suggestion-header-row">
+        <div>
+          <h3>🍽️ Suggested Meals & Suitable Timings</h3>
+          <p class="suggestion-sub">Select daily meals to calculate your food budget per person</p>
+        </div>
+      </div>
+      <div id="food_meals_container" class="food-meals-grid"></div>
+      <div id="food_summary_pill" class="suggestion-summary-pill" style="display:none;"></div>
+    </div>
+
+    <!-- 3. Hotels & Room Stays with OYO Links Box -->
+    <div id="hotels_suggestions_section" class="section-card slide-down" style="display:none; margin-bottom:18px;">
+      <div class="suggestion-header-row">
+        <div>
+          <h3>🏨 Hotel Stays & Real-Time Booking</h3>
+          <p class="suggestion-sub">Choose stay tier to set room rate, or explore hotels on OYO & MakeMyTrip</p>
+        </div>
+      </div>
+      <div id="hotels_tiers_container" class="hotel-tiers-grid"></div>
+      <div id="hotels_booking_links" class="booking-links-bar"></div>
+    </div>
+
+    <!-- Summary Input Grid -->
     <div class="field-grid">
       <div class="field-group animate-in" style="--delay:0.1s">
-        <input type="number" name="places_to_visit" value="" min="0" placeholder=" ">
-        <label>Places to Visit</label>
+        <input type="number" name="places_to_visit" id="places_to_visit" value="" min="0" placeholder=" ">
+        <label for="places_to_visit">Places to Visit</label>
       </div>
       <div class="field-group animate-in" style="--delay:0.15s">
-        <input type="number" step="0.01" name="per_places_entry_fee" value="" min="0" placeholder=" ">
-        <label>Entry Fee / Place (₹)</label>
+        <input type="number" step="0.01" name="per_places_entry_fee" id="per_places_entry_fee" value="" min="0" placeholder=" ">
+        <label for="per_places_entry_fee">Entry Fee / Place (₹)</label>
       </div>
       <div class="field-group animate-in" style="--delay:0.2s">
         <input type="number" step="0.01" name="food_cost_per_person" id="food_cost_per_person" value="" min="0" placeholder=" ">
-        <label>Food / Person / Day (₹)</label>
+        <label for="food_cost_per_person">Food / Person / Day (₹)</label>
       </div>
       <div class="field-group animate-in" style="--delay:0.25s">
         <input type="number" step="0.01" name="room_cost" id="room_cost" value="" min="0" placeholder=" ">
-        <label>Room / Day (₹)</label>
+        <label for="room_cost">Room / Day (₹)</label>
       </div>
       <div class="field-group animate-in" style="--delay:0.3s">
         <input type="number" name="trip_days" id="trip_days" value="1" min="1" placeholder=" ">
-        <label>Trip Days</label>
+        <label for="trip_days">Trip Days</label>
       </div>
     </div>
-    <p class="stay-estimate" id="stay_estimate">Choose a destination to get a daily India budget estimate.</p>
+    <p class="stay-estimate" id="stay_estimate">Choose a destination to get daily budget estimates.</p>
 
     <div id="vehicle_section" class="section-card animate-in" style="--delay:0.3s">
       <h3>🚗 Vehicle Details</h3>
@@ -213,7 +260,8 @@
 
     <div id="toll_section" class="field-group animate-in" style="--delay:0.35s">
       <input type="number" step="0.01" name="toll_charges" id="toll_charges" value="" min="0" placeholder=" ">
-      <label>Toll Charges (₹)</label>
+      <label for="toll_charges">Toll Charges (₹)</label>
+      <div id="toll_auto_hint" class="toll-calc-hint" style="display:none;"></div>
     </div>
   </div>
 

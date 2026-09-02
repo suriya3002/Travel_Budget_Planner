@@ -28,15 +28,31 @@
       </div>
       <hr class="report-divider"><div class="section-title"><h2>Compare transport options</h2><p>For the same trip distance</p></div>
       <div class="summary-grid"><div class="summary-item"><span>Bus</span><strong>₹{{ '%.2f'|format(bus_cost) }}</strong></div><div class="summary-item"><span>Train</span><strong>₹{{ '%.2f'|format(train_cost) }}</strong></div><div class="summary-item"><span>Flight</span><strong>₹{{ '%.2f'|format(flight_cost) }}</strong></div></div>
-      <hr class="report-divider"><div class="section-title"><h2>Eco & economy guide</h2><p>Estimated impact for {{ total_distance }} km</p></div>
-      <div class="recommendations"><div class="recommendation eco-recommendation"><span>Most eco-friendly</span><strong>{{ eco_choice.label }}</strong><small>{{ eco_choice.emissions }} kg CO₂e estimated</small></div><div class="recommendation economy-recommendation"><span>Most economical</span><strong>{{ economy_choice.label }}</strong><small>₹{{ '%.2f'|format(economy_choice.cost) }} estimated transport cost</small></div></div>
+      <hr class="report-divider"><div class="section-title"><h2>Eco & economy guide</h2><p>Distance-based best options for {{ total_distance }} km</p></div>
+      <div class="recommendations" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+        <div class="recommendation best-recommendation" style="background: linear-gradient(135deg, #0b766d, #04524c); color: #ffffff;">
+          <span style="color: #a7f3d0;">✨ Best to Go (Distance Pick)</span>
+          <strong style="color: #ffffff; font-size: 1.35rem;">{{ best_choice.label }}</strong>
+          <small style="color: #d1fae5; line-height: 1.4;">{{ best_choice.reason }}</small>
+        </div>
+        <div class="recommendation eco-recommendation">
+          <span>🌱 Most Eco-Friendly</span>
+          <strong>{{ eco_choice.label }}</strong>
+          <small>{{ eco_choice.emissions }} kg CO₂e for {{ total_distance }} km</small>
+        </div>
+        <div class="recommendation economy-recommendation">
+          <span>💰 Most Economical</span>
+          <strong>{{ economy_choice.label }}</strong>
+          <small>₹{{ '%.2f'|format(economy_choice.cost) }} estimated transport cost</small>
+        </div>
+      </div>
       <div class="impact-table-wrap"><table class="impact-table"><thead><tr><th>Transport</th><th>Estimated cost</th><th>CO₂e pollution</th></tr></thead><tbody>{% for option in mode_impacts %}<tr class="{% if option.mode == transport_mode %}selected-mode{% endif %}"><td>{{ option.label }}{% if option.mode == transport_mode %}<small>Your choice</small>{% endif %}</td><td>₹{{ '%.2f'|format(option.cost) }}</td><td>{{ option.emissions }} kg</td></tr>{% endfor %}</tbody></table></div>
-      <hr class="report-divider"><div class="section-title"><h2>Destination expenses</h2><p>Tourist places, hotels & rooms deducted for {{ destination_short }}</p></div>
-      <div class="destination-budget-note"><span>{{ destination_tier }}</span>{% if places_from_destination or room_from_destination %}<small>Costs below are included in your total budget.</small>{% endif %}</div>
+      <hr class="report-divider"><div class="section-title"><h2>Destination suggestions & expenses</h2><p>Nearby tourist spots, hotel/room options, and food & dining estimates for {{ destination_short }}</p></div>
+      <div class="destination-budget-note"><span>{{ destination_tier }}</span>{% if places_from_destination or room_from_destination %}<small>Automated estimates applied where user inputs were empty.</small>{% else %}<small>Showing tailored suggestions matching your itinerary.</small>{% endif %}</div>
       <div class="destination-budget-grid">
         <div class="destination-budget-card">
-          <div class="destination-budget-head"><h3>Tourist places</h3><strong>₹{{ '%.2f'|format(places_fee_total) }}</strong></div>
-          <p class="destination-budget-meta">{{ places_to_visit }} place{{ '' if places_to_visit == 1 else 's' }} · ₹{{ '%.2f'|format(per_places_entry_fee) }} avg entry</p>
+          <div class="destination-budget-head"><h3>Tourist spots</h3><strong>₹{{ '%.2f'|format(places_fee_total) }}</strong></div>
+          <p class="destination-budget-meta">{{ places_to_visit }} place{{ '' if places_to_visit == 1 else 's' }} planned · ₹{{ '%.2f'|format(per_places_entry_fee) }} avg entry</p>
           <div class="attraction-grid">
             {% for place in destination_attractions %}
             <article class="attraction-card">
@@ -47,7 +63,7 @@
           </div>
         </div>
         <div class="destination-budget-card">
-          <div class="destination-budget-head"><h3>Hotels & rooms</h3><strong>₹{{ '%.2f'|format(room_cost) }}</strong></div>
+          <div class="destination-budget-head"><h3>Hotels & stays</h3><strong>₹{{ '%.2f'|format(room_cost) }}</strong></div>
           <p class="destination-budget-meta">{{ trip_days }} day{{ '' if trip_days == 1 else 's' }} · ₹{{ '%.2f'|format(room_cost / trip_days if trip_days else 0) }}/night avg</p>
           <div class="attraction-grid">
             {% for hotel in destination_hotels %}
@@ -57,9 +73,32 @@
             </article>
             {% endfor %}
           </div>
+          <!-- OYO and booking links -->
+          <div class="hotel-booking-links" style="margin-top:14px; padding-top:12px; border-top:1px dashed #e2e8f0; display:flex; gap:8px; flex-wrap:wrap;">
+            <a href="https://www.oyorooms.com/search?location={{ destination|urlencode }}" target="_blank" rel="noopener" style="font-size:0.75rem; font-weight:700; color:#e11d48; background:#fff1f2; padding:5px 10px; border-radius:6px; text-decoration:none;">🏨 OYO Rooms</a>
+            <a href="https://www.makemytrip.com/hotels/{{ destination_short|lower|urlencode }}-hotels.html" target="_blank" rel="noopener" style="font-size:0.75rem; font-weight:700; color:#0284c7; background:#f0f9ff; padding:5px 10px; border-radius:6px; text-decoration:none;">✈️ MakeMyTrip</a>
+            <a href="https://www.google.com/travel/hotels/{{ destination|urlencode }}" target="_blank" rel="noopener" style="font-size:0.75rem; font-weight:700; color:#0d9488; background:#f0fdfa; padding:5px 10px; border-radius:6px; text-decoration:none;">🔍 Google Hotels</a>
+          </div>
+        </div>
+        <div class="destination-budget-card">
+          <div class="destination-budget-head"><h3>Food & dining</h3><strong>₹{{ '%.2f'|format(food_cost) }}</strong></div>
+          <p class="destination-budget-meta">{{ travelers }} traveler{{ '' if travelers == 1 else 's' }} · {{ trip_days }} day{{ '' if trip_days == 1 else 's' }} · ₹{{ '%.2f'|format(food_cost / (travelers * trip_days) if (travelers and trip_days) else 0) }}/day avg</p>
+          <div class="attraction-grid">
+            {% for food in destination_dining %}
+            <article class="attraction-card dining-card">
+              {% if food.image_url %}<img src="{{ food.image_url }}" alt="{{ food.name }}">{% endif %}
+              <div>
+                <h4>{{ food.name }}</h4>
+                <p>{{ food.address }}{% if food.cuisine %}<br><small style="color:#64748b;font-weight:500;">{{ food.cuisine }}</small>{% endif %}</p>
+                {% if food.rating %}<small>★ {{ food.rating }}</small>{% endif %}
+                <span class="price-tag dining-tag">₹{{ food.estimated_cost }} avg / person</span>
+              </div>
+            </article>
+            {% endfor %}
+          </div>
         </div>
       </div>
-      <hr class="report-divider"><div class="section-title"><h2>More on the route</h2><p>Attractions worth a stop along the way</p></div><section id="attractions" class="attractions" data-origin="{{ from_location|e }}" data-destination="{{ destination|e }}"><p class="attractions-status">Finding nearby places…</p></section>
+      <hr class="report-divider"><div class="section-title"><h2>More on the route</h2><p>Popular waypoints, highway rest stops & scenic pauses along your journey</p></div><section id="attractions" class="attractions" data-origin="{{ from_location|e }}" data-destination="{{ destination|e }}"><p class="attractions-status">Finding route stops…</p></section>
     </div>
   </section>
   <div class="button-group"><button type="button" onclick="shareReport()">Share report</button><button type="button" onclick="window.print()">Print / save PDF</button><button type="button" onclick="openRoute()">Open route</button></div>
@@ -82,7 +121,7 @@
       <div style="display:flex;gap:8px;justify-content:flex-end;"><button type="button" onclick="toggleFeedbackForm()" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;background:#fff;">Cancel</button><button type="submit" style="padding:8px 12px;border-radius:6px;border:none;background:#0b766d;color:#fff;">Send</button></div>
     </form>
   </div>
-  <a class="back-btn" href="/planner">Plan another trip</a>
+  <a class="back-btn" href="/planner?new=1">Plan another trip</a>
 </main>
 <script>
 function toggleFeedbackForm(){const form=document.getElementById('feedback-form');if(!form)return;form.style.display=form.style.display==='none'?'block':'none';}
@@ -114,7 +153,38 @@ document.addEventListener('DOMContentLoaded', ()=> {
   window.shareReport = function(){const text=`Trip budget for {{ destination }}: ₹{{ '%.2f'|format(total_budget) }} total (₹{{ '%.2f'|format(cost_per_person) }} per person).`;navigator.share?navigator.share({title:'Travel budget',text}):navigator.clipboard.writeText(text).then(()=>alert('Budget summary copied.'));};
   window.openRoute = function(){window.open(`https://www.google.com/maps/search/${encodeURIComponent('{{ destination }}')}`,'_blank');};
 
-  async function loadAttractions(){const section=document.getElementById('attractions');try{const response=await fetch(`/nearby_attractions?from=${encodeURIComponent(section.dataset.origin)}&destination=${encodeURIComponent(section.dataset.destination)}`);const data=await response.json();const makeCards=(places,title)=>places.length?`<div class="attraction-group"><h3>${title}</h3><div class="attraction-grid">${places.map(place=>`<article class="attraction-card">${place.image_url?`<img src="${place.image_url}" alt="${place.name}">`:""}<div><h4>${place.name}</h4><p>${place.address}</p>${place.rating?`<small>★ ${place.rating}</small>`:""}${place.entry_fee?`<span class=\"price-tag\">₹${place.entry_fee} entry</span>`:""}</div></article>`).join("")}</div></div>`:"";const content=makeCards(data.on_the_way,"Worth a stop on the way");section.innerHTML=content||"<p class='attractions-status'>No extra route stops found for this trip.</p>";}catch(_){section.innerHTML="<p class='attractions-status'>Route suggestions are unavailable right now.</p>";}}
+  async function loadAttractions(){
+    const section = document.getElementById('attractions');
+    try {
+      const response = await fetch(`/nearby_attractions?from=${encodeURIComponent(section.dataset.origin)}&destination=${encodeURIComponent(section.dataset.destination)}`);
+      const data = await response.json();
+      const makeCards = (places, title) => places.length ? `
+        <div class="attraction-group">
+          <h3>${title}</h3>
+          <div class="attraction-grid">
+            ${places.map(place => `
+              <article class="attraction-card">
+                ${place.image_url ? `<img src="${place.image_url}" alt="${place.name}">` : ""}
+                <div>
+                  <h4>${place.name}</h4>
+                  <p>${place.address}</p>
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                    ${place.rating ? `<small style="color:#b45309; font-weight:700;">★ ${place.rating}</small>` : "<span></span>"}
+                    ${place.recommended_pause ? `<span style="background:#f1f5f9; color:#475569; padding:2px 8px; border-radius:999px; font-size:0.7rem; font-weight:600;">⏱️ ${place.recommended_pause}</span>` : ""}
+                  </div>
+                  ${place.category ? `<span class="price-tag" style="background:#f0fdf4; color:#166534; margin-top:6px;">${place.category}</span>` : ""}
+                </div>
+              </article>
+            `).join("")}
+          </div>
+        </div>
+      ` : "";
+      const content = makeCards(data.on_the_way, "Stops along the route");
+      section.innerHTML = content || "<p class='attractions-status'>No extra route stops found for this trip.</p>";
+    } catch (_) {
+      section.innerHTML = "<p class='attractions-status'>Route suggestions are unavailable right now.</p>";
+    }
+  }
   loadAttractions();
 });
 </script>
