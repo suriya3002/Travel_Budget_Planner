@@ -108,3 +108,285 @@ body { font-family: 'Manrope', 'Segoe UI', sans-serif; background: #f3f7fb; colo
     color: #ffffff !important;
 }
 
+/* ===== Result Page Transit Hub, Stations & Last-Mile Guide ===== */
+.result-transit-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 20px;
+    margin: 16px 0 10px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+.result-transit-header {
+    margin-bottom: 16px;
+}
+
+.result-transit-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, #0284c7, #0369a1);
+    color: #ffffff;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+
+.live-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fde68a;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.result-stations-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 14px;
+    align-items: center;
+    margin-bottom: 18px;
+}
+
+.result-station-item {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 14px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    transition: transform 0.2s ease;
+}
+
+.result-station-item:hover {
+    transform: translateY(-2px);
+    border-color: #38bdf8;
+}
+
+.station-role {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #0284c7;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 4px;
+}
+
+.result-station-item h3 {
+    margin: 0 0 4px;
+    font-size: 0.98rem;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.3;
+}
+
+.result-station-item p {
+    margin: 0 0 10px;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.station-dir-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #0284c7;
+    color: #ffffff !important;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background 0.2s;
+}
+
+.station-dir-btn:hover {
+    background: #0369a1;
+}
+
+.result-station-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: #e0f2fe;
+    color: #0284c7;
+    border-radius: 50%;
+    font-weight: 900;
+    font-size: 1rem;
+}
+
+/* Result Last-Mile Options */
+.result-lastmile-box {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 16px;
+}
+
+.result-lastmile-box h4 {
+    margin: 0 0 10px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.result-lastmile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+}
+
+.result-lastmile-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px;
+}
+
+.lastmile-icon-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.lastmile-icon-title strong {
+    font-size: 0.82rem;
+    color: #0f172a;
+}
+
+.lastmile-map-link {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #0284c7;
+    text-decoration: none;
+}
+.lastmile-map-link:hover {
+    text-decoration: underline;
+}
+
+/* Result Domains Box */
+.result-domains-box {
+    padding-top: 4px;
+}
+
+.result-domains-box h4 {
+    margin: 0 0 10px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.result-domains-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+}
+
+.domain-card {
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 12px;
+    text-decoration: none !important;
+    color: inherit;
+    transition: all 0.2s ease;
+}
+
+.domain-card:hover {
+    border-color: #0284c7;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.06);
+}
+
+.where-is-my-train-card {
+    background: linear-gradient(135deg, #fffbeb, #ffffff);
+    border-color: #fde68a;
+}
+
+.domain-top {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+.domain-top strong {
+    font-size: 0.85rem;
+    color: #0f172a;
+}
+
+.domain-badge-pill {
+    display: inline-block;
+    align-self: flex-start;
+    background: #e0f2fe;
+    color: #0369a1;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-bottom: 6px;
+}
+
+.where-is-my-train-card .domain-badge-pill {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.domain-card p {
+    margin: 0 0 10px;
+    font-size: 0.74rem;
+    color: #64748b;
+    line-height: 1.35;
+    flex-grow: 1;
+}
+
+.domain-link-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #0284c7;
+    color: #ffffff;
+    font-size: 0.74rem;
+    font-weight: 700;
+    padding: 6px 10px;
+    border-radius: 6px;
+    text-align: center;
+    transition: background 0.2s;
+}
+
+.where-is-my-train-card .domain-link-btn {
+    background: #d97706;
+}
+
+.domain-card:hover .domain-link-btn {
+    background: #0369a1;
+}
+
+.where-is-my-train-card:hover .domain-link-btn {
+    background: #b45309;
+}
+
+@media (max-width: 600px) {
+    .result-stations-grid {
+        grid-template-columns: 1fr;
+    }
+    .result-station-arrow {
+        transform: rotate(90deg);
+        margin: -4px auto;
+    }
+}
+
+

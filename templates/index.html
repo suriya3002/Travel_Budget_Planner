@@ -130,6 +130,9 @@
       <button type="button" class="gmap-mode-tab" data-mode="train" onclick="selectGmapMode('train')">
         🚆 Train
       </button>
+      <button type="button" class="gmap-mode-tab" data-mode="flight" onclick="selectGmapMode('flight')">
+        ✈️ Flight
+      </button>
       <button type="button" class="gmap-mode-tab" data-mode="walk" onclick="selectGmapMode('walk')">
         🚶 Walking
       </button>
@@ -283,6 +286,53 @@
 
     <!-- Interactive Route Map Preview (Leaflet / Google Maps) -->
     <div id="route_map" class="route-map" aria-label="Route map preview" style="display:none;"></div>
+
+    <!-- Transit Hubs, Station Availability & Booking Card (For Bus, Train, Flight) -->
+    <div id="transit_hub_section" class="transit-hub-card animate-in" style="display:none; margin-top:14px;">
+      <div class="transit-hub-header">
+        <div class="transit-hub-title-group">
+          <span class="transit-hub-badge" id="transit_mode_badge">🚆 Train Navigator</span>
+          <h3 id="transit_hub_heading">Suitable Stations & Live Availability</h3>
+        </div>
+      </div>
+
+      <!-- Stations / Hubs Row -->
+      <div class="transit-stations-grid">
+        <!-- Departure Hub -->
+        <div class="transit-station-box">
+          <div class="station-box-label">🟢 Departure <span id="transit_from_type">Station</span></div>
+          <h4 id="transit_from_name">—</h4>
+          <p id="transit_from_meta" class="station-meta">—</p>
+          <a id="transit_from_map_btn" href="#" target="_blank" rel="noopener" class="station-map-action">📍 Directions to Station</a>
+        </div>
+        <!-- Connector Arrow -->
+        <div class="transit-arrow-col">
+          <span class="transit-arrow-icon">➔</span>
+        </div>
+        <!-- Arrival Hub -->
+        <div class="transit-station-box">
+          <div class="station-box-label">🔴 Arrival <span id="transit_dest_type">Station</span></div>
+          <h4 id="transit_dest_name">—</h4>
+          <p id="transit_dest_meta" class="station-meta">—</p>
+          <a id="transit_dest_map_btn" href="#" target="_blank" rel="noopener" class="station-map-action">📍 View Arrival Map</a>
+        </div>
+      </div>
+
+      <!-- How to Get to the Station (Last Mile Travel) -->
+      <div class="last-mile-section" id="last_mile_section">
+        <div class="last-mile-head">
+          <span class="last-mile-title">🚀 How to get to the station:</span>
+          <span class="last-mile-sub">Local transit options & estimated fares</span>
+        </div>
+        <div class="last-mile-grid" id="last_mile_options_grid"></div>
+      </div>
+
+      <!-- Live Booking & Tracking Domains -->
+      <div class="transit-domains-section">
+        <span class="domains-title">⚡ Live Availability & Tracking Domains:</span>
+        <div class="transit-domains-grid" id="transit_domains_grid"></div>
+      </div>
+    </div>
 
     <input type="hidden" name="stops_json" id="stops_json" value="[]">
     <input type="hidden" name="distance" id="distance" value="">

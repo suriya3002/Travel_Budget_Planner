@@ -295,25 +295,235 @@ function updateFlightFareHint() { updateFareHint("flight_type", "flight_hint"); 
 
 function onTransportChange() {
     const mode = document.getElementById("transport_mode")?.value || "car";
+
+    // Synchronize mode tabs in Step 2
+    syncGmapModeTabs();
+
+    // 1. Hide all mode-specific sections first
     ["vehicle_section", "toll_section", "fuel_section", "fuel_type_group", "bus_options", "train_options", "flight_options"].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = "none";
     });
+
+    // 2. Control Step 2 road-specific elements (Stops, Avoidances)
+    const stopsContainer = document.getElementById("stops_container");
+    const stopActions = document.querySelector(".gmap-stop-actions");
+    const avoidances = document.querySelector(".gmap-route-avoidances");
+
     if (["bike", "car"].includes(mode)) {
+        // Show personal vehicle options
         ["vehicle_section", "toll_section", "fuel_section", "fuel_type_group"].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.style.display = "block";
         });
         const mileageEl = document.getElementById("mileage");
         if (mileageEl && !mileageEl.value) mileageEl.value = 20;
-    }
-    if (["bus", "train", "flight"].includes(mode)) {
+
+        if (stopsContainer) stopsContainer.style.display = "block";
+        if (stopActions) stopActions.style.display = "block";
+        if (avoidances) avoidances.style.display = "block";
+
+        const transitSection = document.getElementById("transit_hub_section");
+        if (transitSection) transitSection.style.display = "none";
+    } else if (["bus", "train", "flight"].includes(mode)) {
+        // Public Transit modes: Show ONLY From & To location fields
+        if (stopsContainer) stopsContainer.style.display = "none";
+        if (stopActions) stopActions.style.display = "none";
+        if (avoidances) avoidances.style.display = "none";
+
         const optEl = document.getElementById(`${mode}_options`);
         if (optEl) optEl.style.display = "block";
         ({ bus: updateBusFareHint, train: updateTrainFareHint, flight: updateFlightFareHint })[mode]?.();
+
+        // Fetch & render transit stations, last-mile travel, and Where is my train/availability domains
+        fetchTransitDetails();
+    } else {
+        // Walk mode: clean From & To only
+        if (stopsContainer) stopsContainer.style.display = "none";
+        if (stopActions) stopActions.style.display = "none";
+        if (avoidances) avoidances.style.display = "none";
+        const transitSection = document.getElementById("transit_hub_section");
+        if (transitSection) transitSection.style.display = "none";
     }
+
     updateTravelTime();
     updateAutoTolls();
+    savePlannerState();
+}
+
+let transitDetailsCache = null;
+
+async function fetchTransitDetails() {
+    const mode = document.getElementById("transport_mode")?.value || "train";
+    const transitSection = document.getElementById("transit_hub_section");
+    if (!["train", "bus", "flight"].includes(mode)) {
+        if (transitSection) transitSection.style.display = "none";
+        return;
+    }
+
+    const from = document.getElementById("from_location")?.value?.trim() || "";
+    const dest = document.getElementById("destination")?.value?.trim() || "";
+
+    if (!from && !dest) {
+        if (transitSection) transitSection.style.display = "none";
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/transit_details?from=${encodeURIComponent(from)}&destination=${encodeURIComponent(dest)}&mode=${encodeURIComponent(mode)}`);
+        if (!response.ok) return;
+        const data = await response.json();
+        transitDetailsCache = data;
+        renderTransitHubDetails(data);
+    } catch (err) {
+        console.warn("Could not load transit details:", err);
+    }
+}
+
+function renderTransitHubDetails(data) {
+    const section = document.getElementById("transit_hub_section");
+    if (!section || !data) return;
+
+    const mode = data.transport_mode || "train";
+    const modeBadge = document.getElementById("transit_mode_badge");
+    const heading = document.getElementById("transit_hub_heading");
+
+    if (mode === "train") {
+        if (modeBadge) modeBadge.textContent = "🚆 Train & Station Navigator";
+        if (heading) heading.textContent = `Suitable Railway Stations for ${data.from_clean} → ${data.dest_clean}`;
+    } else if (mode === "bus") {
+        if (modeBadge) modeBadge.textContent = "🚌 Bus & Terminal Navigator";
+        if (heading) heading.textContent = `Suitable Bus Terminals for ${data.from_clean} → ${data.dest_clean}`;
+    } else {
+        if (modeBadge) modeBadge.textContent = "✈️ Flight & Airport Connectivity";
+        if (heading) heading.textContent = `Suitable Airports for ${data.from_clean} → ${data.dest_clean}`;
+    }
+
+    // Departure and Arrival Hub labels & data
+    const fromType = document.getElementById("transit_from_type");
+    const fromName = document.getElementById("transit_from_name");
+    const fromMeta = document.getElementById("transit_from_meta");
+    const fromMapBtn = document.getElementById("transit_from_map_btn");
+
+    const destType = document.getElementById("transit_dest_type");
+    const destName = document.getElementById("transit_dest_name");
+    const destMeta = document.getElementById("transit_dest_meta");
+    const destMapBtn = document.getElementById("transit_dest_map_btn");
+
+    if (mode === "train") {
+        if (fromType) fromType.textContent = "Station";
+        if (fromName) fromName.textContent = `${data.from_station.name} (${data.from_station.code})`;
+        if (fromMeta) fromMeta.textContent = `~${data.from_station.distance_km} km from ${data.from_clean} · ${data.from_station.type || 'Primary Station'}`;
+        if (fromMapBtn) {
+            fromMapBtn.href = data.from_station.maps_url;
+            fromMapBtn.textContent = "📍 Directions to Station ↗";
+        }
+
+        if (destType) destType.textContent = "Station";
+        if (destName) destName.textContent = `${data.dest_station.name} (${data.dest_station.code})`;
+        if (destMeta) destMeta.textContent = `~${data.dest_station.distance_km} km to ${data.dest_clean} · ${data.dest_station.type || 'Destination Station'}`;
+        if (destMapBtn) {
+            destMapBtn.href = data.dest_station.maps_url;
+            destMapBtn.textContent = "📍 View Arrival Station ↗";
+        }
+    } else if (mode === "bus") {
+        if (fromType) fromType.textContent = "Bus Stand";
+        if (fromName) fromName.textContent = data.from_bus_stand.name;
+        if (fromMeta) fromMeta.textContent = `~${data.from_bus_stand.distance_km} km from ${data.from_clean} · ${data.from_bus_stand.type || 'Central Terminus'}`;
+        if (fromMapBtn) {
+            fromMapBtn.href = data.from_bus_stand.maps_url;
+            fromMapBtn.textContent = "📍 Directions to Bus Stand ↗";
+        }
+
+        if (destType) destType.textContent = "Bus Stand";
+        if (destName) destName.textContent = data.dest_bus_stand.name;
+        if (destMeta) destMeta.textContent = `~${data.dest_bus_stand.distance_km} km to ${data.dest_clean} · ${data.dest_bus_stand.type || 'Interstate Terminal'}`;
+        if (destMapBtn) {
+            destMapBtn.href = data.dest_bus_stand.maps_url;
+            destMapBtn.textContent = "📍 View Arrival Stand ↗";
+        }
+    } else {
+        if (fromType) fromType.textContent = "Airport";
+        if (fromName) fromName.textContent = `${data.from_airport.name} (${data.from_airport.code})`;
+        if (fromMeta) fromMeta.textContent = `~${data.from_airport.distance_km} km from ${data.from_clean} · Domestic & International`;
+        if (fromMapBtn) {
+            fromMapBtn.href = data.from_airport.maps_url;
+            fromMapBtn.textContent = "📍 Directions to Airport ↗";
+        }
+
+        if (destType) destType.textContent = "Airport";
+        if (destName) destName.textContent = `${data.dest_airport.name} (${data.dest_airport.code})`;
+        if (destMeta) destMeta.textContent = `~${data.dest_airport.distance_km} km to ${data.dest_clean} · Destination Airport`;
+        if (destMapBtn) {
+            destMapBtn.href = data.dest_airport.maps_url;
+            destMapBtn.textContent = "📍 View Arrival Airport ↗";
+        }
+    }
+
+    // Last-Mile Options ("Which type of travel to get the station")
+    const lastMileGrid = document.getElementById("last_mile_options_grid");
+    if (lastMileGrid && data.origin_last_mile) {
+        lastMileGrid.replaceChildren();
+        data.origin_last_mile.forEach(item => {
+            const card = document.createElement("div");
+            card.className = "last-mile-card";
+            card.innerHTML = `
+                <div class="last-mile-top">
+                    <span class="last-mile-icon">${item.icon}</span>
+                    <div class="last-mile-meta">
+                        <strong>${item.mode}</strong>
+                        <span class="last-mile-badge">${item.cost_est} · ${item.duration}</span>
+                    </div>
+                </div>
+                <p class="last-mile-desc">${item.desc}</p>
+                <a href="${item.maps_url}" target="_blank" rel="noopener" class="last-mile-route-link">📍 Route on Map ↗</a>
+            `;
+            lastMileGrid.appendChild(card);
+        });
+    }
+
+    // Domain Availability & Tracking Links
+    const domainsGrid = document.getElementById("transit_domains_grid");
+    if (domainsGrid && data.domain_links) {
+        domainsGrid.replaceChildren();
+        const links = data.domain_links;
+
+        if (mode === "train") {
+            appendDomainCard(domainsGrid, links.where_is_my_train, "where-is-my-train-btn", "Check Live Train Status ↗");
+            appendDomainCard(domainsGrid, links.confirmtkt, "confirmtkt-btn", "Check Available Seats ↗");
+            appendDomainCard(domainsGrid, links.irctc, "irctc-btn", "Official IRCTC Booking ↗");
+            appendDomainCard(domainsGrid, links.railyatri, "railyatri-btn", "View Timetable & PNR ↗");
+        } else if (mode === "bus") {
+            appendDomainCard(domainsGrid, links.redbus, "redbus-btn", "Check RedBus Seats ↗");
+            appendDomainCard(domainsGrid, links.abhibus, "abhibus-btn", "Search on AbhiBus ↗");
+            appendDomainCard(domainsGrid, links.google_transit, "gtransit-btn", "Open Google Transit ↗");
+        } else {
+            appendDomainCard(domainsGrid, links.google_flights, "gflights-btn", "Search Google Flights ↗");
+            appendDomainCard(domainsGrid, links.skyscanner, "skyscanner-btn", "Compare on Skyscanner ↗");
+            appendDomainCard(domainsGrid, links.makemytrip_flights, "mmt-flights-btn", "Book on MakeMyTrip ↗");
+        }
+    }
+
+    section.style.display = "block";
+}
+
+function appendDomainCard(container, domainData, extraClass, ctaText) {
+    if (!domainData) return;
+    const card = document.createElement("a");
+    card.href = domainData.url;
+    card.target = "_blank";
+    card.rel = "noopener";
+    card.className = `transit-domain-card ${extraClass || ''}`;
+    card.innerHTML = `
+        <div class="domain-card-head">
+            <span class="domain-card-icon">${domainData.icon}</span>
+            <strong>${domainData.title}</strong>
+        </div>
+        <span class="domain-pill">${domainData.badge}</span>
+        <p class="domain-desc">${domainData.desc}</p>
+        <span class="domain-action-btn">${ctaText}</span>
+    `;
+    container.appendChild(card);
 }
 
 function toggleRentalCost() {
@@ -333,6 +543,7 @@ async function useCurrentLocation() {
             if (!response.ok || !data.location) throw new Error(data.error);
             document.getElementById("from_location").value = data.location;
             calculateDistance();
+            fetchTransitDetails();
         } catch (error) { alert(error.message || "Could not identify your current location."); }
     }, () => alert("Please enable location access to use GPS."));
 }
@@ -342,10 +553,15 @@ async function calculateDistance() {
     const destination = document.getElementById("destination")?.value?.trim();
     if (!from || !destination) return;
 
-    const validStops = (routeStops || []).map(s => (s || "").trim()).filter(s => s.length > 0);
-    const avoidTolls = !!document.getElementById("avoid_tolls")?.checked;
-    const avoidHighways = !!document.getElementById("avoid_highways")?.checked;
-    const avoidFerries = !!document.getElementById("avoid_ferries")?.checked;
+    fetchTransitDetails();
+
+    const mode = document.getElementById("transport_mode")?.value || "car";
+    const isPublicTransit = ["bus", "train", "flight"].includes(mode);
+
+    const validStops = isPublicTransit ? [] : (routeStops || []).map(s => (s || "").trim()).filter(s => s.length > 0);
+    const avoidTolls = isPublicTransit ? false : !!document.getElementById("avoid_tolls")?.checked;
+    const avoidHighways = isPublicTransit ? false : !!document.getElementById("avoid_highways")?.checked;
+    const avoidFerries = isPublicTransit ? false : !!document.getElementById("avoid_ferries")?.checked;
 
     setLoadingState(true);
     try {

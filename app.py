@@ -300,6 +300,508 @@ def destination_budget_details(destination, trip_days):
         "tier_label": estimate["tier"],
     }
 
+
+MAJOR_TRANSIT_HUBS = {
+    "bengaluru": {
+        "railway": [
+            {"name": "KSR Bengaluru City Junction (Majestic)", "code": "SBC", "distance_km": 2.5, "type": "Major Terminal"},
+            {"name": "Yesvantpur Junction", "code": "YPR", "distance_km": 7.5, "type": "Major Hub"},
+            {"name": "Sir M. Visvesvaraya Terminal (SMVB)", "code": "SMVB", "distance_km": 11.0, "type": "World-Class AC Terminal"},
+            {"name": "Bangalore Cantt", "code": "BNC", "distance_km": 4.0, "type": "Central Station"}
+        ],
+        "bus": [
+            {"name": "Kempegowda Bus Station (Majestic Bus Stand)", "type": "Interstate Terminal", "distance_km": 2.5},
+            {"name": "Shantinagar Bus Station (KSRTC/TNSTC/SETC)", "type": "Southbound Terminal", "distance_km": 4.2},
+            {"name": "Satellite Bus Stand (Mysore Road)", "type": "Express Terminal", "distance_km": 7.0}
+        ],
+        "airport": {"name": "Kempegowda International Airport", "code": "BLR", "city": "Bengaluru", "distance_km": 35.0},
+        "last_mile": {
+            "train": [
+                {"mode": "Namma Metro (Purple / Green Line)", "icon": "🚇", "duration": "15–25 mins", "cost_est": "₹25–₹45", "desc": "Direct connectivity to Majestic (SBC) & Yesvantpur (YPR)"},
+                {"mode": "App Cab (Uber / Ola / Rapido)", "icon": "🚕", "duration": "20–35 mins", "cost_est": "₹160–₹280", "desc": "Doorstep pickup directly to station porch"},
+                {"mode": "BMTC City Feeder Bus", "icon": "🚌", "duration": "30–45 mins", "cost_est": "₹15–₹25", "desc": "Frequent Majestic-bound buses from all major localities"},
+                {"mode": "Auto Rickshaw", "icon": "🛺", "duration": "20–30 mins", "cost_est": "₹90–₹160", "desc": "Quick metered or app auto to station entrance"}
+            ],
+            "bus": [
+                {"mode": "Namma Metro", "icon": "🚇", "duration": "15–25 mins", "cost_est": "₹20–₹40", "desc": "Alight at Nadaprabhu Kempegowda Majestic metro station"},
+                {"mode": "App Cab / Auto", "icon": "🚕", "duration": "20–35 mins", "cost_est": "₹120–₹240", "desc": "Direct drop at bus platform"},
+                {"mode": "BMTC City Bus", "icon": "🚌", "duration": "25–40 mins", "cost_est": "₹15–₹20", "desc": "Direct KBS / Majestic feeder routes"}
+            ],
+            "flight": [
+                {"mode": "Vayu Vajra (KIA AC Bus)", "icon": "🚌", "duration": "60–80 mins", "cost_est": "₹230–₹260", "desc": "Comfortable 24x7 AC airport shuttle from all city hubs"},
+                {"mode": "Airport Taxi / Uber / Ola", "icon": "🚕", "duration": "45–65 mins", "cost_est": "₹850–₹1,400", "desc": "Fast highway transit via Bellary Road toll expressway"},
+                {"mode": "Suburban Airport Train", "icon": "🚆", "duration": "45–55 mins", "cost_est": "₹35–₹50", "desc": "Direct train from SBC/YPR to KIA Halt station"}
+            ]
+        }
+    },
+    "chennai": {
+        "railway": [
+            {"name": "Puratchi Thalaivar Dr. M.G.R. Central (Chennai Central)", "code": "MAS", "distance_km": 3.0, "type": "Major Terminal"},
+            {"name": "Chennai Egmore", "code": "MS", "distance_km": 2.5, "type": "Southbound Hub"},
+            {"name": "Tambaram", "code": "TBM", "distance_km": 25.0, "type": "Suburban Terminal"}
+        ],
+        "bus": [
+            {"name": "Chennai Mofussil Bus Terminus (CMBT / Koyambedu)", "type": "Interstate Terminal", "distance_km": 8.5},
+            {"name": "Kilambakkam KCBT Bus Terminus", "type": "Southbound Terminal", "distance_km": 28.0}
+        ],
+        "airport": {"name": "Chennai International Airport", "code": "MAA", "city": "Chennai", "distance_km": 18.0},
+        "last_mile": {
+            "train": [
+                {"mode": "Chennai Metro (Blue / Green Line)", "icon": "🚇", "duration": "15–30 mins", "cost_est": "₹20–₹50", "desc": "Direct underground metro station right inside Chennai Central & Egmore"},
+                {"mode": "App Cab (Uber / Ola / FastTrack)", "icon": "🚕", "duration": "25–40 mins", "cost_est": "₹180–₹320", "desc": "Direct drop at Central / Egmore main porch"},
+                {"mode": "MTC City Bus", "icon": "🚌", "duration": "35–50 mins", "cost_est": "₹10–₹25", "desc": "Frequent city bus connectivity from all corridors"},
+                {"mode": "Auto Rickshaw", "icon": "🛺", "duration": "20–35 mins", "cost_est": "₹100–₹190", "desc": "Quick local ride to station entrance"}
+            ],
+            "bus": [
+                {"mode": "Chennai Metro (Green Line to Koyambedu)", "icon": "🚇", "duration": "20–35 mins", "cost_est": "₹25–₹50", "desc": "Alight directly at CMBT Metro Station"},
+                {"mode": "App Cab / Auto", "icon": "🚕", "duration": "25–45 mins", "cost_est": "₹150–₹290", "desc": "Drop at CMBT departure bays"},
+                {"mode": "MTC City Bus", "icon": "🚌", "duration": "35–55 mins", "cost_est": "₹15–₹30", "desc": "CMBT-bound city express buses"}
+            ],
+            "flight": [
+                {"mode": "Chennai Metro (Direct to Airport)", "icon": "🚇", "duration": "25–40 mins", "cost_est": "₹40–₹60", "desc": "Direct Blue Line metro with skywalk into Departure Terminal"},
+                {"mode": "Airport Prepaid Taxi / Uber / Ola", "icon": "🚕", "duration": "35–55 mins", "cost_est": "₹500–₹850", "desc": "Fast transit via GST Road"},
+                {"mode": "MTC Airport AC Express Bus", "icon": "🚌", "duration": "50–70 mins", "cost_est": "₹100–₹150", "desc": "Budget airport feeder from Central / T.Nagar"}
+            ]
+        }
+    },
+    "delhi": {
+        "railway": [
+            {"name": "New Delhi Railway Station", "code": "NDLS", "distance_km": 2.0, "type": "Central Terminal"},
+            {"name": "Hazrat Nizamuddin", "code": "NZM", "distance_km": 7.0, "type": "South / Central Hub"},
+            {"name": "Anand Vihar Terminal", "code": "ANVT", "distance_km": 12.0, "type": "Eastbound Terminal"},
+            {"name": "Old Delhi Junction", "code": "DLI", "distance_km": 4.5, "type": "Historic Hub"}
+        ],
+        "bus": [
+            {"name": "Maharana Pratap ISBT (Kashmere Gate)", "type": "Interstate Terminal", "distance_km": 5.0},
+            {"name": "Swami Vivekanand ISBT (Anand Vihar)", "type": "East Interstate Terminal", "distance_km": 12.0},
+            {"name": "Sarai Kale Khan ISBT", "type": "South Interstate Terminal", "distance_km": 8.0}
+        ],
+        "airport": {"name": "Indira Gandhi International Airport (IGI)", "code": "DEL", "city": "Delhi", "distance_km": 16.0},
+        "last_mile": {
+            "train": [
+                {"mode": "Delhi Metro (Yellow / Airport Line to NDLS)", "icon": "🚇", "duration": "15–30 mins", "cost_est": "₹20–₹50", "desc": "Direct metro gates at NDLS, Anand Vihar & Kashmere Gate"},
+                {"mode": "App Cab (Uber / Ola / BluSmart)", "icon": "🚕", "duration": "20–40 mins", "cost_est": "₹180–₹350", "desc": "Quick drop at Ajmeri Gate or Paharganj side"},
+                {"mode": "Auto Rickshaw", "icon": "🛺", "duration": "20–35 mins", "cost_est": "₹90–₹180", "desc": "Metered / app auto to railway entrance"},
+                {"mode": "DTC AC Bus", "icon": "🚌", "duration": "30–50 mins", "cost_est": "₹15–₹25", "desc": "Frequent city connectivity across NCR"}
+            ],
+            "bus": [
+                {"mode": "Delhi Metro (Kashmere Gate / Anand Vihar)", "icon": "🚇", "duration": "15–30 mins", "cost_est": "₹20–₹40", "desc": "Interchange hub right next to ISBT counters"},
+                {"mode": "App Cab / Auto", "icon": "🚕", "duration": "20–40 mins", "cost_est": "₹150–₹300", "desc": "Direct entry to ISBT departure platform"},
+                {"mode": "DTC City Bus", "icon": "🚌", "duration": "30–50 mins", "cost_est": "₹10–₹25", "desc": "ISBT connect buses from South/West Delhi"}
+            ],
+            "flight": [
+                {"mode": "Airport Express Metro Line", "icon": "🚇", "duration": "18–25 mins", "cost_est": "₹60", "desc": "High-speed AC metro connecting NDLS & Dhaula Kuan to T3 / T1"},
+                {"mode": "App Cab / BluSmart EV", "icon": "🚕", "duration": "30–55 mins", "cost_est": "₹450–₹850", "desc": "Direct drop at T1 / T2 / T3 departure gates"},
+                {"mode": "DTC Airport Express Bus", "icon": "🚌", "duration": "45–70 mins", "cost_est": "₹100–₹120", "desc": "24x7 AC bus service from ISBT Kashmere Gate"}
+            ]
+        }
+    },
+    "mumbai": {
+        "railway": [
+            {"name": "Chhatrapati Shivaji Maharaj Terminus", "code": "CSMT", "distance_km": 2.0, "type": "Heritage Central Hub"},
+            {"name": "Mumbai Central", "code": "MMCT", "distance_km": 4.5, "type": "Western Mainline Terminal"},
+            {"name": "Bandra Terminus", "code": "BDTS", "distance_km": 14.0, "type": "North / West Terminal"},
+            {"name": "Lokmanya Tilak Terminus (Kurla)", "code": "LTT", "distance_km": 16.0, "type": "Central Mainline Terminal"},
+            {"name": "Dadar Central / Western", "code": "DR", "distance_km": 8.0, "type": "Major Junction"}
+        ],
+        "bus": [
+            {"name": "MSRTC Central Bus Stand (Mumbai Central)", "type": "State Intercity Terminal", "distance_km": 4.5},
+            {"name": "Borivali MSRTC / Private Bus Stand", "type": "Northbound Hub", "distance_km": 28.0},
+            {"name": "Vashi Bus Terminus (Navi Mumbai)", "type": "East / Southbound Hub", "distance_km": 24.0}
+        ],
+        "airport": {"name": "Chhatrapati Shivaji Maharaj International Airport", "code": "BOM", "city": "Mumbai", "distance_km": 15.0},
+        "last_mile": {
+            "train": [
+                {"mode": "Mumbai Local Suburban Train", "icon": "🚆", "duration": "15–35 mins", "cost_est": "₹10–₹20", "desc": "Fast local train connectivity right to CSMT, Dadar & Mumbai Central"},
+                {"mode": "Mumbai Metro (Line 1/2/3/7)", "icon": "🚇", "duration": "15–30 mins", "cost_est": "₹20–₹50", "desc": "Comfortable AC transit connecting suburbs to junctions"},
+                {"mode": "App Cab (Uber / Ola / Kaali Peeli)", "icon": "🚕", "duration": "25–50 mins", "cost_est": "₹180–₹380", "desc": "Direct drop at station concourse"},
+                {"mode": "Auto Rickshaw (Suburbs)", "icon": "🛺", "duration": "15–30 mins", "cost_est": "₹60–₹150", "desc": "Quick meter auto (available north of Bandra/Sion)"}
+            ],
+            "bus": [
+                {"mode": "Mumbai Local / Metro", "icon": "🚆", "duration": "20–40 mins", "cost_est": "₹15–₹30", "desc": "Reach bus terminus via suburban railway station"},
+                {"mode": "App Cab / Kaali Peeli", "icon": "🚕", "duration": "25–45 mins", "cost_est": "₹160–₹320", "desc": "Drop directly at bus boarding point"},
+                {"mode": "BEST City Bus", "icon": "🚌", "duration": "30–55 mins", "cost_est": "₹10–₹25", "desc": "Bus depot feeder network"}
+            ],
+            "flight": [
+                {"mode": "Aqua Line 3 Metro / Western Express Local", "icon": "🚇", "duration": "25–40 mins", "cost_est": "₹30–₹50", "desc": "Underground Metro Line 3 connecting airport to city core"},
+                {"mode": "App Cab (Uber / Ola) / Prepaid Taxi", "icon": "🚕", "duration": "35–65 mins", "cost_est": "₹550–₹950", "desc": "Direct transit via Western Express Highway or Coastal Road"},
+                {"mode": "BEST Airport Express AC Bus", "icon": "🚌", "duration": "45–75 mins", "cost_est": "₹100–₹175", "desc": "Direct AC buses from Colaba, Borivali & Thane to T1/T2"}
+            ]
+        }
+    },
+    "hyderabad": {
+        "railway": [
+            {"name": "Secunderabad Junction", "code": "SC", "distance_km": 6.5, "type": "Major Terminal"},
+            {"name": "Hyderabad Deccan (Nampally)", "code": "HYB", "distance_km": 2.0, "type": "City Terminal"},
+            {"name": "Kacheguda", "code": "KCG", "distance_km": 4.0, "type": "South Central Hub"}
+        ],
+        "bus": [
+            {"name": "Mahatma Gandhi Bus Station (MGBS / Imlibun)", "type": "Major Interstate Terminal", "distance_km": 3.0},
+            {"name": "Jubilee Bus Station (JBS Secunderabad)", "type": "Northbound Terminal", "distance_km": 8.0}
+        ],
+        "airport": {"name": "Rajiv Gandhi International Airport (Shamshabad)", "code": "HYD", "city": "Hyderabad", "distance_km": 26.0},
+        "last_mile": {
+            "train": [
+                {"mode": "Hyderabad Metro (Red / Green / Blue Line)", "icon": "🚇", "duration": "15–30 mins", "cost_est": "₹20–₹50", "desc": "Direct connectivity to Secunderabad East/West & Gandhi Bhavan (Nampally)"},
+                {"mode": "App Cab (Uber / Ola / Rapido)", "icon": "🚕", "duration": "20–35 mins", "cost_est": "₹150–₹280", "desc": "Direct drop at Secunderabad or Nampally porch"},
+                {"mode": "Auto Rickshaw", "icon": "🛺", "duration": "15–30 mins", "cost_est": "₹80–₹160", "desc": "Quick local auto to station entrance"},
+                {"mode": "TSRTC City Bus", "icon": "🚌", "duration": "30–45 mins", "cost_est": "₹15–₹30", "desc": "Frequent city bus network to major stations"}
+            ],
+            "bus": [
+                {"mode": "Hyderabad Metro (MGBS Interchange)", "icon": "🚇", "duration": "15–25 mins", "cost_est": "₹20–₹40", "desc": "MGBS Metro Station has direct walkway into bus terminal"},
+                {"mode": "App Cab / Auto", "icon": "🚕", "duration": "20–35 mins", "cost_est": "₹120–₹240", "desc": "Drop at MGBS departure platforms"},
+                {"mode": "TSRTC City Bus", "icon": "🚌", "duration": "25–45 mins", "cost_est": "₹15–₹25", "desc": "MGBS / JBS direct express"}
+            ],
+            "flight": [
+                {"mode": "Pushpak Airport Liner (AC AC Coach)", "icon": "🚌", "duration": "45–70 mins", "cost_est": "₹200–₹300", "desc": "Frequent 24x7 luxury AC airport coach from Secunderabad, Hitec City, Begumpet"},
+                {"mode": "Airport Cab / Uber / Ola", "icon": "🚕", "duration": "35–55 mins", "cost_est": "₹700–₹1,200", "desc": "PVNR Elevated Expressway fast access to Shamshabad"}
+            ]
+        }
+    },
+    "kolkata": {
+        "railway": [
+            {"name": "Howrah Junction", "code": "HWH", "distance_km": 4.5, "type": "Historic Mega Terminal"},
+            {"name": "Sealdah", "code": "SDAH", "distance_km": 2.5, "type": "Suburban & Mail Hub"},
+            {"name": "Kolkata Chitpur", "code": "KOAA", "distance_km": 6.0, "type": "Long-Distance Terminal"},
+            {"name": "Shalimar", "code": "SHM", "distance_km": 8.0, "type": "South Eastern Terminal"}
+        ],
+        "bus": [
+            {"name": "Esplanade Bus Terminus (Dharmatala)", "type": "Central Intercity Hub", "distance_km": 1.5},
+            {"name": "Karunamoyee Bus Terminus (Salt Lake)", "type": "Interstate Terminal", "distance_km": 8.5}
+        ],
+        "airport": {"name": "Netaji Subhash Chandra Bose International Airport (Dum Dum)", "code": "CCU", "city": "Kolkata", "distance_km": 16.0},
+        "last_mile": {
+            "train": [
+                {"mode": "Kolkata Metro (Green / Blue Line)", "icon": "🚇", "duration": "15–25 mins", "cost_est": "₹15–₹30", "desc": "Underwater Green Line connects directly to Howrah Station & Sealdah"},
+                {"mode": "Yellow Taxi / App Cab (Uber / Ola)", "icon": "🚕", "duration": "20–40 mins", "cost_est": "₹140–₹280", "desc": "Direct drop at Howrah or Sealdah taxi stands"},
+                {"mode": "Howrah Ferry Service", "icon": "⛴️", "duration": "10–15 mins", "cost_est": "₹6–₹10", "desc": "Scenic river ferry across the Hooghly right to Howrah Station"},
+                {"mode": "CSTC / WBTC Bus", "icon": "🚌", "duration": "25–45 mins", "cost_est": "₹10–₹20", "desc": "Direct bus routes from all city points"}
+            ],
+            "bus": [
+                {"mode": "Kolkata Metro (Esplanade)", "icon": "🚇", "duration": "10–20 mins", "cost_est": "₹10–₹20", "desc": "Esplanade Metro is adjacent to Dharmatala bus stands"},
+                {"mode": "Taxi / Auto", "icon": "🚕", "duration": "15–30 mins", "cost_est": "₹100–₹200", "desc": "Drop at Esplanade departure zone"}
+            ],
+            "flight": [
+                {"mode": "AC Airport Volvo Bus (WBTC)", "icon": "🚌", "duration": "45–70 mins", "cost_est": "₹80–₹120", "desc": "Regular AC buses from Howrah, Esplanade & Gariahat to Airport"},
+                {"mode": "Yellow Taxi / Uber / Ola", "icon": "🚕", "duration": "35–55 mins", "cost_est": "₹450–₹750", "desc": "Fast expressway via VIP Road / Rajarhat Main Road"}
+            ]
+        }
+    },
+    "goa": {
+        "railway": [
+            {"name": "Madgaon Junction (Margao)", "code": "MAO", "distance_km": 28.0, "type": "South Goa Major Terminal"},
+            {"name": "Thivim", "code": "THVM", "distance_km": 22.0, "type": "North Goa (Calangute / Baga Hub)"},
+            {"name": "Karmali", "code": "KRMI", "distance_km": 12.0, "type": "Central Goa (Panaji Hub)"},
+            {"name": "Vasco-da-Gama", "code": "VSG", "distance_km": 25.0, "type": "Port City Station"}
+        ],
+        "bus": [
+            {"name": "Panaji KTC Bus Stand", "type": "Central Intercity Terminal", "distance_km": 2.0},
+            {"name": "Margao KTC Bus Stand", "type": "South Goa Terminal", "distance_km": 28.0},
+            {"name": "Mapusa KTC Bus Stand", "type": "North Goa Beach Terminal", "distance_km": 14.0}
+        ],
+        "airport": {"name": "Dabolim International Airport / Mopa (Manohar)", "code": "GOI", "city": "Goa", "distance_km": 25.0},
+        "last_mile": {
+            "train": [
+                {"mode": "Goa Tourist Taxi / GoaMiles", "icon": "🚕", "duration": "30–50 mins", "cost_est": "₹600–₹1,100", "desc": "Direct taxi from Thivim or Madgaon to beach resorts"},
+                {"mode": "Kadamba (KTC) Shuttle Bus", "icon": "🚌", "duration": "40–60 mins", "cost_est": "₹35–₹60", "desc": "Budget intercity shuttle connecting stations to Panaji & Margao"},
+                {"mode": "Pilot (Motorcycle Taxi)", "icon": "🏍️", "duration": "25–40 mins", "cost_est": "₹150–₹300", "desc": "Iconic single-passenger Goan bike taxi for quick luggage-light transit"}
+            ],
+            "bus": [
+                {"mode": "Local KTC Beach Shuttle", "icon": "🚌", "duration": "25–45 mins", "cost_est": "₹20–₹40", "desc": "Frequent buses to Calangute, Baga, Candolim & Anjuna"},
+                {"mode": "Taxi / Rental Scooter", "icon": "🚕", "duration": "20–35 mins", "cost_est": "₹350–₹650", "desc": "Taxi or pickup your pre-booked rental two-wheeler"}
+            ],
+            "flight": [
+                {"mode": "Airport AC Electric Express Bus (KTC)", "icon": "🚌", "duration": "50–80 mins", "cost_est": "₹150–₹250", "desc": "Direct AC buses connecting Dabolim & Mopa to Panaji, Calangute & Margao"},
+                {"mode": "Prepaid Taxi / GoaMiles", "icon": "🚕", "duration": "40–65 mins", "cost_est": "₹900–₹1,600", "desc": "Fixed rate airport taxi to North/South Goa beach belts"}
+            ]
+        }
+    },
+    "jaipur": {
+        "railway": [
+            {"name": "Jaipur Junction", "code": "JP", "distance_km": 3.0, "type": "North Western HQ Terminal"},
+            {"name": "Gandhinagar Jaipur", "code": "GADJ", "distance_km": 6.0, "type": "South Jaipur Hub"},
+            {"name": "Durgapura", "code": "DPA", "distance_km": 8.0, "type": "Airport Side Station"}
+        ],
+        "bus": [
+            {"name": "Sindhi Camp Central Bus Stand", "type": "Interstate Terminal", "distance_km": 2.5},
+            {"name": "Narayan Singh Circle (Private AC Coaches)", "type": "Luxury Coach Hub", "distance_km": 4.0}
+        ],
+        "airport": {"name": "Jaipur International Airport (Sanganer)", "code": "JAI", "city": "Jaipur", "distance_km": 12.0},
+        "last_mile": {
+            "train": [
+                {"mode": "Jaipur Metro (Pink Line)", "icon": "🚇", "duration": "10–20 mins", "cost_est": "₹15–₹30", "desc": "Railway Station Metro station connects to Old City / Chandpole & Mansarovar"},
+                {"mode": "App Cab (Uber / Ola)", "icon": "🚕", "duration": "15–30 mins", "cost_est": "₹120–₹220", "desc": "Direct pickup at Platform 1 / 2 exit"},
+                {"mode": "Auto Rickshaw / E-Rickshaw", "icon": "🛺", "duration": "15–25 mins", "cost_est": "₹60–₹130", "desc": "Quick ride to MI Road, C-Scheme & Heritage City"}
+            ],
+            "bus": [
+                {"mode": "Jaipur Metro (Sindhi Camp)", "icon": "🚇", "duration": "10–15 mins", "cost_est": "₹10–₹20", "desc": "Sindhi Camp Metro Station is integrated with the bus terminus"},
+                {"mode": "Auto / Cab", "icon": "🛺", "duration": "15–25 mins", "cost_est": "₹70–₹160", "desc": "Direct drop at RSRTC platforms"}
+            ],
+            "flight": [
+                {"mode": "App Cab (Uber / Ola)", "icon": "🚕", "duration": "25–45 mins", "cost_est": "₹320–₹550", "desc": "Direct transit via Tonk Road / JLN Marg"},
+                {"mode": "Low Floor AC City Bus", "icon": "🚌", "duration": "40–60 mins", "cost_est": "₹40–₹70", "desc": "Budget connection to Ajmeri Gate & Sindhi Camp"}
+            ]
+        }
+    },
+    "kochi": {
+        "railway": [
+            {"name": "Ernakulam Junction (South)", "code": "ERS", "distance_km": 2.0, "type": "Major Mainline Terminal"},
+            {"name": "Ernakulam Town (North)", "code": "ERN", "distance_km": 3.5, "type": "Central Junction"},
+            {"name": "Aluva", "code": "AWY", "distance_km": 18.0, "type": "Northern / Airport Hub"}
+        ],
+        "bus": [
+            {"name": "KSRTC Central Bus Station (Ernakulam)", "type": "State Intercity Terminal", "distance_km": 2.5},
+            {"name": "Vyttila Mobility Hub", "type": "Integrated Mega Hub (Bus/Metro/Water)", "distance_km": 6.0}
+        ],
+        "airport": {"name": "Cochin International Airport (Nedumbassery)", "code": "COK", "city": "Kochi", "distance_km": 28.0},
+        "last_mile": {
+            "train": [
+                {"mode": "Kochi Metro (Blue Line)", "icon": "🚇", "duration": "10–20 mins", "cost_est": "₹20–₹40", "desc": "South Railway Station Metro connects to MG Road, Edappally & Aluva"},
+                {"mode": "Kochi Water Metro", "icon": "⛴️", "duration": "15–25 mins", "cost_est": "₹20–₹40", "desc": "Eco-friendly electric boat connection to Fort Kochi & islands"},
+                {"mode": "App Cab / Auto", "icon": "🚕", "duration": "15–30 mins", "cost_est": "₹90–₹200", "desc": "Direct drop at station entry"}
+            ],
+            "bus": [
+                {"mode": "Kochi Metro to Vyttila", "icon": "🚇", "duration": "15–25 mins", "cost_est": "₹20–₹40", "desc": "Integrated access to Vyttila Mobility Hub"},
+                {"mode": "Auto / Taxi", "icon": "🛺", "duration": "15–30 mins", "cost_est": "₹80–₹180", "desc": "Direct transit to KSRTC stand"}
+            ],
+            "flight": [
+                {"mode": "KSRTC Low Floor AC Airport Feeder", "icon": "🚌", "duration": "50–75 mins", "cost_est": "₹80–₹120", "desc": "Regular AC buses connecting Cochin Airport to Fort Kochi & Ernakulam"},
+                {"mode": "Prepaid Airport Taxi / Uber", "icon": "🚕", "duration": "40–60 mins", "cost_est": "₹750–₹1,200", "desc": "Fast highway transit via Seaport-Airport Road"}
+            ]
+        }
+    }
+}
+
+
+def get_transit_hub_details(from_place, destination, transport_mode="train"):
+    """
+    Returns suitable stations/terminals/airports for from & destination,
+    last-mile travel options to get to the station/terminal, and booking/availability domains
+    including 'Where Is My Train' live tracking links.
+    """
+    from_clean = short_location(from_place) or "Departure"
+    dest_clean = short_location(destination) or "Destination"
+    from_lower = from_clean.lower()
+    dest_lower = dest_clean.lower()
+
+    # Find matching hubs or generate dynamic intelligent defaults
+    from_hub = next((v for k, v in MAJOR_TRANSIT_HUBS.items() if k in from_lower), None)
+    dest_hub = next((v for k, v in MAJOR_TRANSIT_HUBS.items() if k in dest_lower), None)
+
+    # 1. Railway Stations
+    if from_hub:
+        from_station = dict(from_hub["railway"][0])
+        from_all_stations = [dict(s) for s in from_hub["railway"]]
+    else:
+        from_stn_code = (from_clean[:3].upper() if len(from_clean) >= 3 else "STN")
+        from_station = {
+            "name": f"{from_clean} Junction / Central Railway Station",
+            "code": from_stn_code,
+            "distance_km": 3.5,
+            "type": "Primary Railway Junction"
+        }
+        from_all_stations = [from_station]
+
+    if dest_hub:
+        dest_station = dict(dest_hub["railway"][0])
+        dest_all_stations = [dict(s) for s in dest_hub["railway"]]
+    else:
+        dest_stn_code = (dest_clean[:3].upper() if len(dest_clean) >= 3 else "DST")
+        dest_station = {
+            "name": f"{dest_clean} Junction / Central Station",
+            "code": dest_stn_code,
+            "distance_km": 4.0,
+            "type": "Main Destination Station"
+        }
+        dest_all_stations = [dest_station]
+
+    # 2. Bus Stands / Terminals
+    if from_hub:
+        from_bus_stand = dict(from_hub["bus"][0])
+    else:
+        from_bus_stand = {
+            "name": f"{from_clean} Central Bus Station / ISBT",
+            "type": "Intercity Bus Terminal",
+            "distance_km": 2.5
+        }
+
+    if dest_hub:
+        dest_bus_stand = dict(dest_hub["bus"][0])
+    else:
+        dest_bus_stand = {
+            "name": f"{dest_clean} Central Bus Stand / Interstate Terminal",
+            "type": "Intercity Terminal",
+            "distance_km": 3.0
+        }
+
+    # 3. Airports
+    if from_hub:
+        from_airport = dict(from_hub["airport"])
+    else:
+        from_airport = {
+            "name": f"{from_clean} Airport / Nearest Domestic Hub",
+            "code": from_clean[:3].upper(),
+            "city": from_clean,
+            "distance_km": 22.0
+        }
+
+    if dest_hub:
+        dest_airport = dict(dest_hub["airport"])
+    else:
+        dest_airport = {
+            "name": f"{dest_clean} Airport / Nearest Regional Airport",
+            "code": dest_clean[:3].upper(),
+            "city": dest_clean,
+            "distance_km": 20.0
+        }
+
+    # Last-mile connectivity options
+    if from_hub and from_hub.get("last_mile", {}).get(transport_mode):
+        origin_last_mile = [dict(item) for item in from_hub["last_mile"][transport_mode]]
+    else:
+        if transport_mode == "train":
+            origin_last_mile = [
+                {"mode": "Metro / Local Transit", "icon": "🚇", "duration": "15–25 mins", "cost_est": "₹20–₹40", "desc": f"Direct local transit or feeder to {from_station['name']}"},
+                {"mode": "App Cab (Uber / Ola / Taxi)", "icon": "🚕", "duration": "20–35 mins", "cost_est": "₹140–₹260", "desc": "Convenient door-to-station drop with luggage"},
+                {"mode": "Auto Rickshaw", "icon": "🛺", "duration": "15–30 mins", "cost_est": "₹70–₹150", "desc": "Quick local auto directly to railway platform entrance"},
+                {"mode": "City Feeder Bus", "icon": "🚌", "duration": "30–45 mins", "cost_est": "₹15–₹25", "desc": f"Frequent bus service towards {from_clean} Railway Station"}
+            ]
+        elif transport_mode == "bus":
+            origin_last_mile = [
+                {"mode": "City Bus / Feeder", "icon": "🚌", "duration": "20–35 mins", "cost_est": "₹15–₹25", "desc": f"Direct bus route to {from_bus_stand['name']}"},
+                {"mode": "Auto Rickshaw / App Cab", "icon": "🚕", "duration": "15–30 mins", "cost_est": "₹80–₹180", "desc": "Fast drop at bus boarding bays"},
+                {"mode": "Metro / Local Train", "icon": "🚇", "duration": "15–25 mins", "cost_est": "₹20–₹35", "desc": "Nearest station walking distance from bus terminal"}
+            ]
+        else:  # flight
+            origin_last_mile = [
+                {"mode": "Airport Express AC Bus", "icon": "🚌", "duration": "45–70 mins", "cost_est": "₹150–₹250", "desc": f"Direct airport coach to {from_airport['name']}"},
+                {"mode": "App Cab / Airport Taxi", "icon": "🚕", "duration": "35–55 mins", "cost_est": "₹600–₹1,100", "desc": "Direct departure terminal drop via highway"},
+                {"mode": "Airport Metro / Shuttle", "icon": "🚇", "duration": "25–40 mins", "cost_est": "₹40–₹80", "desc": "Fast connection to departure gates"}
+            ]
+
+    # Destination last-mile (reaching destination hotel/city from arrival hub)
+    if dest_hub and dest_hub.get("last_mile", {}).get(transport_mode):
+        dest_last_mile = [dict(item) for item in dest_hub["last_mile"][transport_mode]]
+    else:
+        dest_last_mile = [
+            {"mode": "Prepaid Taxi / App Cab", "icon": "🚕", "duration": "15–35 mins", "cost_est": "₹150–₹300", "desc": f"Quick ride from arrival station to your hotel in {dest_clean}"},
+            {"mode": "Local Auto Rickshaw", "icon": "🛺", "duration": "15–25 mins", "cost_est": "₹80–₹160", "desc": "Metered / prepaid auto available right outside station"},
+            {"mode": "Local City Bus / Shuttle", "icon": "🚌", "duration": "25–45 mins", "cost_est": "₹15–₹30", "desc": f"Connecting arrival hub to {dest_clean} center"}
+        ]
+
+    # Add Google Maps direct navigation links to each last-mile item
+    for item in origin_last_mile:
+        target_name = (from_station["name"] if transport_mode == "train" else (from_bus_stand["name"] if transport_mode == "bus" else from_airport["name"]))
+        item["maps_url"] = f"https://www.google.com/maps/dir/?api=1&origin={requests.utils.quote(from_place)}&destination={requests.utils.quote(target_name)}"
+
+    # Generate Domain Links & Availability Tools
+    from_stn_c = from_station["code"]
+    dest_stn_c = dest_station["code"]
+    from_air_c = from_airport["code"]
+    dest_air_c = dest_airport["code"]
+    from_enc = requests.utils.quote(from_clean)
+    dest_enc = requests.utils.quote(dest_clean)
+
+    domain_links = {
+        "where_is_my_train": {
+            "title": "Where Is My Train (Live Status)",
+            "icon": "📡",
+            "badge": "Live Train & Platform GPS",
+            "url": f"https://www.google.com/search?q={from_stn_c}+to+{dest_stn_c}+where+is+my+train+live+running+status+trains",
+            "official_url": "https://whereismytrain.in/",
+            "desc": f"Live GPS running status, platform numbers & delay alerts between {from_station['name']} ({from_stn_c}) and {dest_station['name']} ({dest_stn_c})"
+        },
+        "confirmtkt": {
+            "title": "ConfirmTkt Live Availability",
+            "icon": "🎟️",
+            "badge": "Seat Availability & Confirmation",
+            "url": f"https://www.confirmtkt.com/rts/#/train-search/{from_stn_c}/{dest_stn_c}",
+            "desc": f"Check live seat availability, waitlist clearance predictions & alternate train routes for {from_clean} → {dest_clean}"
+        },
+        "irctc": {
+            "title": "IRCTC Official Booking",
+            "icon": "🏛️",
+            "badge": "Official Railway Booking",
+            "url": f"https://www.irctc.co.in/nget/train-search",
+            "desc": f"Official Indian Railways portal to book confirmed train tickets with Tatkal and General quota"
+        },
+        "railyatri": {
+            "title": "RailYatri Timetable & PNR",
+            "icon": "🕒",
+            "badge": "Schedule & PNR Status",
+            "url": f"https://www.railyatri.in/trains-between-stations?from_code={from_stn_c}&to_code={dest_stn_c}",
+            "desc": f"Complete timetable, fare classes (SL, 3AC, 2AC, 1AC, Vande Bharat) & train seat charts"
+        },
+        "redbus": {
+            "title": "RedBus Live Bus Booking",
+            "icon": "🚌",
+            "badge": "Seat Layout & Live Bus GPS",
+            "url": f"https://www.redbus.in/bus-tickets/{from_clean.lower().replace(' ', '-')}-to-{dest_clean.lower().replace(' ', '-')}",
+            "desc": f"Real-time seat selection, boarding point selection, AC Sleeper / Volvo and live tracking"
+        },
+        "abhibus": {
+            "title": "AbhiBus Deals & State RTCs",
+            "icon": "🎫",
+            "badge": "RTC & Private Bus Offers",
+            "url": f"https://www.abhibus.com/bus-ticket-booking/{from_clean.lower().replace(' ', '-')}-to-{dest_clean.lower().replace(' ', '-')}",
+            "desc": f"Direct booking for State RTCs (KSRTC, TNSTC, MSRTC, GSRTC, UPSRTC) & top private operators"
+        },
+        "google_flights": {
+            "title": "Google Flights Live Tracker",
+            "icon": "✈️",
+            "badge": "Real-time Fares & Timetables",
+            "url": f"https://www.google.com/travel/flights?q=Flights%20from%20{from_air_c}%20to%20{dest_air_c}",
+            "desc": f"Compare nonstop flights, live prices and airline schedules from {from_airport['name']} ({from_air_c}) to {dest_airport['name']} ({dest_air_c})"
+        },
+        "skyscanner": {
+            "title": "Skyscanner Price Comparison",
+            "icon": "🛫",
+            "badge": "Lowest Fare Calendar",
+            "url": f"https://www.skyscanner.co.in/transport/flights/{from_air_c.lower()}/{dest_air_c.lower()}",
+            "desc": f"Find the cheapest departure days and compare airlines across IndiGo, Air India, SpiceJet, Akasa"
+        },
+        "makemytrip_flights": {
+            "title": "MakeMyTrip Flight Booking",
+            "icon": "🌐",
+            "badge": "Instant Web Check-in & Deals",
+            "url": f"https://www.makemytrip.com/flight/search?itinerary={from_air_c}-{dest_air_c}",
+            "desc": f"Book domestic flights with zero cancellation options and student/senior citizen discounts"
+        },
+        "google_transit": {
+            "title": "Google Maps Transit Route",
+            "icon": "🗺️",
+            "badge": "Step-by-Step Public Transit",
+            "url": f"https://www.google.com/maps/dir/?api=1&origin={requests.utils.quote(from_place)}&destination={requests.utils.quote(destination)}&travelmode=transit",
+            "desc": f"Full step-by-step public transit directions from {from_clean} to {dest_clean} with live departure times"
+        }
+    }
+
+    # Station Google Maps links
+    from_station["maps_url"] = f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote(from_station['name'] + ' ' + from_clean)}"
+    dest_station["maps_url"] = f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote(dest_station['name'] + ' ' + dest_clean)}"
+    from_bus_stand["maps_url"] = f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote(from_bus_stand['name'] + ' ' + from_clean)}"
+    dest_bus_stand["maps_url"] = f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote(dest_bus_stand['name'] + ' ' + dest_clean)}"
+    from_airport["maps_url"] = f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote(from_airport['name'] + ' ' + from_clean)}"
+    dest_airport["maps_url"] = f"https://www.google.com/maps/search/?api=1&query={requests.utils.quote(dest_airport['name'] + ' ' + dest_clean)}"
+
+    return {
+        "transport_mode": transport_mode,
+        "from_clean": from_clean,
+        "dest_clean": dest_clean,
+        "from_station": from_station,
+        "from_all_stations": from_all_stations,
+        "dest_station": dest_station,
+        "dest_all_stations": dest_all_stations,
+        "from_bus_stand": from_bus_stand,
+        "dest_bus_stand": dest_bus_stand,
+        "from_airport": from_airport,
+        "dest_airport": dest_airport,
+        "origin_last_mile": origin_last_mile,
+        "dest_last_mile": dest_last_mile,
+        "domain_links": domain_links
+    }
+
+
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("FLASK_SECRET_KEY", "change-this-development-key")
 
@@ -834,6 +1336,10 @@ def trip_from_form():
     short_dest = short_location(destination)
     short_encoded = requests.utils.quote(short_dest.lower())
 
+    transit_details = None
+    if transport_mode in ("train", "bus", "flight"):
+        transit_details = get_transit_hub_details(from_location, destination, transport_mode)
+
     return {
         "from_location": from_location,
         "from_short": short_location(from_location),
@@ -844,6 +1350,7 @@ def trip_from_form():
         "total_distance": round(total_distance, 2),
         "transport_mode": transport_mode,
         "transport_cost": round(transport_cost, 2),
+        "transit_details": transit_details,
         "fuel_type": fuel_type,
         "fuel_price": fuel_price,
         "fuel_cost": round(fuel_cost, 2),
@@ -1984,6 +2491,21 @@ def destination_options():
         "base_food": base_food,
         "base_room": base_room
     })
+
+
+@app.route("/api/transit_details")
+def api_transit_details():
+    from_place = request.args.get("from", "").strip()
+    destination = request.args.get("destination", "").strip()
+    mode = request.args.get("mode", "train").strip().lower()
+    if mode not in ("train", "bus", "flight"):
+        mode = "train"
+
+    if not from_place and not destination:
+        return jsonify({"error": "Please provide from or destination location"}), 400
+
+    details = get_transit_hub_details(from_place, destination, mode)
+    return jsonify(details)
 
 
 @app.route("/reverse_geocode")
