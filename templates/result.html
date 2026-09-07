@@ -40,6 +40,147 @@
       </div>
       {% endif %}
 
+      {% if transport_mode in ['train', 'bus', 'flight'] and transit_details %}
+      <div class="result-transit-card">
+        <div class="result-transit-header">
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <span class="result-transit-badge">
+              {% if transport_mode == 'train' %}🚆 Train Journey & Station Navigator
+              {% elif transport_mode == 'bus' %}🚌 Bus Transit & Terminal Navigator
+              {% else %}✈️ Flight & Airport Connectivity
+              {% endif %}
+            </span>
+            {% if transport_mode == 'train' %}
+            <span class="live-status-pill">📡 Where Is My Train Enabled</span>
+            {% endif %}
+          </div>
+          <p style="margin:6px 0 0; font-size:0.85rem; color:#64748b;">
+            Suitable stations, last-mile travel, live tracking and ticket availability for <strong>{{ from_short }} → {{ destination_short }}</strong>
+          </p>
+        </div>
+
+        <!-- Station Pairs -->
+        <div class="result-stations-grid">
+          <div class="result-station-item">
+            <div class="station-role">🟢 Departure {% if transport_mode == 'train' %}Railway Station{% elif transport_mode == 'bus' %}Bus Terminal{% else %}Airport{% endif %}</div>
+            <h3>
+              {% if transport_mode == 'train' %}{{ transit_details.from_station.name }} ({{ transit_details.from_station.code }})
+              {% elif transport_mode == 'bus' %}{{ transit_details.from_bus_stand.name }}
+              {% else %}{{ transit_details.from_airport.name }} ({{ transit_details.from_airport.code }})
+              {% endif %}
+            </h3>
+            <p>~{{ transit_details.from_station.distance_km if transport_mode == 'train' else (transit_details.from_bus_stand.distance_km if transport_mode == 'bus' else transit_details.from_airport.distance_km) }} km from departure location</p>
+            <a href="{{ transit_details.from_station.maps_url if transport_mode == 'train' else (transit_details.from_bus_stand.maps_url if transport_mode == 'bus' else transit_details.from_airport.maps_url) }}" target="_blank" rel="noopener" class="station-dir-btn">📍 Directions to Departure Hub ↗</a>
+          </div>
+
+          <div class="result-station-arrow">➔</div>
+
+          <div class="result-station-item">
+            <div class="station-role">🔴 Arrival {% if transport_mode == 'train' %}Railway Station{% elif transport_mode == 'bus' %}Bus Terminal{% else %}Airport{% endif %}</div>
+            <h3>
+              {% if transport_mode == 'train' %}{{ transit_details.dest_station.name }} ({{ transit_details.dest_station.code }})
+              {% elif transport_mode == 'bus' %}{{ transit_details.dest_bus_stand.name }}
+              {% else %}{{ transit_details.dest_airport.name }} ({{ transit_details.dest_airport.code }})
+              {% endif %}
+            </h3>
+            <p>~{{ transit_details.dest_station.distance_km if transport_mode == 'train' else (transit_details.dest_bus_stand.distance_km if transport_mode == 'bus' else transit_details.dest_airport.distance_km) }} km to destination center</p>
+            <a href="{{ transit_details.dest_station.maps_url if transport_mode == 'train' else (transit_details.dest_bus_stand.maps_url if transport_mode == 'bus' else transit_details.dest_airport.maps_url) }}" target="_blank" rel="noopener" class="station-dir-btn">📍 View Arrival Hub on Map ↗</a>
+          </div>
+        </div>
+
+        <!-- Which type of travel to get the station -->
+        <div class="result-lastmile-box">
+          <h4>🚀 Which type of travel to get to the station (Last-Mile Options):</h4>
+          <div class="result-lastmile-grid">
+            {% for item in transit_details.origin_last_mile %}
+            <div class="result-lastmile-card">
+              <div class="lastmile-icon-title">
+                <span style="font-size:1.4rem;">{{ item.icon }}</span>
+                <div>
+                  <strong>{{ item.mode }}</strong>
+                  <div style="font-size:0.75rem; color:#059669; font-weight:700;">{{ item.cost_est }} · {{ item.duration }}</div>
+                </div>
+              </div>
+              <p style="margin:6px 0 8px; font-size:0.75rem; color:#475569;">{{ item.desc }}</p>
+              <a href="{{ item.maps_url }}" target="_blank" rel="noopener" class="lastmile-map-link">📍 Directions to Station ↗</a>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Domain Availability & Live Tracking Section -->
+        <div class="result-domains-box">
+          <h4>⚡ Suitable Booking Domains & Live Availability:</h4>
+          <div class="result-domains-grid">
+            {% if transport_mode == 'train' %}
+            <a href="{{ transit_details.domain_links.where_is_my_train.url }}" target="_blank" rel="noopener" class="domain-card where-is-my-train-card">
+              <div class="domain-top"><span class="domain-icon">📡</span><strong>Where Is My Train</strong></div>
+              <span class="domain-badge-pill">Live Running Status</span>
+              <p>Check live train GPS running status, delays & platform numbers</p>
+              <span class="domain-link-btn">Check Live Train Status ↗</span>
+            </a>
+            <a href="{{ transit_details.domain_links.confirmtkt.url }}" target="_blank" rel="noopener" class="domain-card">
+              <div class="domain-top"><span class="domain-icon">🎟️</span><strong>ConfirmTkt</strong></div>
+              <span class="domain-badge-pill">Live Seat Availability</span>
+              <p>Check seat availability & waitlist confirmation chances</p>
+              <span class="domain-link-btn">Check Available Seats ↗</span>
+            </a>
+            <a href="{{ transit_details.domain_links.irctc.url }}" target="_blank" rel="noopener" class="domain-card">
+              <div class="domain-top"><span class="domain-icon">🏛️</span><strong>IRCTC Portal</strong></div>
+              <span class="domain-badge-pill">Official Booking</span>
+              <p>Direct Indian Railways official ticket booking portal</p>
+              <span class="domain-link-btn">Book on IRCTC ↗</span>
+            </a>
+            <a href="{{ transit_details.domain_links.railyatri.url }}" target="_blank" rel="noopener" class="domain-card">
+              <div class="domain-top"><span class="domain-icon">🕒</span><strong>RailYatri</strong></div>
+              <span class="domain-badge-pill">Timetable & PNR</span>
+              <p>View full train schedules, coach layout & PNR predictions</p>
+              <span class="domain-link-btn">View Timetable ↗</span>
+            </a>
+            {% elif transport_mode == 'bus' %}
+            <a href="{{ transit_details.domain_links.redbus.url }}" target="_blank" rel="noopener" class="domain-card redbus-card">
+              <div class="domain-top"><span class="domain-icon">🚌</span><strong>RedBus</strong></div>
+              <span class="domain-badge-pill">Live Bus Booking</span>
+              <p>Search real-time bus seats, AC Sleeper / Volvo and boarding points</p>
+              <span class="domain-link-btn">Check RedBus Seats ↗</span>
+            </a>
+            <a href="{{ transit_details.domain_links.abhibus.url }}" target="_blank" rel="noopener" class="domain-card">
+              <div class="domain-top"><span class="domain-icon">🎫</span><strong>AbhiBus</strong></div>
+              <span class="domain-badge-pill">RTC & Private Deals</span>
+              <p>State RTC & private operators with discount coupons</p>
+              <span class="domain-link-btn">Search on AbhiBus ↗</span>
+            </a>
+            <a href="{{ transit_details.domain_links.google_transit.url }}" target="_blank" rel="noopener" class="domain-card">
+              <div class="domain-top"><span class="domain-icon">🗺️</span><strong>Google Transit</strong></div>
+              <span class="domain-badge-pill">Public Bus Routes</span>
+              <p>Bus routes, transfer points and live schedule timings</p>
+              <span class="domain-link-btn">Open Transit Route ↗</span>
+            </a>
+            {% else %}
+            <a href="{{ transit_details.domain_links.google_flights.url }}" target="_blank" rel="noopener" class="domain-card google-flights-card">
+              <div class="domain-top"><span class="domain-icon">✈️</span><strong>Google Flights</strong></div>
+              <span class="domain-badge-pill">Live Flight Tracker</span>
+              <p>Compare nonstop flights, live prices and airline schedules</p>
+              <span class="domain-link-btn">Search Google Flights ↗</span>
+            </a>
+            <a href="{{ transit_details.domain_links.skyscanner.url }}" target="_blank" rel="noopener" class="domain-card">
+              <div class="domain-top"><span class="domain-icon">🛫</span><strong>Skyscanner</strong></div>
+              <span class="domain-badge-pill">Cheapest Fare Calendar</span>
+              <p>Compare fares across all airlines to find cheapest flight deals</p>
+              <span class="domain-link-btn">Compare on Skyscanner ↗</span>
+            </a>
+            <a href="{{ transit_details.domain_links.makemytrip_flights.url }}" target="_blank" rel="noopener" class="domain-card">
+              <div class="domain-top"><span class="domain-icon">🌐</span><strong>MakeMyTrip Flights</strong></div>
+              <span class="domain-badge-pill">Instant Deals</span>
+              <p>Domestic flight booking with student/defence/senior discounts</p>
+              <span class="domain-link-btn">Book on MakeMyTrip ↗</span>
+            </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
       <hr class="report-divider">
       <div class="insights"><div><div class="section-title"><h2>Where your money goes</h2><p>Expense breakdown</p></div><div class="chart-container"><canvas id="expenseChart"></canvas></div></div><div class="total-box"><h2>Total estimated budget</h2><h1>₹{{ '%.2f'|format(total_budget) }}</h1><p>₹{{ '%.2f'|format(cost_per_person) }} per traveler</p></div></div>
       <hr class="report-divider">
