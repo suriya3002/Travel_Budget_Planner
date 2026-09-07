@@ -382,10 +382,31 @@ body { font-family: 'Manrope', 'Segoe UI', sans-serif; background: #f3f7fb; colo
 @media (max-width: 600px) {
     .result-stations-grid {
         grid-template-columns: 1fr;
+        gap: 8px;
     }
     .result-station-arrow {
         transform: rotate(90deg);
         margin: -4px auto;
+    }
+    .route-waypoints-banner {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 8px !important;
+        padding: 10px 12px !important;
+    }
+    .chosen-badge-banner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+    .booking-partner-pills {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .booking-partner-pill {
+        justify-content: center;
+        width: 100%;
+        text-align: center;
     }
 }
 

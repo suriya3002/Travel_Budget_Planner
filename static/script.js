@@ -10,6 +10,7 @@ const placeAutocompletes = [];
 let oneWayRouteMinutes = 0;
 
 let destinationOptionsCache = null;
+let currentDestinationLoaded = null;
 const selectedTouristPlaces = new Set();
 const selectedFoodMeals = new Set();
 let selectedHotelTier = null;
@@ -31,6 +32,11 @@ function updateModeDescription() {
     description.textContent = "This will estimate your budget before the trip using planned expenses and destination estimates.";
 }
 
+function dismissDraftNotice() {
+    const banner = document.getElementById("draft_notice_banner");
+    if (banner) banner.style.display = "none";
+}
+
 function clearPlannerForm() {
     try {
         localStorage.removeItem("travelBudgetPlannerState");
@@ -45,11 +51,31 @@ function clearPlannerForm() {
     selectedFoodMeals.clear();
     selectedHotelTier = null;
     destinationOptionsCache = null;
+    currentDestinationLoaded = null;
+    if (typeof routeStops !== "undefined") routeStops = [];
 
     const distInput = document.getElementById("distance");
     if (distInput) distInput.value = "";
     const travelTimeInput = document.getElementById("travel_time");
     if (travelTimeInput) travelTimeInput.value = "";
+
+    const placesInput = document.getElementById("places_to_visit");
+    if (placesInput) placesInput.value = "";
+    const feeInput = document.getElementById("per_places_entry_fee");
+    if (feeInput) feeInput.value = "";
+    const foodCostInput = document.getElementById("food_cost_per_person");
+    if (foodCostInput) foodCostInput.value = "";
+    const roomCostInput = document.getElementById("room_cost");
+    if (roomCostInput) roomCostInput.value = "";
+
+    const hiddenPlaces = document.getElementById("selected_places_json");
+    if (hiddenPlaces) hiddenPlaces.value = "";
+    const hiddenMeals = document.getElementById("selected_meals_json");
+    if (hiddenMeals) hiddenMeals.value = "";
+    const hiddenHotel = document.getElementById("selected_hotel_json");
+    if (hiddenHotel) hiddenHotel.value = "";
+    const hiddenStops = document.getElementById("stops_json");
+    if (hiddenStops) hiddenStops.value = "[]";
 
     const distCard = document.getElementById("distance_card");
     if (distCard) distCard.textContent = "—";
@@ -59,10 +85,23 @@ function clearPlannerForm() {
     const tollHint = document.getElementById("toll_auto_hint");
     if (tollHint) tollHint.style.display = "none";
 
-    ["places_suggestions_section", "food_suggestions_section", "hotels_suggestions_section"].forEach(id => {
+    const placesPill = document.getElementById("places_summary_pill");
+    if (placesPill) { placesPill.textContent = ""; placesPill.style.display = "none"; }
+    const foodPill = document.getElementById("food_summary_pill");
+    if (foodPill) { foodPill.textContent = ""; foodPill.style.display = "none"; }
+
+    const stayEst = document.getElementById("stay_estimate");
+    if (stayEst) stayEst.textContent = "Choose a destination to get daily budget estimates.";
+
+    ["places_suggestions_section", "food_suggestions_section", "hotels_suggestions_section", "route_map", "gmaps_external_row", "transit_hub_section"].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = "none";
     });
+
+    dismissDraftNotice();
+
+    if (typeof renderRouteStops === "function") renderRouteStops();
+    if (typeof updateClearButtonsVisibility === "function") updateClearButtonsVisibility();
 
     currentStep = 1;
     document.querySelectorAll(".form-step").forEach((step, idx) => {
@@ -109,6 +148,7 @@ function loadPlannerState() {
     if (!raw) return;
     try {
         const state = JSON.parse(raw);
+        let hasData = false;
         Object.entries(state).forEach(([key, value]) => {
             if (key === "oneWayRouteMinutes") {
                 oneWayRouteMinutes = Number(value) || 0;
@@ -120,14 +160,21 @@ function loadPlannerState() {
             } else if (key === "routeStops" && Array.isArray(value)) {
                 routeStops = value;
                 renderRouteStops();
+                if (value.length > 0) hasData = true;
             } else {
                 const field = document.querySelector(`[name="${key}"]`);
-                if (field) field.value = value;
+                if (field) {
+                    field.value = value;
+                    if (value && String(value).trim() && !["1", "car", "no", "own", "20", "petrol"].includes(String(value))) {
+                        hasData = true;
+                    }
+                }
             }
         });
 
         const distanceValue = Number(document.getElementById("distance")?.value) || oneWayDistance || 0;
         if (distanceValue > 0) {
+            hasData = true;
             oneWayDistance = distanceValue;
             const roundTrip = document.getElementById("round_trip")?.value === "yes";
             const displayed = roundTrip ? distanceValue * 2 : distanceValue;
@@ -144,7 +191,14 @@ function loadPlannerState() {
 
         const destVal = document.getElementById("destination")?.value?.trim();
         if (destVal) {
+            hasData = true;
             fetchDestinationOptions(destVal);
+        }
+
+        // Show non-intrusive banner if an earlier draft was restored
+        const draftBanner = document.getElementById("draft_notice_banner");
+        if (draftBanner && hasData) {
+            draftBanner.style.display = "flex";
         }
     } catch (error) {
         console.warn("Could not restore saved planner state.", error);
@@ -594,10 +648,42 @@ async function calculateDistance() {
     } finally { setLoadingState(false); }
 }
 
-async function fetchDestinationOptions(destination) {
+async function fetchDestinationOptions(destination, forceReset = false) {
     if (!destination) return;
+    const cleanDest = destination.trim();
+    const isNewDest = forceReset || (currentDestinationLoaded && currentDestinationLoaded.toLowerCase() !== cleanDest.toLowerCase());
+
+    if (isNewDest) {
+        selectedTouristPlaces.clear();
+        selectedFoodMeals.clear();
+        selectedHotelTier = null;
+
+        const placesInput = document.getElementById("places_to_visit");
+        if (placesInput) placesInput.value = "";
+        const feeInput = document.getElementById("per_places_entry_fee");
+        if (feeInput) feeInput.value = "";
+        const foodCostInput = document.getElementById("food_cost_per_person");
+        if (foodCostInput) foodCostInput.value = "";
+        const roomCostInput = document.getElementById("room_cost");
+        if (roomCostInput) roomCostInput.value = "";
+
+        const hiddenPlaces = document.getElementById("selected_places_json");
+        if (hiddenPlaces) hiddenPlaces.value = "";
+        const hiddenMeals = document.getElementById("selected_meals_json");
+        if (hiddenMeals) hiddenMeals.value = "";
+        const hiddenHotel = document.getElementById("selected_hotel_json");
+        if (hiddenHotel) hiddenHotel.value = "";
+
+        const placesPill = document.getElementById("places_summary_pill");
+        if (placesPill) { placesPill.textContent = ""; placesPill.style.display = "none"; }
+        const foodPill = document.getElementById("food_summary_pill");
+        if (foodPill) { foodPill.textContent = ""; foodPill.style.display = "none"; }
+    }
+
+    currentDestinationLoaded = cleanDest;
+
     try {
-        const response = await fetch(`/destination_options?destination=${encodeURIComponent(destination)}`);
+        const response = await fetch(`/destination_options?destination=${encodeURIComponent(cleanDest)}`);
         if (!response.ok) return;
         const data = await response.json();
         destinationOptionsCache = data;
@@ -617,11 +703,11 @@ async function fetchDestinationOptions(destination) {
         // 4. Render Hotels Tiers and OYO / MMT Booking Links
         renderHotelTiers(data.hotels || [], data.links || {});
 
-        // Pre-fill initial defaults if fields are empty
+        // Pre-fill initial defaults if fields are empty or new destination was chosen
         const foodInput = document.getElementById("food_cost_per_person");
-        if (foodInput && !foodInput.value) foodInput.value = data.base_food;
+        if (foodInput && (!foodInput.value || isNewDest)) foodInput.value = data.base_food;
         const roomInput = document.getElementById("room_cost");
-        if (roomInput && !roomInput.value) roomInput.value = data.base_room;
+        if (roomInput && (!roomInput.value || isNewDest)) roomInput.value = data.base_room;
 
     } catch (err) {
         console.warn("Could not load destination options:", err);
@@ -1120,6 +1206,41 @@ function clearLocationInput(inputId) {
     } else if (inputId === "destination") {
         const box = document.getElementById("destination_suggestions");
         if (box) box.style.display = "none";
+
+        currentDestinationLoaded = null;
+        destinationOptionsCache = null;
+        selectedTouristPlaces.clear();
+        selectedFoodMeals.clear();
+        selectedHotelTier = null;
+
+        const placesInput = document.getElementById("places_to_visit");
+        if (placesInput) placesInput.value = "";
+        const feeInput = document.getElementById("per_places_entry_fee");
+        if (feeInput) feeInput.value = "";
+        const foodCostInput = document.getElementById("food_cost_per_person");
+        if (foodCostInput) foodCostInput.value = "";
+        const roomCostInput = document.getElementById("room_cost");
+        if (roomCostInput) roomCostInput.value = "";
+
+        const hiddenPlaces = document.getElementById("selected_places_json");
+        if (hiddenPlaces) hiddenPlaces.value = "";
+        const hiddenMeals = document.getElementById("selected_meals_json");
+        if (hiddenMeals) hiddenMeals.value = "";
+        const hiddenHotel = document.getElementById("selected_hotel_json");
+        if (hiddenHotel) hiddenHotel.value = "";
+
+        const placesPill = document.getElementById("places_summary_pill");
+        if (placesPill) { placesPill.textContent = ""; placesPill.style.display = "none"; }
+        const foodPill = document.getElementById("food_summary_pill");
+        if (foodPill) { foodPill.textContent = ""; foodPill.style.display = "none"; }
+
+        const stayEst = document.getElementById("stay_estimate");
+        if (stayEst) stayEst.textContent = "Choose a destination to get daily budget estimates.";
+
+        ["places_suggestions_section", "food_suggestions_section", "hotels_suggestions_section"].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = "none";
+        });
     }
 
     // Reset distance card & travel time if either is cleared
@@ -1529,7 +1650,7 @@ document.getElementById("from_location")?.addEventListener("change", () => {
 document.getElementById("destination")?.addEventListener("change", () => {
     updateClearButtonsVisibility();
     const dest = document.getElementById("destination")?.value?.trim();
-    if (dest) fetchDestinationOptions(dest);
+    if (dest) fetchDestinationOptions(dest, true);
     calculateDistance();
     savePlannerState();
 });
@@ -1548,6 +1669,22 @@ document.getElementById("transport_mode")?.addEventListener("change", () => {
 
 document.querySelectorAll("#planner_form input, #planner_form select").forEach(input => {
     input.addEventListener("change", savePlannerState);
+});
+
+// Clear stored draft upon submitting budget calculation so future sessions start fresh
+document.getElementById("planner_form")?.addEventListener("submit", () => {
+    try {
+        localStorage.removeItem("travelBudgetPlannerState");
+    } catch (_) {}
+});
+
+// Dismiss suggestions when user taps/clicks outside on mobile or desktop
+document.addEventListener("click", (e) => {
+    if (!e.target.closest(".gmap-input-group") && !e.target.closest(".suggestions")) {
+        document.querySelectorAll(".suggestions").forEach(box => {
+            box.style.display = "none";
+        });
+    }
 });
 
 window.onload = () => {
