@@ -1,5 +1,136 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Saved Trips · TravelBudget</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="{{ url_for('static', filename='trip.css') }}"></head>
-<body><main class="trips-shell"><header class="trips-header"><a href="/" class="brand">TravelBudget</a><nav><a href="/">Home</a><a class="plan-link" href="/planner?new=1">Plan a trip</a>{% if is_admin %}<a href="/admin">Admin</a>{% endif %}<form action="/logout" method="post"><button class="logout-btn" type="submit">Log out</button></form></nav></header><section class="trips-hero"><div><p class="eyebrow">Trip library</p><h1>Saved trips</h1><p>Keep your travel budgets organised and ready to adjust.</p></div><span class="trip-total">{{ total }}<small>saved</small></span></section>
-<form class="trip-search" method="get" action="/trips" role="search"><label for="trip_search">Find a trip</label><div><input id="trip_search" type="search" name="q" value="{{ search_query }}" placeholder="Destination or transport"><button type="submit">Search</button>{% if search_query %}<a href="/trips">Clear</a>{% endif %}</div></form>
-{% if trips %}<p class="trip-count">Showing {{ first_item }}–{{ first_item + trips|length - 1 }} of {{ total }} trip{{ '' if total == 1 else 's' }}</p><section class="trip-list">{% for trip in trips %}<article class="trip-card"><div class="trip-card-top"><div><p class="trip-date">Saved {{ trip['created_at'] if trip['created_at'] else 'recently' }}</p><h2>{{ trip['destination'] }}</h2></div><span class="mode-chip">{{ trip['transport_mode']|capitalize }}</span></div><div class="trip-stats"><span><b>{{ trip['travelers'] }}</b> travelers</span><span><b>{{ trip['total_distance'] or 0 }}</b> km</span><span><b>₹{{ '%.0f'|format(trip['cost_per_person'] or 0) }}</b> / person</span></div><div class="trip-card-bottom"><div><small>Total budget</small><strong>₹{{ '%.2f'|format(trip['total_budget'] or 0) }}</strong></div><div class="trip-actions"><a href="/edit/{{ trip['id'] }}">Edit</a><form action="/delete/{{ trip['id'] }}" method="post" onsubmit="return confirm('Delete this saved trip?')"><button type="submit">Delete</button></form></div></div></article>{% endfor %}</section>{% if total_pages > 1 %}<nav class="pagination" aria-label="Saved trip pages">{% if page > 1 %}<a href="{{ url_for('trips', q=search_query, page=page - 1) }}">← Previous</a>{% else %}<span>← Previous</span>{% endif %}<b>Page {{ page }} of {{ total_pages }}</b>{% if page < total_pages %}<a href="{{ url_for('trips', q=search_query, page=page + 1) }}">Next →</a>{% else %}<span>Next →</span>{% endif %}</nav>{% endif %}{% else %}<section class="empty-state"><h2>{% if search_query %}No trips found{% else %}No saved trips yet{% endif %}</h2><p>{% if search_query %}Try another destination or transport mode.{% else %}Create your first trip budget to see it here.{% endif %}</p><a href="{{ '/trips' if search_query else '/planner?new=1' }}">{{ 'Clear search' if search_query else 'Plan a trip' }}</a></section>{% endif %}</main></body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Saved Trips · TravelBudget</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='trip.css') }}">
+</head>
+<body>
+  <main class="trips-shell">
+    <header class="trips-header">
+      <a href="/" class="brand">
+        <span class="brand-icon">🌍</span>
+        <span class="brand-text">Travel<strong>Budget</strong></span>
+      </a>
+      <nav class="trips-nav">
+        <a href="/" class="nav-link home-link">Home</a>
+        <a class="plan-link" href="/planner?new=1">✈️ Plan a Trip</a>
+        {% if is_admin %}<a href="/admin" class="nav-link admin-link">⚙️ Admin</a>{% endif %}
+        <form action="/logout" method="post" class="logout-form">
+          <button class="logout-btn" type="submit">Sign Out</button>
+        </form>
+      </nav>
+    </header>
+
+    <section class="trips-hero">
+      <div class="hero-left">
+        <p class="eyebrow">Trip Library</p>
+        <h1>Saved Trips</h1>
+        <p class="hero-desc">Keep your itineraries, budgets, and travel plans organized in one place.</p>
+      </div>
+      <div class="trip-total-badge">
+        <span class="total-number">{{ total }}</span>
+        <small>Saved</small>
+      </div>
+    </section>
+
+    <!-- Search Box -->
+    <form class="trip-search" method="get" action="/trips" role="search">
+      <div class="search-inner">
+        <span class="search-icon">🔍</span>
+        <input id="trip_search" type="search" name="q" value="{{ search_query }}" placeholder="Search by destination, transport mode, or date...">
+        <button type="submit" class="search-btn">Search</button>
+        {% if search_query %}
+        <a href="/trips" class="clear-search-btn">Clear</a>
+        {% endif %}
+      </div>
+    </form>
+
+    {% if trips %}
+    <div class="trip-count-bar">
+      <span>Showing {{ first_item }}–{{ first_item + trips|length - 1 }} of <strong>{{ total }}</strong> trip{{ '' if total == 1 else 's' }}</span>
+    </div>
+
+    <section class="trip-list">
+      {% for trip in trips %}
+      <article class="trip-card">
+        <div class="trip-card-top">
+          <div>
+            <span class="trip-date">Saved {{ trip['created_at'] if trip['created_at'] else 'recently' }}</span>
+            <h2 title="{{ trip['destination'] }}">{{ trip['destination'] }}</h2>
+          </div>
+          <span class="mode-chip">
+            {% if trip['transport_mode'] == 'car' %}🚗 Driving
+            {% elif trip['transport_mode'] == 'bike' %}🏍️ Two-Wheeler
+            {% elif trip['transport_mode'] == 'bus' %}🚌 Bus
+            {% elif trip['transport_mode'] == 'train' %}🚆 Train
+            {% elif trip['transport_mode'] == 'flight' %}✈️ Flight
+            {% else %}🚶 {{ trip['transport_mode']|capitalize }}
+            {% endif %}
+          </span>
+        </div>
+
+        <div class="trip-stats">
+          <div class="stat-pill">
+            <span class="stat-icon">👥</span>
+            <span><b>{{ trip['travelers'] }}</b> traveler{{ '' if trip['travelers'] == 1 else 's' }}</span>
+          </div>
+          <div class="stat-pill">
+            <span class="stat-icon">📏</span>
+            <span><b>{{ trip['total_distance'] or 0 }}</b> km</span>
+          </div>
+          <div class="stat-pill">
+            <span class="stat-icon">💳</span>
+            <span><b>₹{{ '%.0f'|format(trip['cost_per_person'] or 0) }}</b> / person</span>
+          </div>
+        </div>
+
+        <div class="trip-card-bottom">
+          <div class="budget-meta">
+            <small>Total Estimated Budget</small>
+            <strong>₹{{ '%.2f'|format(trip['total_budget'] or 0) }}</strong>
+          </div>
+          <div class="trip-actions">
+            <a href="/edit/{{ trip['id'] }}" class="btn-edit-trip">✏️ Edit</a>
+            <form action="/delete/{{ trip['id'] }}" method="post" onsubmit="return confirm('Delete this saved trip?')">
+              <button type="submit" class="btn-delete-trip">🗑️ Delete</button>
+            </form>
+          </div>
+        </div>
+      </article>
+      {% endfor %}
+    </section>
+
+    {% if total_pages > 1 %}
+    <nav class="pagination" aria-label="Saved trip pages">
+      {% if page > 1 %}
+      <a href="{{ url_for('trips', q=search_query, page=page - 1) }}" class="page-link prev">← Previous</a>
+      {% else %}
+      <span class="page-link disabled">← Previous</span>
+      {% endif %}
+      <span class="page-current">Page <b>{{ page }}</b> of <b>{{ total_pages }}</b></span>
+      {% if page < total_pages %}
+      <a href="{{ url_for('trips', q=search_query, page=page + 1) }}" class="page-link next">Next →</a>
+      {% else %}
+      <span class="page-link disabled">Next →</span>
+      {% endif %}
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <section class="empty-state">
+      <div class="empty-icon">🗺️</div>
+      <h2>{% if search_query %}No matching trips found{% else %}No saved trips yet{% endif %}</h2>
+      <p>{% if search_query %}Try searching with another destination keyword or transport mode.{% else %}Plan and calculate your first trip budget to save it here.{% endif %}</p>
+      <a href="{{ '/trips' if search_query else '/planner?new=1' }}" class="btn-empty-action">
+        {{ 'Clear Search' if search_query else 'Start Planning a Trip' }}
+      </a>
+    </section>
+    {% endif %}
+  </main>
+</body>
+</html>
