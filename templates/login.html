@@ -1,44 +1,52 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Sign in · TravelBudget</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
-  </head>
-  <body>
-    <main class="auth-shell">
-      <a class="brand" href="/">TravelBudget</a>
-      <section class="auth-card">
-        <p class="eyebrow">Welcome back</p>
-        <h1>Sign in to your trips</h1>
-        <p class="intro">Access your saved budgets and keep planning.</p>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Sign in · TravelBudget</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
+</head>
+<body>
+  <main class="auth-shell">
+    <div class="auth-brand-wrap">
+      <a class="brand" href="/">
+        <span class="brand-globe">🌍</span>
+        <span>Travel<strong>Budget</strong></span>
+      </a>
+    </div>
+    <section class="auth-card">
+      <p class="eyebrow">Welcome Back</p>
+      <h1>Sign in to your trips</h1>
+      <p class="intro">Access your saved budgets, compare routes, and keep planning effortlessly.</p>
 
-        {% if error %}
-          <p class="error">{{ error }}</p>
-        {% endif %}
+      {% if error %}
+        <div class="error-badge">
+          <span>⚠️</span>
+          <span>{{ error }}</span>
+        </div>
+      {% endif %}
 
-        <form method="post">
-          <input type="hidden" name="next" value="{{ next_page }}">
+      <form method="post">
+        <input type="hidden" name="next" value="{{ next_page }}">
 
-          <label>
-            Email
-            <input type="email" name="email" autocomplete="email" required>
-          </label>
+        <label>
+          Email Address
+          <input type="email" name="email" placeholder="you@example.com" autocomplete="email" required>
+        </label>
 
-          <label>
-            Password
-            <input type="password" name="password" autocomplete="current-password" required>
-          </label>
+        <label>
+          Password
+          <input type="password" name="password" placeholder="••••••••" autocomplete="current-password" required>
+        </label>
 
-          <button type="submit">Sign in</button>
-        </form>
+        <button type="submit" class="auth-submit-btn">Sign In to Dashboard →</button>
+      </form>
 
-        <p class="switch">New to TravelBudget? <a href="/register">Create an account</a></p>
-      </section>
-    </main>
-  </body>
+      <p class="switch">New to TravelBudget? <a href="/register">Create a free account</a></p>
+    </section>
+  </main>
+</body>
 </html>
-

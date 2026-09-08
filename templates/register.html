@@ -1,47 +1,55 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Create account · TravelBudget</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
-  </head>
-  <body>
-    <main class="auth-shell">
-      <a class="brand" href="/">TravelBudget</a>
-      <section class="auth-card">
-        <p class="eyebrow">Start planning</p>
-        <h1>Create your account</h1>
-        <p class="intro">Save and manage all your trip budgets in one place.</p>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Create account · TravelBudget</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
+</head>
+<body>
+  <main class="auth-shell">
+    <div class="auth-brand-wrap">
+      <a class="brand" href="/">
+        <span class="brand-globe">🌍</span>
+        <span>Travel<strong>Budget</strong></span>
+      </a>
+    </div>
+    <section class="auth-card">
+      <p class="eyebrow">Start Planning Today</p>
+      <h1>Create your account</h1>
+      <p class="intro">Save and manage all your itineraries and trip budgets in one central place.</p>
 
-        {% if error %}
-          <p class="error">{{ error }}</p>
-        {% endif %}
+      {% if error %}
+        <div class="error-badge">
+          <span>⚠️</span>
+          <span>{{ error }}</span>
+        </div>
+      {% endif %}
 
-        <form method="post">
-          <label>
-            Name
-            <input type="text" name="name" autocomplete="name" required>
-          </label>
+      <form method="post">
+        <label>
+          Full Name
+          <input type="text" name="name" placeholder="John Doe" autocomplete="name" required>
+        </label>
 
-          <label>
-            Email
-            <input type="email" name="email" autocomplete="email" required>
-          </label>
+        <label>
+          Email Address
+          <input type="email" name="email" placeholder="you@example.com" autocomplete="email" required>
+        </label>
 
-          <label>
-            Password
-            <input type="password" name="password" autocomplete="new-password" minlength="8" required>
-          </label>
+        <label>
+          Password
+          <input type="password" name="password" placeholder="At least 8 characters" autocomplete="new-password" minlength="8" required>
+        </label>
 
-          <button type="submit">Create account</button>
-        </form>
+        <button type="submit" class="auth-submit-btn">Create Account & Get Started →</button>
+      </form>
 
-        <p class="switch">Already have an account? <a href="/login">Sign in</a></p>
-      </section>
-    </main>
-  </body>
+      <p class="switch">Already have an account? <a href="/login">Sign in here</a></p>
+    </section>
+  </main>
+</body>
 </html>
-

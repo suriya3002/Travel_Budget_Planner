@@ -2,13 +2,23 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>{{ destination }} · Trip budget</title>
+  <title>{{ destination }} · Trip Budget Report</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='result.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
+<header class="result-topbar">
+  <div class="result-topbar-inner">
+    <a href="/" class="brand-link">🌍 Travel<strong>Budget</strong></a>
+    <div class="result-topbar-actions">
+      <a href="/planner?new=1" class="topbar-btn">↺ Plan Fresh</a>
+      <a href="/trips" class="topbar-btn">📋 Saved Trips</a>
+      <button type="button" class="topbar-btn desktop-only" onclick="window.print()">🖨️ Print PDF</button>
+    </div>
+  </div>
+</header>
 <main class="container">
   <section id="report">
     <header class="report-hero" style="--trip-image: url('{{ image_url }}')">
@@ -359,27 +369,56 @@
       <hr class="report-divider"><div class="section-title"><h2>More on the route</h2><p>Popular waypoints, highway rest stops & scenic pauses along your journey</p></div><section id="attractions" class="attractions" data-origin="{{ from_location|e }}" data-destination="{{ destination|e }}"><p class="attractions-status">Finding route stops…</p></section>
     </div>
   </section>
-  <div class="button-group"><button type="button" onclick="shareReport()">Share report</button><button type="button" onclick="window.print()">Print / save PDF</button><button type="button" onclick="openRoute()">Open route</button></div>
-  <div class="action-center"><form action="{{ '/update_trip' if edit_mode else '/save_trips' }}" method="post" class="save-trip-container"><input type="hidden" name="from_result" value="1">{% if edit_mode %}<input type="hidden" name="trip_id" value="{{ trip_id }}">{% endif %}<input type="hidden" name="destination" value="{{ destination }}"><input type="hidden" name="travelers" value="{{ travelers }}"><input type="hidden" name="total_distance" value="{{ total_distance }}"><input type="hidden" name="transport_mode" value="{{ transport_mode }}"><input type="hidden" name="transport_cost" value="{{ transport_cost }}"><input type="hidden" name="fuel_type" value="{{ fuel_type }}"><input type="hidden" name="fuel_price" value="{{ fuel_price }}"><input type="hidden" name="fuel_cost" value="{{ fuel_cost }}"><input type="hidden" name="food_cost" value="{{ food_cost }}"><input type="hidden" name="room_cost" value="{{ room_cost }}"><input type="hidden" name="toll_charges" value="{{ toll_charges }}"><input type="hidden" name="parking_fee" value="{{ parking_fee }}"><input type="hidden" name="vehicle_type" value="{{ vehicle_type }}"><input type="hidden" name="vehicle_rental_cost" value="{{ vehicle_rental_cost }}"><input type="hidden" name="places_fee_total" value="{{ places_fee_total }}"><input type="hidden" name="total_budget" value="{{ total_budget }}"><input type="hidden" name="cost_per_person" value="{{ cost_per_person }}"><button type="submit">{{ 'Update saved trip' if edit_mode else 'Save this trip' }}</button></form></div>
+  <div class="result-action-deck">
+    <div class="button-group">
+      <button type="button" onclick="shareReport()" class="deck-btn">🔗 Share Report</button>
+      <button type="button" onclick="window.print()" class="deck-btn">🖨️ Print / Save PDF</button>
+      <button type="button" onclick="openRoute()" class="deck-btn">🗺️ Open in Google Maps</button>
+      <a class="deck-btn deck-btn-plan" href="/planner?new=1">↺ Plan Another Trip</a>
+    </div>
+    <div class="action-center">
+      <form action="{{ '/update_trip' if edit_mode else '/save_trips' }}" method="post" class="save-trip-container">
+        <input type="hidden" name="from_result" value="1">
+        {% if edit_mode %}<input type="hidden" name="trip_id" value="{{ trip_id }}">{% endif %}
+        <input type="hidden" name="destination" value="{{ destination }}">
+        <input type="hidden" name="travelers" value="{{ travelers }}">
+        <input type="hidden" name="total_distance" value="{{ total_distance }}">
+        <input type="hidden" name="transport_mode" value="{{ transport_mode }}">
+        <input type="hidden" name="transport_cost" value="{{ transport_cost }}">
+        <input type="hidden" name="fuel_type" value="{{ fuel_type }}">
+        <input type="hidden" name="fuel_price" value="{{ fuel_price }}">
+        <input type="hidden" name="fuel_cost" value="{{ fuel_cost }}">
+        <input type="hidden" name="food_cost" value="{{ food_cost }}">
+        <input type="hidden" name="room_cost" value="{{ room_cost }}">
+        <input type="hidden" name="toll_charges" value="{{ toll_charges }}">
+        <input type="hidden" name="parking_fee" value="{{ parking_fee }}">
+        <input type="hidden" name="vehicle_type" value="{{ vehicle_type }}">
+        <input type="hidden" name="vehicle_rental_cost" value="{{ vehicle_rental_cost }}">
+        <input type="hidden" name="places_fee_total" value="{{ places_fee_total }}">
+        <input type="hidden" name="total_budget" value="{{ total_budget }}">
+        <input type="hidden" name="cost_per_person" value="{{ cost_per_person }}">
+        <button type="submit" class="btn-primary-save">💾 {{ 'Update Saved Trip' if edit_mode else 'Save This Trip to Dashboard' }}</button>
+      </form>
+    </div>
+  </div>
 
   <!-- Feedback widget -->
   <div id="feedback-widget" style="position:fixed;right:18px;bottom:18px;z-index:40;">
-    <button id="feedback-toggle" onclick="toggleFeedbackForm()" title="Send feedback" style="background:#0b766d;color:#fff;border:none;border-radius:999px;width:52px;height:52px;box-shadow:0 6px 18px rgba(11,118,109,0.18);cursor:pointer;">✉️</button>
-    <form id="feedback-form" action="/feedback" method="post" style="display:none;min-width:320px;background:#fff;padding:12px;border-radius:8px;box-shadow:0 12px 30px rgba(0,0,0,0.12);margin-top:8px;">
+    <button id="feedback-toggle" onclick="toggleFeedbackForm()" title="Send feedback" style="background:#0d9488;color:#fff;border:none;border-radius:999px;width:52px;height:52px;box-shadow:0 6px 18px rgba(13,148,136,0.3);cursor:pointer;font-size:1.2rem;">✉️</button>
+    <form id="feedback-form" action="/feedback" method="post" style="display:none;min-width:320px;background:#fff;padding:16px;border-radius:14px;box-shadow:0 14px 35px rgba(0,0,0,0.18);margin-top:8px;border:1px solid #e2e8f0;">
       <input type="hidden" name="destination" value="{{ destination }}">
       {% if logged_in %}
       <input type="hidden" name="name" value="{{ user_name }}">
       <input type="hidden" name="email" value="">
       {% else %}
-      <div style="margin-bottom:8px;"><input name="name" placeholder="Your name" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;"/></div>
-      <div style="margin-bottom:8px;"><input name="email" placeholder="Your email (optional)" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;"/></div>
+      <div style="margin-bottom:8px;"><input name="name" placeholder="Your name" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:0.9rem;"/></div>
+      <div style="margin-bottom:8px;"><input name="email" placeholder="Your email (optional)" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:0.9rem;"/></div>
       {% endif %}
-      <div style="margin-bottom:8px;"><input name="subject" placeholder="Subject" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;"/></div>
-      <div style="margin-bottom:8px;"><textarea name="message" placeholder="Tell us what you liked or how we can improve" rows="4" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;"></textarea></div>
-      <div style="display:flex;gap:8px;justify-content:flex-end;"><button type="button" onclick="toggleFeedbackForm()" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;background:#fff;">Cancel</button><button type="submit" style="padding:8px 12px;border-radius:6px;border:none;background:#0b766d;color:#fff;">Send</button></div>
+      <div style="margin-bottom:8px;"><input name="subject" placeholder="Subject" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:0.9rem;"/></div>
+      <div style="margin-bottom:10px;"><textarea name="message" placeholder="Tell us what you liked or how we can improve" rows="4" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:0.9rem;"></textarea></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;"><button type="button" onclick="toggleFeedbackForm()" style="padding:9px 14px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;font-family:inherit;font-weight:600;cursor:pointer;">Cancel</button><button type="submit" style="padding:9px 16px;border-radius:8px;border:none;background:#0d9488;color:#fff;font-family:inherit;font-weight:700;cursor:pointer;">Send</button></div>
     </form>
   </div>
-  <a class="back-btn" href="/planner?new=1">Plan another trip</a>
 </main>
 <script>
 function toggleFeedbackForm(){const form=document.getElementById('feedback-form');if(!form)return;form.style.display=form.style.display==='none'?'block':'none';}

@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Travel Budget Planner</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
@@ -37,6 +38,7 @@
     <div class="step-dot active" data-step="1"><span>1</span><p>Trip</p></div>
     <div class="step-dot" data-step="2"><span>2</span><p>Route</p></div>
     <div class="step-dot" data-step="3"><span>3</span><p>Costs</p></div>
+</div>
 <!-- Draft restore alert banner -->
 <div id="draft_notice_banner" class="draft-notice-banner" style="display:none;">
     <div class="draft-notice-content">
