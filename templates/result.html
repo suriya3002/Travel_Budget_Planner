@@ -22,12 +22,12 @@
 <main class="container">
   <section id="report">
     <header class="report-hero" style="--trip-image: url('{{ image_url }}')">
-      <div class="hero-copy"><p class="eyebrow">Your trip budget</p><h1>{{ destination_short }}</h1><div class="hero-meta"><span>{{ from_short }} → {{ destination_short }}</span><span>{{ travelers }} traveler{{ '' if travelers == 1 else 's' }}</span><span>Planned estimate</span><span>{{ total_distance }} km total</span><span>{{ transport_mode|capitalize }} · {{ travel_time }}</span></div></div>
+      <div class="hero-copy"><p class="eyebrow">Your trip budget</p><h1>{{ destination_short }}</h1><div class="hero-meta"><span>{{ from_short }} → {{ destination_short }}</span><span>{{ travelers }} traveler{{ '' if travelers == 1 else 's' }}</span><span>Planned estimate</span><span>{{ total_distance }} km total</span><span>{{ transport_mode_display or transport_mode|capitalize }} · {{ travel_time }}</span></div></div>
     </header>
     <div class="result-card">
       <div class="section-title"><h2>Trip at a glance</h2><p>Calculated from your itinerary</p></div>
       <div class="summary-grid">
-        <div class="summary-item route-summary"><span>Route</span><strong>{{ from_short }} → {{ destination_short }}</strong></div><div class="summary-item"><span>Distance</span><strong>{{ total_distance }} km</strong></div><div class="summary-item"><span>Transport</span><strong>{{ transport_mode|capitalize }}</strong></div><div class="summary-item"><span>Travel time</span><strong>{{ travel_time }}</strong></div><div class="summary-item pollution-summary"><span>Estimated CO₂e</span><strong>{{ emissions_kg }} kg</strong><small>for this {{ total_distance }} km trip</small><div class="pollution-level"><span>Pollution level</span><b>{{ pollution_percent }}%</b></div><div class="pollution-meter" aria-label="Pollution level {{ pollution_percent }} percent"><i style="width: {{ pollution_percent }}%"></i></div></div>
+        <div class="summary-item route-summary"><span>Route</span><strong>{{ from_short }} → {{ destination_short }}</strong></div><div class="summary-item"><span>Distance</span><strong>{{ total_distance }} km</strong></div><div class="summary-item"><span>Transport</span><strong>{{ transport_mode_display or transport_mode|capitalize }}</strong></div><div class="summary-item"><span>Travel time</span><strong>{{ travel_time }}</strong></div><div class="summary-item pollution-summary"><span>Estimated CO₂e</span><strong>{{ emissions_kg }} kg</strong><small>for this {{ total_distance }} km trip</small><div class="pollution-level"><span>Pollution level</span><b>{{ pollution_percent }}%</b></div><div class="pollution-meter" aria-label="Pollution level {{ pollution_percent }} percent"><i style="width: {{ pollution_percent }}%"></i></div></div>
       </div>
 
       {% if stops and stops|length > 0 or avoid_tolls or avoid_highways or avoid_ferries %}
@@ -46,6 +46,41 @@
           {% if avoid_tolls %}<span style="background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; font-size:0.75rem; font-weight:700; padding:3px 8px; border-radius:6px;">🚫 Tolls Avoided (₹0)</span>{% endif %}
           {% if avoid_highways %}<span style="background:#fef2f2; color:#991b1b; border:1px solid #fecaca; font-size:0.75rem; font-weight:700; padding:3px 8px; border-radius:6px;">🛣️ Highways Avoided</span>{% endif %}
           {% if avoid_ferries %}<span style="background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; font-size:0.75rem; font-weight:700; padding:3px 8px; border-radius:6px;">⛴️ Ferries Avoided</span>{% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      {% if multi_breakdown and multi_breakdown|length > 0 %}
+      <div class="result-multi-card">
+        <div class="result-multi-header">
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <span class="result-multi-badge">👥 Multi-Transport Group Allocation</span>
+            <span class="live-status-pill">✓ {{ travelers }} Travelers Across {{ multi_breakdown|length }} Modes</span>
+          </div>
+          <p style="margin:6px 0 0; font-size:0.85rem; color:#64748b;">
+            Detailed vehicle allocation, member split, and transport expense breakdown for <strong>{{ from_short }} → {{ destination_short }}</strong>
+          </p>
+        </div>
+
+        <div class="result-multi-grid">
+          {% for item in multi_breakdown %}
+          <div class="result-multi-item">
+            <div class="result-multi-top">
+              <span class="result-multi-icon">{{ item.icon }}</span>
+              <div>
+                <strong style="display:block; font-size:1rem; color:#0f172a;">{{ item.title }}</strong>
+                <span class="result-multi-passengers">{{ item.travelers }} Member{% if item.travelers > 1 %}s{% endif %} · {{ item.vehicles }}</span>
+              </div>
+            </div>
+            <div class="result-multi-body">
+              <p class="result-multi-detail">{{ item.details }}</p>
+              <div class="result-multi-cost">
+                <span class="cost-label">Subtotal:</span>
+                <strong class="cost-val">₹{{ '%.2f'|format(item.cost) }}</strong>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
         </div>
       </div>
       {% endif %}
@@ -196,7 +231,13 @@
       <hr class="report-divider">
       <div class="section-title"><h2>Expense details</h2><p>Adjust your plan any time</p></div>
       <div class="summary-grid">
-        <div class="summary-item"><span>Transport / fuel</span><strong>₹{{ '%.2f'|format(transport_cost) }}</strong></div><div class="summary-item"><span>Food</span><strong>₹{{ '%.2f'|format(food_cost) }}</strong></div><div class="summary-item"><span>Stay</span><strong>₹{{ '%.2f'|format(room_cost) }}</strong></div><div class="summary-item"><span>Tolls</span><strong>₹{{ '%.2f'|format(toll_charges) }}</strong></div><div class="summary-item"><span>Parking</span><strong>₹{{ '%.2f'|format(parking_fee) }}</strong></div><div class="summary-item"><span>Entry fees</span><strong>₹{{ '%.2f'|format(places_fee_total) }}</strong></div>{% if vehicle_type == 'rental' %}<div class="summary-item"><span>Vehicle rental</span><strong>₹{{ '%.2f'|format(vehicle_rental_cost) }}</strong></div>{% endif %}
+        <div class="summary-item">
+          <span>Transport / fuel</span>
+          <strong>₹{{ '%.2f'|format(transport_cost) }}</strong>
+          {% if fuel_type and fuel_type != 'None' %}
+          <small style="color:#0284c7; font-weight:600; display:block; margin-top:3px;">{{ fuel_type }}</small>
+          {% endif %}
+        </div><div class="summary-item"><span>Food</span><strong>₹{{ '%.2f'|format(food_cost) }}</strong></div><div class="summary-item"><span>Stay</span><strong>₹{{ '%.2f'|format(room_cost) }}</strong></div><div class="summary-item"><span>Tolls</span><strong>₹{{ '%.2f'|format(toll_charges) }}</strong></div><div class="summary-item"><span>Parking</span><strong>₹{{ '%.2f'|format(parking_fee) }}</strong></div><div class="summary-item"><span>Entry fees</span><strong>₹{{ '%.2f'|format(places_fee_total) }}</strong></div>{% if vehicle_type == 'rental' %}<div class="summary-item"><span>Vehicle rental</span><strong>₹{{ '%.2f'|format(vehicle_rental_cost) }}</strong></div>{% endif %}
       </div>
       <hr class="report-divider"><div class="section-title"><h2>Compare transport options</h2><p>For the same trip distance</p></div>
       <div class="summary-grid"><div class="summary-item"><span>Bus</span><strong>₹{{ '%.2f'|format(bus_cost) }}</strong></div><div class="summary-item"><span>Train</span><strong>₹{{ '%.2f'|format(train_cost) }}</strong></div><div class="summary-item"><span>Flight</span><strong>₹{{ '%.2f'|format(flight_cost) }}</strong></div></div>
@@ -383,7 +424,7 @@
         <input type="hidden" name="destination" value="{{ destination }}">
         <input type="hidden" name="travelers" value="{{ travelers }}">
         <input type="hidden" name="total_distance" value="{{ total_distance }}">
-        <input type="hidden" name="transport_mode" value="{{ transport_mode }}">
+        <input type="hidden" name="transport_mode" value="{{ transport_mode_display or transport_mode }}">
         <input type="hidden" name="transport_cost" value="{{ transport_cost }}">
         <input type="hidden" name="fuel_type" value="{{ fuel_type }}">
         <input type="hidden" name="fuel_price" value="{{ fuel_price }}">

@@ -24,7 +24,7 @@
     <div class="top-bar-actions" style="display:flex; gap:10px; align-items:center;">
         <button type="button" class="clear-btn" onclick="clearPlannerForm()" title="Reset all fields and plan a fresh trip">↺ Start Fresh</button>
         <a href="/trips" class="saved-trips-btn">📋 Saved Trips</a>
-        {% if is_admin %}<a href="/admin" class="admin-link">⚙️ Admin</a>{% endif %}
+        {% if is_admin %}<a href="/admin" class="admin-link" title="Admin">⚙️</a>{% endif %}
     </div>
 </div>
 
@@ -61,7 +61,7 @@
     </div>
 
     <div class="field-group animate-in" style="--delay:0.1s">
-      <input type="number" name="travelers" id="travelers" min="1" value="1" required placeholder=" ">
+      <input type="number" name="travelers" id="travelers" min="0" value="0" placeholder="0" oninput="onMainTravelersInput()" required>
       <label for="travelers">Number of Travelers</label>
     </div>
 
@@ -73,8 +73,124 @@
         <option value="bus">🚌 Bus</option>
         <option value="train">🚆 Train</option>
         <option value="flight">✈️ Flight</option>
+        <option value="multi">👥 Multiple Transport Modes (e.g. 5 in Car + 2 on Bike)</option>
       </select>
       <label for="transport_mode">Transport Mode</label>
+    </div>
+
+    <!-- Multiple Transport Modes Split Card -->
+    <div id="multi_transport_section" class="section-card multi-transport-card slide-down" style="display:none">
+      <div class="multi-header">
+        <div class="multi-title-box">
+          <h3>👥 Group Transport Split</h3>
+          <p>Allocate members to each transport mode (e.g. 5 in Car, 2 on Bike)</p>
+        </div>
+        <span class="multi-total-badge" id="multi_travelers_badge">Total: 0 Travelers</span>
+      </div>
+
+      <div class="multi-modes-grid">
+        <!-- Car Row -->
+        <div class="multi-mode-row" data-mode="car">
+          <div class="multi-mode-info">
+            <span class="multi-mode-icon">🚗</span>
+            <div>
+              <strong>Car / Driving</strong>
+              <small id="car_vehicle_hint">0 Travelers (0 Cars)</small>
+            </div>
+          </div>
+          <div class="multi-stepper">
+            <button type="button" class="stepper-btn" onclick="adjustMultiTravelers('car', -1)">−</button>
+            <input type="number" id="travelers_car" name="travelers_car" min="0" value="0" class="stepper-val" oninput="onMultiTravelerInput()">
+            <button type="button" class="stepper-btn" onclick="adjustMultiTravelers('car', 1)">＋</button>
+          </div>
+        </div>
+
+        <!-- Bike Row -->
+        <div class="multi-mode-row" data-mode="bike">
+          <div class="multi-mode-info">
+            <span class="multi-mode-icon">🏍️</span>
+            <div>
+              <strong>Bike / Two-Wheeler</strong>
+              <small id="bike_vehicle_hint">0 Travelers (0 Bikes)</small>
+            </div>
+          </div>
+          <div class="multi-stepper">
+            <button type="button" class="stepper-btn" onclick="adjustMultiTravelers('bike', -1)">−</button>
+            <input type="number" id="travelers_bike" name="travelers_bike" min="0" value="0" class="stepper-val" oninput="onMultiTravelerInput()">
+            <button type="button" class="stepper-btn" onclick="adjustMultiTravelers('bike', 1)">＋</button>
+          </div>
+        </div>
+
+        <!-- Bus Row -->
+        <div class="multi-mode-row" data-mode="bus">
+          <div class="multi-mode-info">
+            <span class="multi-mode-icon">🚌</span>
+            <div>
+              <strong>Bus Transit</strong>
+              <small>Per-person ticket rate</small>
+            </div>
+          </div>
+          <div class="multi-stepper">
+            <button type="button" class="stepper-btn" onclick="adjustMultiTravelers('bus', -1)">−</button>
+            <input type="number" id="travelers_bus" name="travelers_bus" min="0" value="0" class="stepper-val" oninput="onMultiTravelerInput()">
+            <button type="button" class="stepper-btn" onclick="adjustMultiTravelers('bus', 1)">＋</button>
+          </div>
+        </div>
+
+        <!-- Train Row -->
+        <div class="multi-mode-row" data-mode="train">
+          <div class="multi-mode-info">
+            <span class="multi-mode-icon">🚆</span>
+            <div>
+              <strong>Train / Railway</strong>
+              <small>Per-person train fare</small>
+            </div>
+          </div>
+          <div class="multi-stepper">
+            <button type="button" class="stepper-btn" onclick="adjustMultiTravelers('train', -1)">−</button>
+            <input type="number" id="travelers_train" name="travelers_train" min="0" value="0" class="stepper-val" oninput="onMultiTravelerInput()">
+            <button type="button" class="stepper-btn" onclick="adjustMultiTravelers('train', 1)">＋</button>
+          </div>
+        </div>
+
+        <!-- Flight Row -->
+        <div class="multi-mode-row" data-mode="flight">
+          <div class="multi-mode-info">
+            <span class="multi-mode-icon">✈️</span>
+            <div>
+              <strong>Flight / Air</strong>
+              <small>Per-person flight fare</small>
+            </div>
+          </div>
+          <div class="multi-stepper">
+            <button type="button" class="stepper-btn" onclick="adjustMultiTravelers('flight', -1)">−</button>
+            <input type="number" id="travelers_flight" name="travelers_flight" min="0" value="0" class="stepper-val" oninput="onMultiTravelerInput()">
+            <button type="button" class="stepper-btn" onclick="adjustMultiTravelers('flight', 1)">＋</button>
+          </div>
+        </div>
+
+        <!-- Walk Row -->
+        <div class="multi-mode-row" data-mode="walk">
+          <div class="multi-mode-info">
+            <span class="multi-mode-icon">🚶</span>
+            <div>
+              <strong>Walking</strong>
+              <small>Zero transport cost</small>
+            </div>
+          </div>
+          <div class="multi-stepper">
+            <button type="button" class="stepper-btn" onclick="adjustMultiTravelers('walk', -1)">−</button>
+            <input type="number" id="travelers_walk" name="travelers_walk" min="0" value="0" class="stepper-val" oninput="onMultiTravelerInput()">
+            <button type="button" class="stepper-btn" onclick="adjustMultiTravelers('walk', 1)">＋</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="multi-summary-callout" id="multi_summary_callout">
+        <span>💡 Allocation:</span> <em>Enter number of travelers above to allocate vehicles</em>
+      </div>
+      <input type="hidden" name="cars_count" id="cars_count" value="0">
+      <input type="hidden" name="bikes_count" id="bikes_count" value="0">
     </div>
 
     <div id="bus_options" class="section-card slide-down" style="display:none">
@@ -203,7 +319,13 @@
         <!-- Intermediate Stops (Waypoints) Container -->
         <div id="stops_container" class="gmap-stops-container"></div>
 
-        <div class="gmap-inputs-divider"></div>
+        <!-- Reverse Direction Button & Divider (From ⇄ To, To ⇄ From) -->
+        <div class="gmap-reverse-divider">
+          <button type="button" class="gmap-reverse-badge-btn" onclick="swapLocations()" title="Reverse direction: From ⇄ To, To ⇄ From">
+            <span class="reverse-symbol">⇄</span>
+            <span class="reverse-text">Reverse (From ⇄ To)</span>
+          </button>
+        </div>
 
         <!-- Destination Location -->
         <div class="gmap-input-group">
@@ -220,10 +342,8 @@
 
       <!-- Right Swap Button Column -->
       <div class="gmap-swap-col">
-        <button type="button" class="gmap-swap-btn" id="gmap_swap_btn" onclick="swapLocations()" title="Reverse / Swap starting point and destination">
-          <svg class="gmap-swap-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M7 16V4m0 0L3 8m4-4l4 4m6 4v12m0 0l4-4m-4 4l-4-4"/>
-          </svg>
+        <button type="button" class="gmap-swap-btn" id="gmap_swap_btn" onclick="swapLocations()" title="Reverse direction: From ⇄ To, To ⇄ From">
+          <span class="gmap-swap-symbol">⇄</span>
         </button>
       </div>
     </div>
@@ -445,17 +565,34 @@
           <input type="number" step="0.01" name="parking_fee" id="parking_fee" value="" min="0" placeholder=" ">
           <label>Parking Fee (₹)</label>
         </div>
-        <div class="field-group" id="fuel_section">
+        <!-- Car Fuel & Mileage -->
+        <div class="field-group" id="car_mileage_group">
           <input type="number" step="0.01" name="mileage" id="mileage" value="20" min="1" placeholder=" ">
-          <label>Mileage (km/l)</label>
+          <label id="mileage_label">Car Mileage (km/l)</label>
         </div>
-        <div class="field-group" id="fuel_type_group">
-          <select name="fuel_type">
-            <option value="petrol">Petrol (₹108.85/L)</option>
+        <div class="field-group" id="car_fuel_type_group">
+          <select name="car_fuel_type" id="car_fuel_type">
+            <option value="petrol" selected>Petrol (₹108.85/L)</option>
             <option value="diesel">Diesel (₹101.60/L)</option>
+            <option value="cng">CNG (₹86.50/kg)</option>
+            <option value="ev">Electric / EV (₹7.50/kWh)</option>
           </select>
-          <label>Fuel Type</label>
+          <label>Car Fuel Type</label>
         </div>
+
+        <!-- Bike Fuel & Mileage -->
+        <div class="field-group" id="bike_mileage_group" style="display:none">
+          <input type="number" step="0.01" name="bike_mileage" id="bike_mileage" value="45" min="1" placeholder=" ">
+          <label id="bike_mileage_label">Bike Mileage (km/l)</label>
+        </div>
+        <div class="field-group" id="bike_fuel_type_group" style="display:none">
+          <select name="bike_fuel_type" id="bike_fuel_type">
+            <option value="petrol" selected>Petrol (₹108.85/L)</option>
+            <option value="ev">Electric / EV (₹7.00/kWh)</option>
+          </select>
+          <label>Bike Fuel Type</label>
+        </div>
+        <input type="hidden" name="fuel_type" id="legacy_fuel_type" value="petrol">
       </div>
     </div>
 

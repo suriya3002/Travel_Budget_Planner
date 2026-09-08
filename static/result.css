@@ -494,4 +494,121 @@ body { font-family: 'Plus Jakarta Sans', 'Manrope', 'Segoe UI', sans-serif; back
     }
 }
 
+/* ===== Multi-Transport Allocation Result Card ===== */
+.result-multi-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 20px;
+    margin: 18px 0 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
 
+.result-multi-header {
+    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 14px;
+    margin-bottom: 16px;
+}
+
+.result-multi-badge {
+    background: linear-gradient(135deg, #0284c7, #0369a1);
+    color: #ffffff;
+    font-size: 0.82rem;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 999px;
+    letter-spacing: 0.3px;
+}
+
+.result-multi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+}
+
+.result-multi-item {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: all 0.2s ease;
+}
+
+.result-multi-item:hover {
+    border-color: #38bdf8;
+    box-shadow: 0 6px 18px rgba(2, 132, 199, 0.08);
+    transform: translateY(-2px);
+}
+
+.result-multi-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.result-multi-icon {
+    font-size: 1.6rem;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #e0f2fe;
+    border-radius: 10px;
+    flex-shrink: 0;
+}
+
+.result-multi-passengers {
+    display: inline-block;
+    font-size: 0.78rem;
+    color: #0369a1;
+    font-weight: 700;
+    background: #e0f2fe;
+    padding: 2px 8px;
+    border-radius: 6px;
+    margin-top: 3px;
+}
+
+.result-multi-body {
+    border-top: 1px dashed #cbd5e1;
+    padding-top: 10px;
+    margin-top: auto;
+}
+
+.result-multi-detail {
+    margin: 0 0 8px;
+    font-size: 0.78rem;
+    color: #64748b;
+    line-height: 1.4;
+}
+
+.result-multi-cost {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.result-multi-cost .cost-label {
+    font-size: 0.78rem;
+    color: #64748b;
+    font-weight: 600;
+}
+
+.result-multi-cost .cost-val {
+    font-size: 1.1rem;
+    color: #059669;
+    font-weight: 800;
+}
+
+@media (max-width: 600px) {
+    .result-multi-card {
+        padding: 14px;
+    }
+    .result-multi-grid {
+        grid-template-columns: 1fr;
+    }
+}

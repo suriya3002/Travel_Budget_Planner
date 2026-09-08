@@ -69,7 +69,9 @@
             {% elif trip['transport_mode'] == 'bus' %}🚌 Bus
             {% elif trip['transport_mode'] == 'train' %}🚆 Train
             {% elif trip['transport_mode'] == 'flight' %}✈️ Flight
-            {% else %}🚶 {{ trip['transport_mode']|capitalize }}
+            {% elif trip['transport_mode'] == 'walk' %}🚶 Walking
+            {% elif 'multi' in trip['transport_mode']|lower %}👥 {{ trip['transport_mode'] }}
+            {% else %}🚗 {{ trip['transport_mode'] }}
             {% endif %}
           </span>
         </div>

@@ -29,6 +29,20 @@ INDIAN_CITY_SUGGESTIONS = (
 ENTRY_FEE_BY_TIER = {"premium": 250, "mid": 150, "standard": 80}
 HOTEL_PRICE_MULTIPLIERS = {0: 0.75, 1: 0.9, 2: 1.0, 3: 1.45, 4: 2.2}
 
+CAR_FUEL_PRICES = {
+    "petrol": 108.85,
+    "diesel": 101.60,
+    "cng": 86.50,
+    "ev": 7.50,
+    "electric": 7.50,
+}
+
+BIKE_FUEL_PRICES = {
+    "petrol": 108.85,
+    "ev": 7.00,
+    "electric": 7.00,
+}
+
 
 def location_cost_estimate(destination):
     """Daily INR budget estimate by destination tier; users can edit it."""
@@ -1125,16 +1139,150 @@ def trip_from_form():
     vehicle_cost = vehicle_rental_cost if vehicle_type == "rental" else 0
     parking_fee = get_float("parking_fee")
     mileage = get_float("mileage")
-    fuel_type = request.form.get("fuel_type", "petrol")
-    fuel_price = 108.85 if fuel_type == "petrol" else 101.60
+    car_fuel_type = request.form.get("car_fuel_type") or request.form.get("fuel_type", "petrol")
+    bike_fuel_type = request.form.get("bike_fuel_type", "petrol")
+    car_fuel_price = CAR_FUEL_PRICES.get(car_fuel_type.lower(), 108.85)
+    bike_fuel_price = BIKE_FUEL_PRICES.get(bike_fuel_type.lower(), 108.85)
+
     transport_mode = request.form.get("transport_mode", "car")
+    travelers_car = get_int("travelers_car")
+    travelers_bike = get_int("travelers_bike")
+    travelers_bus = get_int("travelers_bus")
+    travelers_train = get_int("travelers_train")
+    travelers_flight = get_int("travelers_flight")
+    travelers_walk = get_int("travelers_walk")
+    cars_count = get_int("cars_count")
+    bikes_count = get_int("bikes_count")
+    bike_mileage = get_float("bike_mileage") or 45.0
+    car_mileage = mileage if mileage > 0 else 15.0
+
     transport_cost = 0.0
     fuel_cost = 0.0
+    multi_breakdown = []
+    transport_mode_display = transport_mode.capitalize()
+    fuel_type = f"Car: {car_fuel_type.capitalize()}" if transport_mode == "car" else f"Bike: {bike_fuel_type.capitalize()}"
+    fuel_price = car_fuel_price if transport_mode == "car" else bike_fuel_price
 
-    if transport_mode == "walk":
+    if transport_mode == "multi":
+        multi_total = (
+            travelers_car + travelers_bike + travelers_bus +
+            travelers_train + travelers_flight + travelers_walk
+        )
+        if multi_total > 0:
+            travelers = multi_total
+
+        # Vehicles needed based on seats
+        actual_cars = max(cars_count, (travelers_car + 3) // 4 if travelers_car > 0 else 0)
+        actual_bikes = max(bikes_count, (travelers_bike + 1) // 2 if travelers_bike > 0 else 0)
+
+        car_fuel = ((total_distance / car_mileage) * car_fuel_price * actual_cars) if (car_mileage > 0 and actual_cars > 0) else 0.0
+        bike_fuel = ((total_distance / bike_mileage) * bike_fuel_price * actual_bikes) if (bike_mileage > 0 and actual_bikes > 0) else 0.0
+
+        bus_rate = get_float("bus_type") or 0.835
+        bus_m_cost = total_distance * bus_rate * travelers_bus
+
+        train_rate = get_float("train_type") or 0.40
+        train_m_cost = total_distance * train_rate * travelers_train
+
+        flight_rate = get_float("flight_type") or 4.75
+        flight_m_cost = total_distance * flight_rate * travelers_flight
+
+        fuel_desc_parts = []
+        if actual_cars > 0:
+            fuel_desc_parts.append(f"Car: {car_fuel_type.capitalize()}")
+        if actual_bikes > 0:
+            fuel_desc_parts.append(f"Bike: {bike_fuel_type.capitalize()}")
+        fuel_type = ", ".join(fuel_desc_parts) if fuel_desc_parts else f"Car: {car_fuel_type.capitalize()}"
+        fuel_price = car_fuel_price
+
+        summary_parts = []
+        if travelers_car > 0:
+            summary_parts.append(f"{travelers_car} Car")
+            multi_breakdown.append({
+                "mode": "car",
+                "icon": "🚗",
+                "title": "Car / Driving",
+                "travelers": travelers_car,
+                "vehicles": f"{actual_cars} Car{'s' if actual_cars > 1 else ''}",
+                "cost": round(car_fuel, 2),
+                "details": f"{actual_cars} Car{'s' if actual_cars > 1 else ''} • {car_mileage} km/l • {car_fuel_type.capitalize()} @ ₹{car_fuel_price} • Fuel: ₹{round(car_fuel, 2)}"
+            })
+        if travelers_bike > 0:
+            summary_parts.append(f"{travelers_bike} Bike")
+            multi_breakdown.append({
+                "mode": "bike",
+                "icon": "🏍️",
+                "title": "Bike / Two-Wheeler",
+                "travelers": travelers_bike,
+                "vehicles": f"{actual_bikes} Bike{'s' if actual_bikes > 1 else ''}",
+                "cost": round(bike_fuel, 2),
+                "details": f"{actual_bikes} Bike{'s' if actual_bikes > 1 else ''} • {bike_mileage} km/l • {bike_fuel_type.capitalize()} @ ₹{bike_fuel_price} • Fuel: ₹{round(bike_fuel, 2)}"
+            })
+        if travelers_bus > 0:
+            summary_parts.append(f"{travelers_bus} Bus")
+            multi_breakdown.append({
+                "mode": "bus",
+                "icon": "🚌",
+                "title": "Bus Transit",
+                "travelers": travelers_bus,
+                "vehicles": f"{travelers_bus} Seat{'s' if travelers_bus > 1 else ''}",
+                "cost": round(bus_m_cost, 2),
+                "details": f"₹{round(bus_rate, 2)}/km per passenger"
+            })
+        if travelers_train > 0:
+            summary_parts.append(f"{travelers_train} Train")
+            multi_breakdown.append({
+                "mode": "train",
+                "icon": "🚆",
+                "title": "Train / Railway",
+                "travelers": travelers_train,
+                "vehicles": f"{travelers_train} Seat{'s' if travelers_train > 1 else ''}",
+                "cost": round(train_m_cost, 2),
+                "details": f"₹{round(train_rate, 2)}/km per passenger"
+            })
+        if travelers_flight > 0:
+            summary_parts.append(f"{travelers_flight} Flight")
+            multi_breakdown.append({
+                "mode": "flight",
+                "icon": "✈️",
+                "title": "Flight / Air",
+                "travelers": travelers_flight,
+                "vehicles": f"{travelers_flight} Seat{'s' if travelers_flight > 1 else ''}",
+                "cost": round(flight_m_cost, 2),
+                "details": f"₹{round(flight_rate, 2)}/km per passenger"
+            })
+        if travelers_walk > 0:
+            summary_parts.append(f"{travelers_walk} Walking")
+            multi_breakdown.append({
+                "mode": "walk",
+                "icon": "🚶",
+                "title": "Walking",
+                "travelers": travelers_walk,
+                "vehicles": f"{travelers_walk} Walker{'s' if travelers_walk > 1 else ''}",
+                "cost": 0.0,
+                "details": "Zero transport expense"
+            })
+
+        if summary_parts:
+            transport_mode_display = f"Multi ({', '.join(summary_parts)})"
+        else:
+            transport_mode_display = "Multiple Transport Modes"
+        fuel_cost = car_fuel + bike_fuel
+        transport_cost = car_fuel + bike_fuel + bus_m_cost + train_m_cost + flight_m_cost
+    elif transport_mode == "walk":
         transport_cost = 0.0
-    elif transport_mode in ("bike", "car"):
-        fuel_cost = (total_distance / mileage * fuel_price) if mileage > 0 else 0.0
+        fuel_cost = 0.0
+        fuel_type = "None"
+        fuel_price = 0.0
+    elif transport_mode == "car":
+        fuel_price = car_fuel_price
+        fuel_type = f"Car ({car_fuel_type.capitalize()})"
+        fuel_cost = (total_distance / mileage * car_fuel_price) if mileage > 0 else 0.0
+        transport_cost = fuel_cost
+    elif transport_mode == "bike":
+        fuel_price = bike_fuel_price
+        fuel_type = f"Bike ({bike_fuel_type.capitalize()})"
+        fuel_cost = (total_distance / (bike_mileage if bike_mileage > 0 else 45) * bike_fuel_price)
         transport_cost = fuel_cost
     elif transport_mode == "bus":
         rate = get_float("bus_type") or 0.835
@@ -1234,10 +1382,21 @@ def trip_from_form():
     # result page from showing a differently rounded/recalculated value.
     travel_time = request.form.get("travel_time", "").strip()
     if not travel_time:
-        travel_time = calculate_travel_time(total_distance, transport_mode)
-    emissions_kg = calculate_emissions(total_distance, transport_mode)
-    # A simple, distance-sensitive impact indicator: 100 kg CO2e equals 100%.
-    pollution_percent = min(round(emissions_kg, 1), 100)
+        travel_time = calculate_travel_time(total_distance, "car" if transport_mode == "multi" else transport_mode)
+
+    if transport_mode == "multi":
+        multi_emissions = total_distance * (
+            travelers_car * 0.192 +
+            travelers_bike * 0.103 +
+            travelers_bus * 0.105 +
+            travelers_train * 0.041 +
+            travelers_flight * 0.255
+        )
+        emissions_kg = round(multi_emissions, 2)
+        pollution_percent = min(round(emissions_kg / (travelers if travelers > 0 else 1), 1), 100)
+    else:
+        emissions_kg = calculate_emissions(total_distance, transport_mode)
+        pollution_percent = min(round(emissions_kg, 1), 100)
     comparison_costs = {
         "walk": 0,
         "bike": round((total_distance / (mileage if mileage > 0 else 45)) * fuel_price, 2),
@@ -1349,6 +1508,8 @@ def trip_from_form():
         "trip_days": trip_days,
         "total_distance": round(total_distance, 2),
         "transport_mode": transport_mode,
+        "transport_mode_display": transport_mode_display,
+        "multi_breakdown": multi_breakdown,
         "transport_cost": round(transport_cost, 2),
         "transit_details": transit_details,
         "fuel_type": fuel_type,
@@ -1417,7 +1578,7 @@ def save_trip_data(data, user_id):
             data["destination"],
             data["travelers"],
             data["total_distance"],
-            data["transport_mode"],
+            data.get("transport_mode_display") or data.get("transport_mode", "car"),
             data["transport_cost"],
             data["fuel_type"],
             data["fuel_price"],
@@ -1454,7 +1615,7 @@ def update_trip_data(trip_id, data, user_id):
             data["destination"],
             data["travelers"],
             data["total_distance"],
-            data["transport_mode"],
+            data.get("transport_mode_display") or data.get("transport_mode", "car"),
             data["transport_cost"],
             data["fuel_type"],
             data["fuel_price"],

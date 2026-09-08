@@ -93,9 +93,20 @@ function clearPlannerForm() {
     const stayEst = document.getElementById("stay_estimate");
     if (stayEst) stayEst.textContent = "Choose a destination to get daily budget estimates.";
 
-    ["places_suggestions_section", "food_suggestions_section", "hotels_suggestions_section", "route_map", "gmaps_external_row", "transit_hub_section"].forEach(id => {
+    ["places_suggestions_section", "food_suggestions_section", "hotels_suggestions_section", "route_map", "gmaps_external_row", "transit_hub_section", "multi_transport_section"].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = "none";
+    });
+
+    const travelersInp = document.getElementById("travelers");
+    if (travelersInp) travelersInp.value = "0";
+    const carInp = document.getElementById("travelers_car");
+    if (carInp) carInp.value = "0";
+    const bikeInp = document.getElementById("travelers_bike");
+    if (bikeInp) bikeInp.value = "0";
+    ["bus", "train", "flight", "walk"].forEach(m => {
+        const inp = document.getElementById(`travelers_${m}`);
+        if (inp) inp.value = "0";
     });
 
     dismissDraftNotice();
@@ -119,7 +130,10 @@ function savePlannerState() {
         "distance", "travel_time", "places_to_visit", "per_places_entry_fee",
         "food_cost_per_person", "room_cost", "trip_days", "vehicle_type",
         "vehicle_rental_cost", "parking_fee", "mileage", "fuel_type",
-        "bus_type", "train_type", "flight_type", "toll_charges"
+        "bus_type", "train_type", "flight_type", "toll_charges",
+        "travelers_car", "travelers_bike", "travelers_bus", "travelers_train",
+        "travelers_flight", "travelers_walk", "bike_mileage", "cars_count", "bikes_count",
+        "car_fuel_type", "bike_fuel_type"
     ];
     const state = {};
     fields.forEach(name => {
@@ -347,6 +361,99 @@ function updateBusFareHint() { updateFareHint("bus_type", "bus_hint"); }
 function updateTrainFareHint() { updateFareHint("train_type", "train_hint"); }
 function updateFlightFareHint() { updateFareHint("flight_type", "flight_hint"); }
 
+function adjustMultiTravelers(mode, delta) {
+    const input = document.getElementById(`travelers_${mode}`);
+    if (!input) return;
+    let val = Math.max(0, (parseInt(input.value, 10) || 0) + delta);
+    input.value = val;
+    onMultiTravelerInput();
+}
+
+function onMainTravelersInput() {
+    savePlannerState();
+}
+
+function onMultiTravelerInput() {
+    const modes = ["car", "bike", "bus", "train", "flight", "walk"];
+    let total = 0;
+    const parts = [];
+    const counts = {};
+
+    modes.forEach(m => {
+        const inp = document.getElementById(`travelers_${m}`);
+        const cnt = Math.max(0, parseInt(inp?.value, 10) || 0);
+        counts[m] = cnt;
+        total += cnt;
+    });
+
+    const mainTravelers = document.getElementById("travelers");
+    if (mainTravelers) {
+        mainTravelers.value = total;
+    }
+
+    const badge = document.getElementById("multi_travelers_badge");
+    if (badge) {
+        badge.textContent = `Total: ${total} Traveler${total === 1 ? '' : 's'}`;
+    }
+
+    // Vehicle calculations: only show non-zero when members are allocated
+    const carsCount = counts.car > 0 ? Math.max(1, Math.ceil(counts.car / 4)) : 0;
+    const bikesCount = counts.bike > 0 ? Math.max(1, Math.ceil(counts.bike / 2)) : 0;
+
+    const carsInput = document.getElementById("cars_count");
+    if (carsInput) carsInput.value = carsCount;
+    const bikesInput = document.getElementById("bikes_count");
+    if (bikesInput) bikesInput.value = bikesCount;
+
+    const carHint = document.getElementById("car_vehicle_hint");
+    if (carHint) {
+        carHint.textContent = counts.car > 0 
+            ? `${carsCount} Car${carsCount > 1 ? 's' : ''} (for ${counts.car} member${counts.car > 1 ? 's' : ''})`
+            : '0 Travelers (0 Cars)';
+    }
+
+    const bikeHint = document.getElementById("bike_vehicle_hint");
+    if (bikeHint) {
+        bikeHint.textContent = counts.bike > 0 
+            ? `${bikesCount} Bike${bikesCount > 1 ? 's' : ''} (for ${counts.bike} member${counts.bike > 1 ? 's' : ''})`
+            : '0 Travelers (0 Bikes)';
+    }
+
+    if (counts.car > 0) parts.push(`${counts.car} in Car (${carsCount} Car${carsCount > 1 ? 's' : ''})`);
+    if (counts.bike > 0) parts.push(`${counts.bike} on Bike (${bikesCount} Bike${bikesCount > 1 ? 's' : ''})`);
+    if (counts.bus > 0) parts.push(`${counts.bus} in Bus`);
+    if (counts.train > 0) parts.push(`${counts.train} on Train`);
+    if (counts.flight > 0) parts.push(`${counts.flight} on Flight`);
+    if (counts.walk > 0) parts.push(`${counts.walk} Walking`);
+
+    const callout = document.getElementById("multi_summary_callout");
+    if (callout) {
+        callout.innerHTML = parts.length > 0 
+            ? `<span>💡 Allocation:</span> <strong>${parts.join(', ')}</strong>`
+            : `<span>💡 Allocation:</span> <em>Enter number of travelers above to allocate vehicles</em>`;
+    }
+
+    // Toggle Car and Bike mileage & fuel type visibility dynamically
+    const carMileageGroup = document.getElementById("car_mileage_group");
+    const carFuelGroup = document.getElementById("car_fuel_type_group");
+    const bikeMileageGroup = document.getElementById("bike_mileage_group");
+    const bikeFuelGroup = document.getElementById("bike_fuel_type_group");
+
+    if (carMileageGroup) carMileageGroup.style.display = (counts.car > 0 || total === 0) ? "block" : "none";
+    if (carFuelGroup) carFuelGroup.style.display = (counts.car > 0 || total === 0) ? "block" : "none";
+    if (bikeMileageGroup) bikeMileageGroup.style.display = counts.bike > 0 ? "block" : "none";
+    if (bikeFuelGroup) bikeFuelGroup.style.display = counts.bike > 0 ? "block" : "none";
+
+    const busOpt = document.getElementById("bus_options");
+    if (busOpt) busOpt.style.display = counts.bus > 0 ? "block" : "none";
+    const trainOpt = document.getElementById("train_options");
+    if (trainOpt) trainOpt.style.display = counts.train > 0 ? "block" : "none";
+    const flightOpt = document.getElementById("flight_options");
+    if (flightOpt) flightOpt.style.display = counts.flight > 0 ? "block" : "none";
+
+    savePlannerState();
+}
+
 function onTransportChange() {
     const mode = document.getElementById("transport_mode")?.value || "car";
 
@@ -354,7 +461,11 @@ function onTransportChange() {
     syncGmapModeTabs();
 
     // 1. Hide all mode-specific sections first
-    ["vehicle_section", "toll_section", "fuel_section", "fuel_type_group", "bus_options", "train_options", "flight_options"].forEach(id => {
+    [
+        "vehicle_section", "toll_section", "bus_options", "train_options",
+        "flight_options", "multi_transport_section", "car_mileage_group",
+        "car_fuel_type_group", "bike_mileage_group", "bike_fuel_type_group"
+    ].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = "none";
     });
@@ -363,10 +474,29 @@ function onTransportChange() {
     const stopsContainer = document.getElementById("stops_container");
     const stopActions = document.querySelector(".gmap-stop-actions");
     const avoidances = document.querySelector(".gmap-route-avoidances");
+    const transitSection = document.getElementById("transit_hub_section");
 
-    if (["bike", "car"].includes(mode)) {
-        // Show personal vehicle options
-        ["vehicle_section", "toll_section", "fuel_section", "fuel_type_group"].forEach(id => {
+    if (mode === "multi") {
+        const multiSec = document.getElementById("multi_transport_section");
+        if (multiSec) multiSec.style.display = "block";
+
+        const vehicleSec = document.getElementById("vehicle_section");
+        if (vehicleSec) vehicleSec.style.display = "block";
+        const tollSec = document.getElementById("toll_section");
+        if (tollSec) tollSec.style.display = "block";
+
+        const mileageEl = document.getElementById("mileage");
+        if (mileageEl && !mileageEl.value) mileageEl.value = 15;
+
+        if (stopsContainer) stopsContainer.style.display = "block";
+        if (stopActions) stopActions.style.display = "block";
+        if (avoidances) avoidances.style.display = "block";
+        if (transitSection) transitSection.style.display = "none";
+
+        onMultiTravelerInput();
+    } else if (mode === "car") {
+        // Show Car vehicle & fuel options
+        ["vehicle_section", "toll_section", "car_mileage_group", "car_fuel_type_group"].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.style.display = "block";
         });
@@ -376,8 +506,19 @@ function onTransportChange() {
         if (stopsContainer) stopsContainer.style.display = "block";
         if (stopActions) stopActions.style.display = "block";
         if (avoidances) avoidances.style.display = "block";
+        if (transitSection) transitSection.style.display = "none";
+    } else if (mode === "bike") {
+        // Show Bike vehicle & fuel options
+        ["vehicle_section", "bike_mileage_group", "bike_fuel_type_group"].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = "block";
+        });
+        const bikeMileageEl = document.getElementById("bike_mileage");
+        if (bikeMileageEl && !bikeMileageEl.value) bikeMileageEl.value = 45;
 
-        const transitSection = document.getElementById("transit_hub_section");
+        if (stopsContainer) stopsContainer.style.display = "block";
+        if (stopActions) stopActions.style.display = "block";
+        if (avoidances) avoidances.style.display = "block";
         if (transitSection) transitSection.style.display = "none";
     } else if (["bus", "train", "flight"].includes(mode)) {
         // Public Transit modes: Show ONLY From & To location fields
@@ -396,7 +537,6 @@ function onTransportChange() {
         if (stopsContainer) stopsContainer.style.display = "none";
         if (stopActions) stopActions.style.display = "none";
         if (avoidances) avoidances.style.display = "none";
-        const transitSection = document.getElementById("transit_hub_section");
         if (transitSection) transitSection.style.display = "none";
     }
 
@@ -1289,12 +1429,23 @@ function swapLocations() {
     const fromInput = document.getElementById("from_location");
     const destInput = document.getElementById("destination");
     const swapBtn = document.getElementById("gmap_swap_btn");
+    const reverseBadgeBtn = document.querySelector(".gmap-reverse-badge-btn");
 
     if (!fromInput || !destInput) return;
 
     if (swapBtn) {
         swapBtn.classList.add("rotating");
-        setTimeout(() => swapBtn.classList.remove("rotating"), 350);
+        setTimeout(() => swapBtn.classList.remove("rotating"), 400);
+    }
+    if (reverseBadgeBtn) {
+        reverseBadgeBtn.classList.add("rotating");
+        setTimeout(() => reverseBadgeBtn.classList.remove("rotating"), 400);
+        const textSpan = reverseBadgeBtn.querySelector(".reverse-text");
+        if (textSpan) {
+            textSpan.textContent = textSpan.textContent.includes("From ⇄ To")
+                ? "Reverse (To ⇄ From)"
+                : "Reverse (From ⇄ To)";
+        }
     }
 
     const temp = fromInput.value;
