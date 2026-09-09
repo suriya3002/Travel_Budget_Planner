@@ -22,9 +22,8 @@
 <div class="top-bar">
     <a href="/" class="logo-link">🌍 TravelBudget</a>
     <div class="top-bar-actions" style="display:flex; gap:10px; align-items:center;">
-        <button type="button" class="clear-btn" onclick="clearPlannerForm()" title="Reset all fields and plan a fresh trip">↺ Start Fresh</button>
-        <a href="/trips" class="saved-trips-btn">📋 Saved Trips</a>
-        {% if is_admin %}<a href="/admin" class="admin-link" title="Admin">⚙️</a>{% endif %}
+        <a href="/trips" class="saved-trips-icon-btn" title="Saved Trips" aria-label="Saved Trips">📋</a>
+        {% if is_admin %}<a href="/admin" class="admin-link" title="Admin Panel" aria-label="Admin Panel">⚙️</a>{% endif %}
     </div>
 </div>
 
