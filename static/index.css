@@ -522,6 +522,47 @@
     border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
+/* ===== Small Icon Buttons in Top Bar ===== */
+.saved-trips-icon-btn,
+.admin-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    font-size: 17px;
+    text-decoration: none;
+    line-height: 1;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.saved-trips-icon-btn {
+    background: rgba(255, 107, 0, 0.2);
+    border-color: rgba(255, 107, 0, 0.45);
+}
+
+.saved-trips-icon-btn:hover {
+    background: rgba(255, 107, 0, 0.9);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateY(-2px) scale(1.06);
+    box-shadow: 0 6px 18px rgba(255, 107, 0, 0.45);
+}
+
+.admin-link:hover {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.45);
+    transform: translateY(-2px) scale(1.06);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
 /* ===== Clear Button ===== */
 .clear-btn {
     background: rgba(239, 68, 68, 0.2);
@@ -2054,12 +2095,19 @@
         gap: 6px !important;
         flex-shrink: 0;
     }
-    .clear-btn, .saved-trips-btn, .admin-link {
+    .clear-btn, .saved-trips-btn {
         padding: 6px 10px !important;
         font-size: 11px !important;
         font-weight: 600 !important;
         border-radius: 10px !important;
         white-space: nowrap;
+    }
+    .saved-trips-icon-btn, .admin-link {
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 14px !important;
+        border-radius: 8px !important;
+        padding: 0 !important;
     }
     .page-title {
         margin-top: 4px;
