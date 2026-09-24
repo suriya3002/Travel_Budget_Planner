@@ -4,6 +4,13 @@ A professional Flask-based web application that helps users estimate and manage 
 
 ## 🚀 Features
 
+### 🤖 Google Gemini AI Features
+- **✨ AI Itinerary & Destination Recommender**: Generates comprehensive day-by-day itineraries (Morning, Afternoon, Evening) with timings, meal recommendations, packing essentials, and hidden gems.
+- **💬 TravelAI Copilot (Interactive Chatbot)**: Floating, context-aware AI assistant answering trip questions, local foods, packing checklists, and money-saving hacks.
+- **📊 Smart Budget Optimizer & Cost Estimator**: Auto-estimates destination room rates, food expenses, toll charges, and entry fees with 1-click; provides actionable budget reduction tips.
+- **📷 AI Receipt & Expense Scanner (Vision OCR)**: Multimodal vision scanner extracting vendor name, date, category, total amount, taxes, and itemized line items from photos of bills or tickets.
+- **🔑 In-App API Key Manager & Offline Fallback**: Enter Gemini key directly in the UI or `.env`, with built-in high-quality offline fallback mode.
+
 ### 💰 Budget Calculation
 - Calculate total trip budget
 - Calculate cost per traveler

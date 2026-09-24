@@ -6,6 +6,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='result.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='ai_widget.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -13,6 +14,8 @@
   <div class="result-topbar-inner">
     <a href="/" class="brand-link">🌍 Travel<strong>Budget</strong></a>
     <div class="result-topbar-actions">
+      <button type="button" class="topbar-btn" style="background:linear-gradient(135deg,#0d9488,#4f46e5); color:#fff; border:none; font-weight:700;" onclick="TravelAI.openItineraryModal('{{ destination }}', '{{ from_location }}')">✨ AI Itinerary</button>
+      <button type="button" class="topbar-btn" onclick="TravelAI.openReceiptModal()">📷 Scan Bill</button>
       <a href="/planner?new=1" class="topbar-btn">↺ Plan Fresh</a>
       <a href="/trips" class="topbar-btn">📋 Saved Trips</a>
       <button type="button" class="topbar-btn desktop-only" onclick="window.print()">🖨️ Print PDF</button>
@@ -227,6 +230,25 @@
       {% endif %}
 
       <hr class="report-divider">
+      <!-- Google Gemini AI Budget Optimizer Card -->
+      <div class="ai-optimizer-card" id="ai_optimizer_card">
+        <div class="ai-optimizer-header">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span style="font-size:26px;">✨</span>
+            <div>
+              <h3 style="margin:0; font-size:1.15rem; color:#0f172a; font-weight:800;">Google Gemini Budget Optimizer</h3>
+              <p style="margin:2px 0 0; font-size:0.82rem; color:#64748b;">AI analysis of your trip expenses with specific cost-cutting recommendations</p>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button type="button" class="ai-magic-btn" id="btn_run_optimizer" onclick="runResultOptimizer()">
+              ✨ Analyze & Cut Costs
+            </button>
+          </div>
+        </div>
+        <div id="ai_optimizer_content" style="display:none;"></div>
+      </div>
+
       <div class="insights"><div><div class="section-title"><h2>Where your money goes</h2><p>Expense breakdown</p></div><div class="chart-container"><canvas id="expenseChart"></canvas></div></div><div class="total-box"><h2>Total estimated budget</h2><h1>₹{{ '%.2f'|format(total_budget) }}</h1><p>₹{{ '%.2f'|format(cost_per_person) }} per traveler</p></div></div>
       <hr class="report-divider">
       <div class="section-title"><h2>Expense details</h2><p>Adjust your plan any time</p></div>
@@ -525,5 +547,79 @@ document.addEventListener('DOMContentLoaded', ()=> {
   }
   loadAttractions();
 });
+
+async function runResultOptimizer() {
+  const btn = document.getElementById('btn_run_optimizer');
+  const container = document.getElementById('ai_optimizer_content');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="ai-spinner"></span> Analyzing with Gemini...';
+  }
+  container.style.display = 'block';
+  container.innerHTML = '<div style="text-align:center; padding:20px; color:#64748b;"><div class="ai-spinner" style="border-top-color:#0d9488"></div><p style="margin-top:8px;">Finding savings opportunities across stay, food, tolls & transit...</p></div>';
+
+  const tripData = {
+    destination: "{{ destination }}",
+    travelers: {{ travelers }},
+    total_distance: {{ total_distance }},
+    transport_mode: "{{ transport_mode }}",
+    transport_cost: {{ transport_cost }},
+    room_cost: {{ room_cost }},
+    food_cost: {{ food_cost }},
+    toll_charges: {{ toll_charges }},
+    places_fee_total: {{ places_fee_total }},
+    total_budget: {{ total_budget }},
+    cost_per_person: {{ cost_per_person }}
+  };
+
+  try {
+    const res = await fetch('/api/ai/optimize_budget', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(tripData)
+    });
+    const data = await res.json();
+    
+    let recsHtml = '';
+    (data.recommendations || []).forEach(r => {
+      recsHtml += `
+        <div class="ai-rec-box">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <strong>${r.title}</strong>
+            <span class="ai-rec-saving">Save ~₹${r.estimated_saving_inr}</span>
+          </div>
+          <p>${r.description}</p>
+        </div>
+      `;
+    });
+
+    container.innerHTML = `
+      <div style="background:#ffffff; border:1px solid #ccfbf1; border-radius:14px; padding:18px; margin-top:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; border-bottom:1px dashed #e2e8f0; padding-bottom:12px; margin-bottom:14px;">
+          <div>
+            <span style="font-size:0.8rem; font-weight:700; color:#0d9488; text-transform:uppercase; letter-spacing:0.05em;">Budget Rating</span>
+            <h4 style="margin:2px 0 0; font-size:1.1rem; color:#0f172a;">${data.overall_rating || 'Good Value'}</h4>
+          </div>
+          <div class="ai-savings-badge">
+            Potential Savings: ₹${(data.potential_savings || 0).toLocaleString()}
+          </div>
+        </div>
+        <p style="font-size:0.88rem; color:#475569; margin:0 0 14px; line-height:1.5;">${data.analysis || ''}</p>
+        <h4 style="font-size:0.92rem; color:#0f172a; margin:0 0 10px;">💡 Recommended Actions:</h4>
+        <div class="ai-recommendation-list">
+          ${recsHtml}
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    container.innerHTML = '<p style="color:#ef4444; font-size:0.85rem; padding:10px;">Could not complete AI budget optimization. Please try again.</p>';
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '↺ Re-Analyze Budget';
+    }
+  }
+}
 </script>
+<script src="{{ url_for('static', filename='ai_widget.js') }}"></script>
 </body></html>

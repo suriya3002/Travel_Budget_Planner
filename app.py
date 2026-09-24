@@ -1,9 +1,11 @@
 import json
 import os
 import sqlite3
+import base64
 from functools import wraps
 
 import requests
+import ai_service
 from flask import Flask, Response, jsonify, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -1017,7 +1019,8 @@ def inject_user():
                     is_admin = False
         except Exception:
             is_admin = False
-    return dict(is_admin=is_admin, logged_in=logged_in, user_name=user_name)
+    gemini_key = ai_service.get_gemini_api_key(session.get("gemini_api_key"))
+    return dict(is_admin=is_admin, logged_in=logged_in, user_name=user_name, gemini_configured=bool(gemini_key))
 
 
 def login_required(view):
@@ -2693,6 +2696,138 @@ def calculate():
         trip_id=trip_id,
         edit_mode=bool(trip_id),
     )
+
+
+# -------------------------------------------------------------
+# AI Travel Copilot & Gemini Endpoints
+# -------------------------------------------------------------
+@app.route("/api/ai/status")
+def ai_status():
+    user_key = session.get("gemini_api_key")
+    active_key = ai_service.get_gemini_api_key(user_key)
+    return jsonify({
+        "configured": bool(active_key),
+        "source": "session" if user_key else ("env" if os.environ.get("GEMINI_API_KEY") else "none"),
+        "model": ai_service.PRIMARY_MODEL
+    })
+
+
+@app.route("/api/ai/set_key", methods=["POST"])
+def ai_set_key():
+    data = request.get_json(silent=True) or request.form
+    key = (data.get("api_key") or "").strip()
+    if not key:
+        session.pop("gemini_api_key", None)
+        return jsonify({"success": True, "configured": bool(ai_service.get_gemini_api_key()), "message": "API key cleared. Running in Demo AI mode."})
+    
+    # Test key with a fast ping call
+    test_res = ai_service.call_gemini_api("Ping", api_key=key)
+    if "error" in test_res and "API_ERROR" in test_res["error"]:
+        return jsonify({"success": False, "message": f"Gemini API Error: {test_res.get('message', 'Invalid API Key')}"}), 400
+    
+    session["gemini_api_key"] = key
+    return jsonify({"success": True, "configured": True, "message": "Google Gemini API key connected successfully!"})
+
+
+@app.route("/api/ai/itinerary", methods=["POST"])
+def ai_itinerary():
+    payload = request.get_json(silent=True) or {}
+    destination = payload.get("destination") or request.form.get("destination", "")
+    origin = payload.get("origin") or request.form.get("from_location", "Current Location")
+    days = int(payload.get("days") or request.form.get("days") or 3)
+    travel_style = payload.get("travel_style") or "Balanced & Scenic"
+    travelers = int(payload.get("travelers") or 1)
+    budget = payload.get("budget")
+    
+    user_key = session.get("gemini_api_key")
+    result = ai_service.generate_itinerary(
+        destination=destination,
+        origin=origin,
+        days=days,
+        travel_style=travel_style,
+        travelers=travelers,
+        budget=budget,
+        api_key=user_key
+    )
+    return jsonify(result)
+
+
+@app.route("/api/ai/estimate_budget", methods=["POST"])
+def ai_estimate_budget():
+    payload = request.get_json(silent=True) or {}
+    destination = payload.get("destination", "")
+    origin = payload.get("origin", "Bengaluru")
+    travelers = int(payload.get("travelers") or 1)
+    days = int(payload.get("days") or 2)
+    transport_mode = payload.get("transport_mode", "car")
+    
+    user_key = session.get("gemini_api_key")
+    result = ai_service.estimate_destination_costs(
+        destination=destination,
+        origin=origin,
+        travelers=travelers,
+        days=days,
+        transport_mode=transport_mode,
+        api_key=user_key
+    )
+    return jsonify(result)
+
+
+@app.route("/api/ai/optimize_budget", methods=["POST"])
+def ai_optimize_budget():
+    payload = request.get_json(silent=True) or {}
+    user_key = session.get("gemini_api_key")
+    result = ai_service.analyze_and_optimize_budget(payload, api_key=user_key)
+    return jsonify(result)
+
+
+@app.route("/api/ai/chat", methods=["POST"])
+def ai_chat():
+    payload = request.get_json(silent=True) or {}
+    message = payload.get("message", "").strip()
+    history = payload.get("history", [])
+    trip_context = payload.get("trip_context", {})
+    if not message:
+        return jsonify({"error": "Empty message"}), 400
+    
+    user_key = session.get("gemini_api_key")
+    result = ai_service.chat_with_assistant(
+        user_message=message,
+        history=history,
+        trip_context=trip_context,
+        api_key=user_key
+    )
+    return jsonify(result)
+
+
+@app.route("/api/ai/scan_receipt", methods=["POST"])
+def ai_scan_receipt():
+    image_bytes = None
+    mime_type = "image/jpeg"
+    
+    if "receipt_image" in request.files:
+        file = request.files["receipt_image"]
+        if file and file.filename:
+            image_bytes = file.read()
+            mime_type = file.mimetype or "image/jpeg"
+    elif request.is_json:
+        data = request.get_json()
+        b64 = data.get("image_base64", "")
+        if b64:
+            if "," in b64:
+                header, b64 = b64.split(",", 1)
+                if "image/png" in header:
+                    mime_type = "image/png"
+                elif "image/webp" in header:
+                    mime_type = "image/webp"
+            image_bytes = base64.b64decode(b64)
+            
+    if not image_bytes:
+        return jsonify({"error": "No image provided"}), 400
+        
+    user_key = session.get("gemini_api_key")
+    result = ai_service.scan_receipt_with_vision(image_bytes, mime_type=mime_type, api_key=user_key)
+    return jsonify(result)
 
 
 if __name__ == "__main__":
